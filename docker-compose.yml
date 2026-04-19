@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: lahab_admin_db
+    command: --sql-mode=NO_ENGINE_SUBSTITUTION
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: delivery_app_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - lahab_admin_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  app:
+    build: .
+    container_name: lahab_admin_app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: delivery_app_db
+      DB_USERNAME: root
+      DB_PASSWORD: ""
+      APP_URL: http://localhost:8000
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  lahab_admin_db:

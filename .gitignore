@@ -1,0 +1,54 @@
+# Laravel
+/vendor
+/node_modules
+/public/hot
+/public/storage
+/public/public
+/storage/*.key
+/storage/install.zip
+/storage/update.zip
+/storage/temp/mpdf*
+/storage/fonts/*
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitkeep
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitkeep
+/storage/framework/testing/*
+!/storage/framework/testing/.gitkeep
+/storage/framework/views/*
+!/storage/framework/views/.gitkeep
+/storage/app/public/*
+!/storage/app/public/.gitkeep
+/bootstrap/cache/*.php
+
+# Env
+.env
+.env.backup
+.env.production
+
+# Logs
+/error_log
+npm-debug.log
+yarn-error.log
+
+# Editor / OS
+/.idea
+/.vscode
+/.fleet
+.DS_Store
+Thumbs.db
+
+# PHP tooling
+/.phpunit.cache
+.phpunit.result.cache
+/.php-cs-fixer.cache
+
+# Homestead
+Homestead.json
+Homestead.yaml
+
+# Template artifacts
+/Modules/Gateways
+/composer.phar
