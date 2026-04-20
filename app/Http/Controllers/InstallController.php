@@ -179,6 +179,8 @@ class InstallController extends Controller
 
     public function import_sql(): RedirectResponse
     {
+        @set_time_limit(0);
+        @ini_set('memory_limit', '-1');
         try {
             $sql_path = base_path('installation/backup/database.sql');
             DB::unprepared(file_get_contents($sql_path));
@@ -191,6 +193,8 @@ class InstallController extends Controller
 
     public function force_import_sql(): RedirectResponse
     {
+        @set_time_limit(0);
+        @ini_set('memory_limit', '-1');
         try {
             Artisan::call('db:wipe');
             $sql_path = base_path('installation/backup/database.sql');
