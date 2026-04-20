@@ -243,7 +243,6 @@
                                     <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                         {{translate('table order')}}
                                     </span>
-                                    <label class="badge badge-danger">{{translate('addon')}}</label>
                                 </a>
                                 <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                     style="display: {{Request::is('admin/table/order*')?'block':'none'}}">
@@ -729,7 +728,6 @@
                                     <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                             {{translate('chef')}}
                                         </span>
-                                    <label class="badge badge-danger">{{translate('addon')}}</label>
                                 </a>
                                 <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                     style="display: {{Request::is('admin/kitchen*')?'block':'none'}}">
@@ -767,7 +765,6 @@
                                     <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                             {{translate('table')}}
                                         </span>
-                                    <label class="badge badge-danger">{{translate('addon')}}</label>
                                 </a>
                                 <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="top: 391.823px; display: {{Request::is('admin/table/list') || Request::is('admin/table/update*') || Request::is('admin/table/index') || Request::is('admin/promotion/*')?'block':''}};">
                                     <li class="nav-item {{Request::is('admin/table/list') || Request::is('admin/table/update*') ?'active':''}}">

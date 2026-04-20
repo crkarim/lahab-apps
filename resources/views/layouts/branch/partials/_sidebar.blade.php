@@ -229,7 +229,6 @@
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
                                     {{translate('table order')}}
                                 </span>
-                                <label class="badge badge-danger">{{translate('addon')}}</label>
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{Request::is('branch/table/order*')?'block':'none'}}">
@@ -354,7 +353,6 @@
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:">
                                 <i class="tio-gift nav-icon"></i>
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{translate('table')}}</span>
-                                <label class="badge badge-danger">{{translate('addon')}}</label>
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub" style="display: {{Request::is('branch/table/*') || Request::is('branch/promotion*')? 'block' : ''}}">
                                 <li class="nav-item ">
@@ -388,7 +386,6 @@
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:">
                                 <i class="tio-shopping nav-icon"></i>
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{translate('chef')}}</span>
-                                <label class="badge badge-danger">{{translate('addon')}}</label>
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{Request::is('branch/kitchen/*')? 'block' : ''}}">
