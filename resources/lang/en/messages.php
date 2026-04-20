@@ -3073,4 +3073,6 @@
   'Mail Setting' => 'Mail Setting',
   'Payment Method Configuration' => 'Payment Method Configuration',
   'SMS Module Configuration' => 'SMS Module Configuration',
+  'Table capacity is required!' => 'Table capacity is required!',
+  'Table number is already exist in this branch!' => 'Table number is already exist in this branch!',
 );
