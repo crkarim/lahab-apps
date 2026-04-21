@@ -42,7 +42,7 @@
                             <select class="custom-select custom-select-sm text-capitalize" name="table" id="select_table">
                                 <option disabled selected>--- {{translate('select')}} {{translate('table')}} ---</option>
                                 @foreach($tables as $table)
-                                    <option value="{{$table['id']}}" {{$table_id==$table['id'] ? 'selected' : ''}}>{{translate('Table')}} - {{$table['number']}}</option>
+                                    <option value="{{$table['id']}}" {{$table_id==$table['id'] ? 'selected' : ''}}>{{translate('Table')}} - {{$table['number']}}{{ $table['zone'] ? ' · ' . $table['zone'] : '' }}</option>
                                 @endforeach
                             </select>
                             <!-- End Select -->
@@ -85,7 +85,7 @@
                                         </td>
                                         <td>
                                             @if($order->table)
-                                                <label class="badge badge-soft-info">{{translate('table')}} - {{$order->table->number}}</label>
+                                                <label class="badge badge-soft-info">{{translate('table')}} - {{$order->table->number}}{{ $order->table->zone ? ' · ' . $order->table->zone : '' }}</label>
                                             @else
                                                 <label class="badge badge-soft-info">{{translate('table deleted')}}</label>
                                             @endif

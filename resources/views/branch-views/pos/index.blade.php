@@ -148,7 +148,7 @@
                                                 <select id='table' name="table_id"  class="table-data-selector form-control form-ellipsis select-table">
                                                     <option selected disabled>{{translate('Select Table')}}</option>
                                                     @foreach($tables as $table)
-                                                        <option value="{{$table['id']}}" {{ $table['id'] == session('table_id') ? 'selected' : ''}}>{{translate('Table')}} - {{$table['number']}}</option>
+                                                        <option value="{{$table['id']}}" {{ $table['id'] == session('table_id') ? 'selected' : ''}}>{{translate('Table')}} - {{$table['number']}}{{ $table['zone'] ? ' · ' . $table['zone'] : '' }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>

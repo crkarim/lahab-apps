@@ -4,27 +4,138 @@
 
 @section('content')
     <div class="content container-fluid">
-        <div class="d-flex flex-wrap gap-2 align-items-center justify-content-end mb-3">
-            <h2 class="h1 mb-0 d-flex align-items-center gap-2 flex-grow-1">
+        <style>
+            /* Fixed-positioned action bar, offset below the navbar (3.75rem) and next to
+               the sidebar (15.25rem desktop). Reliable regardless of ancestor overflow. */
+            .qa-sticky {
+                position: fixed;
+                top: 3.75rem;
+                left: 15.25rem;
+                right: 0;
+                z-index: 98;
+                background: rgba(255,255,255,0.94);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                padding: 0.55rem 2rem;
+                border-bottom: 1px solid #e5e5ea;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+                transition: box-shadow 120ms ease;
+            }
+            .qa-sticky .qa-title { flex: 1; min-width: 0; }
+            .qa-sticky .qa-title h2 { margin: 0; font-size: 1rem; }
+            /* Reserve space under the fixed bar so page content isn't hidden underneath. */
+            .qa-spacer { height: 60px; }
+
+            /* When sidebar collapses to mini mode (≤ lg) */
+            @media (max-width: 1199.98px) {
+                .qa-sticky { left: 0; padding: 0.5rem 1rem; }
+                .qa-spacer { height: 56px; }
+            }
+            /* Mini sidebar class used by the template when collapsed */
+            body.navbar-vertical-aside-mini-mode .qa-sticky { left: 5.25rem; }
+        </style>
+
+        <div class="qa-sticky d-flex flex-wrap gap-2 align-items-center" id="qaStickyBar">
+            <div class="qa-title d-flex align-items-center gap-2">
                 <img width="20" class="avatar-img" src="{{asset('public/assets/admin/img/icons/order_details.png')}}" alt="">
-                <span class="page-header-title">{{translate('Order_Details')}}</span>
-                <span class="badge badge-soft-dark rounded-50 fz-14 mb-0">{{$order->details->count()}}</span>
-            </h2>
-            @if($order->type != 'pos' &&
-                $order->payment_status != 'paid' &&
-                in_array($order->order_status, ['pending', 'confirmed', 'processing']) &&
-                ($order->payment_method == 'cash_on_delivery' && !$order->order_partial_payments()->exists()))
-                <button class="btn btn-outline--info font-weight-semibold"
+                <h2 class="h3 mb-0 text-truncate">
+                    <span class="page-header-title">{{translate('Order')}} #{{ $order->id }}</span>
+                    <span class="badge badge-soft-dark rounded-50 fz-12 ml-1">{{$order->details->count()}}</span>
+                </h2>
+            </div>
+
+            {{-- Context-aware "next step" button for in-restaurant orders.
+                 Clean state machine: confirmed → cooking → done → completed (checkout). --}}
+            @if(in_array($order->order_type, ['pos', 'dine_in']))
+                @switch($order->order_status)
+                    @case('confirmed')
+                        <a class="btn btn-outline-warning route-alert"
+                           href="javascript:"
+                           data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'cooking']) }}"
+                           data-message="{{ translate('Start cooking this order?') }}">
+                            <i class="tio-fire"></i> {{ translate('Start Cooking') }}
+                        </a>
+                        @break
+                    @case('cooking')
+                        <a class="btn btn-outline-success route-alert"
+                           href="javascript:"
+                           data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'done']) }}"
+                           data-message="{{ translate('Mark food as ready to serve?') }}">
+                            <i class="tio-done"></i> {{ translate('Mark Ready') }}
+                        </a>
+                        @break
+                    @case('done')
+                        <span class="badge badge-soft-success px-3 py-2 fz-14">
+                            <i class="tio-done"></i> {{ translate('Ready to serve') }}
+                        </span>
+                        @break
+                @endswitch
+            @endif
+
+            @php
+                // "Add Items" mode — in-restaurant POS/dine_in orders that are live in
+                // the kitchen. Existing details stay locked (already cooking); submit
+                // only appends new lines + fires a supplementary KOT.
+                $isAppendMode = in_array($order->order_type, ['pos', 'dine_in']) &&
+                                $order->payment_status != 'paid' &&
+                                in_array($order->order_status, ['pending', 'confirmed', 'processing', 'cooking', 'done']);
+
+                // Legacy "Edit Order" for online orders (destructive rebuild).
+                $isLegacyEdit = $order->type != 'pos' &&
+                                $order->payment_status != 'paid' &&
+                                in_array($order->order_status, ['pending', 'confirmed', 'processing']) &&
+                                ($order->payment_method == 'cash_on_delivery' && !$order->order_partial_payments()->exists());
+            @endphp
+
+            @if($isAppendMode || $isLegacyEdit)
+                <button class="btn btn-outline-info font-weight-semibold"
                         id="edit-order-button"
                         data-toggle="modal"
-                        data-target="#confirmEditProductModal">
-                    <i class="tio-edit"></i> {{translate('Edit_Order')}}
+                        data-target="#confirmEditProductModal"
+                        data-append-mode="{{ $isAppendMode ? '1' : '0' }}">
+                    <i class="tio-{{ $isAppendMode ? 'add-circle-outlined' : 'edit' }}"></i>
+                    {{ $isAppendMode ? translate('Add Items') : translate('Edit_Order') }}
                 </button>
             @endif
-            <a class="btn btn-primary" href={{route('admin.orders.generate-invoice',[$order['id']])}}>
-                <i class="tio-print"></i> {{translate('Print_Invoice')}}
-            </a>
+
+            @if(in_array($order->order_status, ['pending', 'confirmed', 'cooking', 'processing']))
+                <a href="{{ route('admin.orders.kitchen-ticket', $order->id) }}"
+                   target="_blank"
+                   class="btn btn-warning font-weight-semibold">
+                    <i class="tio-print"></i>
+                    {{ $order->kot_number ? translate('Reprint KOT') . ' · ' . $order->kot_number : translate('Send to Kitchen') }}
+                </a>
+            @endif
+
+            @if(in_array($order->order_type, ['pos', 'dine_in']))
+                <button type="button" class="btn {{ $order->payment_status === 'paid' ? 'btn-outline-success' : 'btn-success' }} font-weight-semibold"
+                        data-toggle="modal" data-target="#checkout-modal">
+                    <i class="tio-{{ $order->payment_status === 'paid' ? 'sms' : 'checkmark-circle' }}"></i>
+                    {{ $order->payment_status === 'paid' ? translate('Receipt / Re-send') : translate('Checkout') }}
+                </button>
+            @endif
+
+            <button type="button" class="btn btn-primary print-receipt-btn"
+                    data-order-id="{{ $order['id'] }}"
+                    data-fragment-url="{{ route('admin.orders.receipt-fragment', [$order['id']]) }}">
+                <i class="tio-print"></i> {{ translate('Print Receipt') }}
+            </button>
         </div>
+        <div class="qa-spacer"></div>
+        @include('receipt._modal')
+
+        @if(in_array($order->order_type, ['pos', 'dine_in']))
+            @php $offline_methods = \App\Models\OfflinePaymentMethod::active()->get(); @endphp
+            @include('admin-views.order.partials._checkout-modal', ['order' => $order, 'offline_methods' => $offline_methods])
+        @endif
+
+        @if(session('auto_print_receipt_token'))
+            <script>
+                window.addEventListener('load', function () {
+                    window.open('{{ route("receipt.show", ["token" => session("auto_print_receipt_token"), "print" => 1]) }}', '_blank');
+                });
+            </script>
+        @endif
         <div class="row" id="printableArea">
             <div class="col-lg-8 mb-3 mb-lg-0">
                 <div class="card mb-3 mb-lg-5">
@@ -32,7 +143,7 @@
                         <div class="row gy-2">
                             <div class="col-sm-7 d-flex flex-column justify-content-between">
                                 <div>
-                                    <h2 class="page-header-title h1 mb-3">{{translate('order')}} #{{$order['id']}}</h2>
+                                    {{-- Order # heading removed — already shown in the sticky qa bar above. --}}
                                     <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
                                         <h5 class="text-capitalize mb-0">
                                             <i class="tio-shop text-primary"></i>
@@ -85,7 +196,7 @@
                                                 <h5 class="text-capitalize">
                                                     <i class="tio-table"></i>
                                                     {{translate('table no')}} : <label
-                                                        class="badge badge-secondary">{{$order->table?$order->table->number:'Table deleted!'}}</label>
+                                                        class="badge badge-secondary">{{$order->table ? $order->table->number . ($order->table->zone ? ' · ' . $order->table->zone : '') : 'Table deleted!'}}</label>
                                                 </h5>
                                             </div>
                                             @if($order['number_of_people'] != null)
@@ -159,27 +270,44 @@
 
                                     <div class="d-flex gap-3 justify-content-sm-end my-3">
                                         <div class="text-dark font-weight-semibold">{{translate('Status')}} :</div>
-                                        @if($order['order_status']=='pending')
-                                            <span
-                                                class="badge-soft-info px-2 rounded text-capitalize">{{translate('pending')}}</span>
-                                        @elseif($order['order_status']=='confirmed')
-                                            <span
-                                                class="badge-soft-info px-2 rounded text-capitalize">{{translate('confirmed')}}</span>
-                                        @elseif($order['order_status']=='processing')
-                                            <span
-                                                class="badge-soft-warning px-2 rounded text-capitalize">{{translate('processing')}}</span>
-                                        @elseif($order['order_status']=='out_for_delivery')
-                                            <span
-                                                class="badge-soft-warning px-2 rounded text-capitalize">{{translate('out_for_delivery')}}</span>
-                                        @elseif($order['order_status']=='delivered')
-                                            <span
-                                                class="badge-soft-success px-2 rounded text-capitalize">{{translate('delivered')}}</span>
-                                        @elseif($order['order_status']=='failed')
-                                            <span
-                                                class="badge-soft-danger px-2 rounded text-capitalize">{{translate('failed_to_deliver')}}</span>
+                                        @if(in_array($order['order_type'], ['pos', 'dine_in']))
+                                            {{-- In-restaurant vocabulary --}}
+                                            @switch($order['order_status'])
+                                                @case('confirmed')
+                                                    <span class="badge-soft-info px-2 rounded text-capitalize">{{translate('confirmed')}}</span>
+                                                    @break
+                                                @case('cooking')
+                                                    <span class="badge-soft-warning px-2 rounded text-capitalize">{{translate('cooking')}}</span>
+                                                    @break
+                                                @case('done')
+                                                    <span class="badge-soft-warning px-2 rounded text-capitalize">{{translate('ready to serve')}}</span>
+                                                    @break
+                                                @case('completed')
+                                                    <span class="badge-soft-success px-2 rounded text-capitalize">{{translate('completed')}}</span>
+                                                    @break
+                                                @case('canceled')
+                                                    <span class="badge-soft-danger px-2 rounded text-capitalize">{{translate('canceled')}}</span>
+                                                    @break
+                                                @default
+                                                    <span class="badge-soft-secondary px-2 rounded text-capitalize">{{str_replace('_',' ',$order['order_status'])}}</span>
+                                            @endswitch
                                         @else
-                                            <span
-                                                class="badge-soft-danger px-2 rounded text-capitalize">{{str_replace('_',' ',$order['order_status'])}}</span>
+                                            {{-- Delivery / online-order vocabulary --}}
+                                            @if($order['order_status']=='pending')
+                                                <span class="badge-soft-info px-2 rounded text-capitalize">{{translate('pending')}}</span>
+                                            @elseif($order['order_status']=='confirmed')
+                                                <span class="badge-soft-info px-2 rounded text-capitalize">{{translate('confirmed')}}</span>
+                                            @elseif($order['order_status']=='processing')
+                                                <span class="badge-soft-warning px-2 rounded text-capitalize">{{translate('processing')}}</span>
+                                            @elseif($order['order_status']=='out_for_delivery')
+                                                <span class="badge-soft-warning px-2 rounded text-capitalize">{{translate('out_for_delivery')}}</span>
+                                            @elseif($order['order_status']=='delivered')
+                                                <span class="badge-soft-success px-2 rounded text-capitalize">{{translate('delivered')}}</span>
+                                            @elseif($order['order_status']=='failed')
+                                                <span class="badge-soft-danger px-2 rounded text-capitalize">{{translate('failed_to_deliver')}}</span>
+                                            @else
+                                                <span class="badge-soft-danger px-2 rounded text-capitalize">{{str_replace('_',' ',$order['order_status'])}}</span>
+                                            @endif
                                         @endif
                                     </div>
 
@@ -224,7 +352,7 @@
                                     <div class="d-flex gap-3 justify-content-sm-end mb-3 text-capitalize">
                                         {{translate('order')}} {{translate('type')}}
                                         : <label class="badge-soft-info px-2 rounded">
-                                            {{str_replace('_',' ',$order['order_type'])}}
+                                            {{ \App\CentralLogics\Helpers::order_type_label($order['order_type']) }}
                                         </label>
                                     </div>
                                 </div>
@@ -1476,7 +1604,7 @@
                 </div>
             </div>
 
-            @include('admin-views.order.partials.order-products-table')
+            @include('admin-views.order.partials.order-products-table', ['orderId' => $order->id])
         </div>
         <div class="offcanvas-footer bg-white py-2 d-flex justify-content-end align-items-end flex-wrap gap-3">
             <button type="button" class="btn btn-secondary px-4 min-w-120px"
@@ -1714,30 +1842,40 @@
         <script>
             "use strict";
 
-            const expire_time = "{{ $order['remaining_time'] }}";
-            var countDownDate = new Date(expire_time).getTime();
+            const expire_time = "{{ $order['remaining_time'] ?? '' }}";
+            const counterEl = document.getElementById("counter");
+            const timerIcon = document.getElementById("timer-icon");
+            const editIcon  = document.getElementById("edit-icon");
+            var countDownDate = expire_time ? new Date(expire_time).getTime() : NaN;
             const time_zone = "{{ Helpers::get_business_settings('time_zone') ?? 'UTC' }}";
 
-            var x = setInterval(function () {
-                var now = new Date(new Date().toLocaleString("en-US", {timeZone: time_zone})).getTime();
+            // Guard: if remaining_time isn't a parseable date, show a friendly
+            // placeholder instead of "NaNd NaNh NaNm NaNs". Common on fresh orders
+            // that haven't had a preparation time set yet.
+            if (!Number.isFinite(countDownDate)) {
+                if (counterEl) counterEl.innerHTML = "{{ translate('Not set') }}";
+                if (timerIcon) timerIcon.classList.remove("d-none");
+                if (editIcon)  editIcon.classList.remove("d-none");
+            } else {
+                var x = setInterval(function () {
+                    var now = new Date(new Date().toLocaleString("en-US", {timeZone: time_zone})).getTime();
+                    var distance = countDownDate - now;
 
-                var distance = countDownDate - now;
+                    var days    = Math.trunc(distance / (1000 * 60 * 60 * 24));
+                    var hours   = Math.trunc((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    var minutes = Math.trunc((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    var seconds = Math.trunc((distance % (1000 * 60)) / 1000);
 
-                var days = Math.trunc(distance / (1000 * 60 * 60 * 24));
-                var hours = Math.trunc((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                var minutes = Math.trunc((distance % (1000 * 60 * 60)) / (1000 * 60));
-                var seconds = Math.trunc((distance % (1000 * 60)) / 1000);
+                    if (timerIcon) timerIcon.classList.remove("d-none");
+                    if (editIcon)  editIcon.classList.remove("d-none");
 
-
-                document.getElementById("timer-icon").classList.remove("d-none");
-                document.getElementById("edit-icon").classList.remove("d-none");
-                var $text = (distance < 0) ? "{{ translate('over') }}" : "{{ translate('left') }}";
-                document.getElementById("counter").innerHTML = Math.abs(days) + "d " + Math.abs(hours) + "h " + Math.abs(minutes) + "m " + Math.abs(seconds) + "s " + $text;
-                if (distance < 0) {
-                    var element = document.getElementById('counter');
-                    element.classList.add('text-danger');
-                }
-            }, 1000);
+                    var $text = (distance < 0) ? "{{ translate('over') }}" : "{{ translate('left') }}";
+                    if (counterEl) {
+                        counterEl.innerHTML = Math.abs(days) + "d " + Math.abs(hours) + "h " + Math.abs(minutes) + "m " + Math.abs(seconds) + "s " + $text;
+                        if (distance < 0) counterEl.classList.add('text-danger');
+                    }
+                }, 1000);
+            }
 
 
             $(document).ready(function () {
@@ -1755,7 +1893,13 @@
 
     <script>
 
+        // Track whether the current edit session is append-only (running POS/dine_in)
+        // so the final submit routes to the correct controller endpoint.
+        window.__editOrderAppendMode = false;
+
         $(document).on('click', '#edit-order-button', function () {
+            window.__editOrderAppendMode = $(this).data('append-mode') === 1
+                || $(this).data('append-mode') === '1';
             $.ajax({
                 url: '{{ route('admin.orders.clear-order-edit-session') }}',
                 type: 'GET',
@@ -2139,11 +2283,19 @@
 
         $(document).on('click', '.update-edit-order', function () {
             let orderId = $(this).data('order-id');
-            let button = $(this)
+            let button = $(this);
             button.prop('disabled', true).addClass('disabled');
 
+            // Append mode (running POS/dine_in orders) → non-destructive endpoint
+            // that inserts only the newly-added items and returns a supplementary
+            // KOT URL. Legacy edit mode → original destructive updateEditOrder.
+            const append = window.__editOrderAppendMode === true;
+            const url = append
+                ? '{{ route('admin.orders.append-items-running-order') }}'
+                : '{{ route('admin.orders.update-edit-order') }}';
+
             $.ajax({
-                url: '{{ route('admin.orders.update-edit-order') }}',
+                url: url,
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}',
@@ -2152,6 +2304,13 @@
                 success: function (response) {
                     if (response.success) {
                         toastr.success(response.message);
+
+                        // In append mode, auto-open the supplementary KOT in a new
+                        // tab so the kitchen gets the "fire now" addendum for just
+                        // the new items — not a full reprint of the whole order.
+                        if (append && response.kot_url) {
+                            try { window.open(response.kot_url, '_blank'); } catch (e) {}
+                        }
 
                         setTimeout(function () {
                             location.reload();

@@ -167,20 +167,34 @@ class TableOrderController extends Controller
         $table_id = $request->table_id;
         $branchId = $request->branch ?? 1;
 
-        $tables = $this->table->with('order')
-            ->whereHas('order', function ($q) {
-                $q->whereHas('table_order', function ($q) {
-                    $q->where('branch_table_token_is_expired', 0);
-                });
-            })
+        // A table is "running" if it has an unpaid dine-in order
+        // OR an active QR-scan session (legacy table_order row).
+        $runningOrderQuery = function ($q) {
+            $q->where('order_type', 'dine_in')
+              ->where('payment_status', '!=', 'paid')
+              ->whereNotIn('order_status', ['completed', 'delivered', 'canceled', 'failed', 'refunded', 'refund_requested'])
+              ->orWhereHas('table_order', function ($t) {
+                  $t->where('branch_table_token_is_expired', 0);
+              });
+        };
+
+        $tables = $this->table->with(['order' => $runningOrderQuery])
+            ->whereHas('order', $runningOrderQuery)
             ->where(['branch_id' => $branchId])
             ->get();
 
-        $orders = $this->order->with('table_order')
-            ->whereHas('table_order', function ($q) {
-                $q->where('branch_table_token_is_expired', 0);
+        $orders = $this->order
+            ->with('table_order', 'table')
+            ->where('branch_id', $branchId)
+            ->where(function ($q) {
+                $q->where(function ($sub) {
+                    $sub->where('order_type', 'dine_in')
+                        ->where('payment_status', '!=', 'paid')
+                        ->whereNotIn('order_status', ['completed', 'delivered', 'canceled', 'failed', 'refunded', 'refund_requested']);
+                })->orWhereHas('table_order', function ($t) {
+                    $t->where('branch_table_token_is_expired', 0);
+                });
             })
-            ->where(['branch_id' => $branchId])
             ->when(!is_null($table_id), function ($query) use ($table_id) {
                 return $query->where('table_id', $table_id);
             })

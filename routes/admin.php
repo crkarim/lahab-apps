@@ -226,6 +226,10 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('status', [OrderController::class, 'status'])->name('status');
             Route::get('add-delivery-man/{order_id}/{delivery_man_id}', [OrderController::class, 'addDeliveryman'])->name('add-delivery-man');
             Route::get('payment-status', [OrderController::class, 'paymentStatus'])->name('payment-status');
+            Route::post('{id}/checkout', [\App\Http\Controllers\Admin\CheckoutController::class, 'submit'])->name('checkout.submit');
+            Route::get('{id}/kitchen-ticket', [\App\Http\Controllers\Admin\KitchenTicketController::class, 'send'])->name('kitchen-ticket');
+            Route::get('{id}/print-receipt', [\App\Http\Controllers\ReceiptController::class, 'printByOrderId'])->name('print-receipt');
+            Route::get('{id}/receipt-fragment', [\App\Http\Controllers\ReceiptController::class, 'fragment'])->name('receipt-fragment');
             Route::get('generate-invoice/{id}', [OrderController::class, 'generateInvoice'])->name('generate-invoice')->withoutMiddleware(['module:order_management']);
             Route::post('add-payment-ref-code/{id}', [OrderController::class, 'addPaymentReferenceCode'])->name('add-payment-ref-code');
             Route::get('branch-filter/{branch_id}', [OrderController::class, 'branchFilter'])->name('branch-filter');
@@ -242,6 +246,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('update-product-quantity', [OrderController::class, 'updateProductQuantity'])->name('update-product-quantity');
             Route::post('delete-product-from-session', [OrderController::class, 'deleteProductFromSession'])->name('delete-product-from-session');
             Route::post('update-edit-order', [OrderController::class, 'updateEditOrder'])->name('update-edit-order');
+            Route::post('append-items-running-order', [OrderController::class, 'appendItemsToRunningOrder'])->name('append-items-running-order');
             Route::get('clear-order-edit-session', [OrderController::class, 'clearAllOrderEditProductSessions'])->name('clear-order-edit-session');
 
         });

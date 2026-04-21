@@ -3,6 +3,380 @@
 @section('title', translate('New_Sale'))
 
 @section('content')
+    <style>
+        /* ═══════════════════════════════════════════════════════════════════
+           POS redesign (scope B). All rules scoped to .pos-ix (main wrapper).
+           Cart partial (_cart.blade.php) uses .billing-section-wrap, which we
+           also target — those are only present on this page, so no bleed.
+           ═══════════════════════════════════════════════════════════════════ */
+
+        .pos-ix-card {
+            background: #fff; border-radius: 14px; padding: 18px 18px 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+
+        /* Search */
+        .pos-ix-search { margin-bottom: 14px; }
+        .pos-ix-search-wrap {
+            position: relative; background: #f5f6f8; border: 1px solid #eceef0;
+            border-radius: 12px; display: flex; align-items: center;
+            transition: border-color 120ms, background 120ms;
+        }
+        .pos-ix-search-wrap:focus-within { background: #fff; border-color: #E67E22; }
+        .pos-ix-search-wrap i.tio-search {
+            padding: 0 12px; color: #8e8e93; font-size: 18px;
+        }
+        .pos-ix-search-wrap input {
+            flex: 1; background: transparent; border: 0; outline: 0;
+            height: 48px; font-size: 15px; font-weight: 500; padding-right: 44px;
+        }
+
+        /* Category pill row */
+        .pos-ix-pills {
+            display: flex; gap: 8px; overflow-x: auto;
+            padding: 4px 2px 12px; margin-bottom: 10px;
+            scrollbar-width: thin;
+        }
+        .pos-ix-pills::-webkit-scrollbar { height: 4px; }
+        .pos-ix-pills::-webkit-scrollbar-thumb { background: #eceef0; border-radius: 2px; }
+        .pos-ix-pill {
+            flex-shrink: 0; padding: 9px 16px; border-radius: 10px;
+            background: #f5f6f8; border: 1px solid transparent;
+            font-size: 14px; font-weight: 600; color: #444; cursor: pointer;
+            min-height: 40px; transition: all 120ms ease;
+        }
+        .pos-ix-pill:hover { background: #eaeaef; color: #1a1a1a; }
+        .pos-ix-pill.is-active {
+            background: #E67E22; color: #fff; border-color: #E67E22;
+            box-shadow: 0 2px 8px rgba(230,126,34,0.25);
+        }
+
+        /* Favorites hero */
+        .pos-ix-favs {
+            background: linear-gradient(180deg, rgba(230,126,34,0.05), transparent);
+            border: 1px solid rgba(230,126,34,0.12); border-radius: 12px;
+            padding: 12px 14px; margin-bottom: 14px;
+        }
+        .pos-ix-favs-label {
+            font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+            text-transform: uppercase; color: #E67E22; margin-bottom: 10px;
+        }
+        .pos-ix-favs-row {
+            display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+        }
+        @media (max-width: 1399px) { .pos-ix-favs-row { grid-template-columns: repeat(5, 1fr); } }
+        @media (max-width: 1199px) { .pos-ix-favs-row { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 767px)  { .pos-ix-favs-row { grid-template-columns: repeat(3, 1fr); } }
+
+        /* Product grid wrapper */
+        .pos-ix-grid-wrap { min-height: 200px; }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           Cart column polish — sticky bottom CTA, chip order-type, touch ±.
+           Scoped to the cart column (col-lg-4) + its descendants.
+           ═══════════════════════════════════════════════════════════════════ */
+
+        /* Cart column: full-height flex so the Place Order area can pin to bottom. */
+        .pos-ix .col-lg-4 > .card {
+            position: sticky; top: 84px;
+            max-height: calc(100vh - 100px);
+            display: flex; flex-direction: column;
+            border-radius: 14px !important; border: 1px solid #eceef0;
+        }
+        .pos-ix .billing-section-wrap {
+            display: flex; flex-direction: column; flex: 1 1 auto;
+            overflow: hidden;
+        }
+        .pos-ix .billing-section-wrap > .pos-title { flex: 0 0 auto; }
+        .pos-ix .billing-section-wrap > div.p-2,
+        .pos-ix .billing-section-wrap > div.p-sm-4 {
+            flex: 1 1 auto; overflow-y: auto;
+        }
+
+        /* ─── Order-type radios → segmented chip group (Dine-in / Take-away / Delivery) ─── */
+        .pos-ix .order_type_radio {
+            background: #f3f4f6 !important; border: 0 !important;
+            border-radius: 12px !important; padding: 4px !important;
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+        }
+        .pos-ix .order_type_radio > label.custom-radio {
+            margin: 0 !important; padding: 10px 4px !important;
+            border-radius: 10px; cursor: pointer;
+            text-align: center; display: block !important;
+            transition: background 120ms, color 120ms, box-shadow 120ms;
+            font-size: 13px; font-weight: 600; color: #555;
+            min-height: 44px;
+        }
+        .pos-ix .order_type_radio > label.custom-radio .media-body {
+            font-weight: 600; font-size: 13px;
+        }
+        /* Modern :has() for checked state */
+        .pos-ix .order_type_radio > label.custom-radio:has(input:checked) {
+            background: #E67E22; color: #fff;
+            box-shadow: 0 2px 8px rgba(230,126,34,0.28);
+        }
+        .pos-ix .order_type_radio > label.custom-radio:has(input:checked) .media-body { color: #fff; }
+
+        /* Kill native radio circles bleeding through chip labels (both chip groups). */
+        .pos-ix .order_type_radio input[type="radio"],
+        .pos-ix .option-buttons input[type="radio"] {
+            position: absolute !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            width: 0 !important; height: 0 !important;
+            margin: 0 !important; padding: 0 !important;
+            clip: rect(0 0 0 0);
+        }
+        .pos-ix .order_type_radio > label.custom-radio .media { padding: 0 !important; }
+
+        /* ─── Dine-in table / people inputs: wrap inside a subtle card so they feel connected ─── */
+        .pos-ix #dine_in_section {
+            margin-top: 12px; padding: 12px;
+            background: #fff; border-radius: 10px; border: 1px solid #eceef0;
+        }
+        .pos-ix #dine_in_section .form-group { margin-bottom: 8px; }
+        .pos-ix #dine_in_section .form-group:last-child { margin-bottom: 0; }
+
+        /* ─── Paid By row → segmented chip group, matching Order Type ─── */
+        .pos-ix .pos-paid-by { margin-top: 4px; }
+        .pos-ix .pos-paid-by .pos-label {
+            font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase;
+            color: #8e8e93; font-weight: 700; margin-bottom: 8px;
+        }
+        .pos-ix .option-buttons {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 4px !important;
+            padding: 4px !important;
+            margin: 0 !important;
+            background: #f3f4f6;
+            border-radius: 12px;
+            list-style: none;
+        }
+        .pos-ix .option-buttons > li {
+            margin: 0 !important; padding: 0 !important;
+            display: block; list-style: none;
+        }
+        .pos-ix .option-buttons > li.d-none { display: none !important; }
+        .pos-ix .option-buttons > li > label.btn {
+            display: flex !important; align-items: center; justify-content: center;
+            width: 100% !important; margin: 0 !important;
+            padding: 10px 8px !important;
+            min-height: 44px;
+            border-radius: 10px !important;
+            background: transparent !important; border: 0 !important;
+            color: #555 !important;
+            font-size: 13px !important; font-weight: 600 !important;
+            text-align: center; cursor: pointer;
+            transition: background 120ms, color 120ms, box-shadow 120ms;
+        }
+        .pos-ix .option-buttons > li:has(input:checked) > label.btn {
+            background: #E67E22 !important;
+            color: #fff !important;
+            box-shadow: 0 2px 8px rgba(230,126,34,0.28);
+        }
+
+        /* ─── Paid Amount / Change section ─── */
+        .pos-ix .collect-cash-section {
+            margin-top: 14px; padding: 12px;
+            background: #fff; border-radius: 10px; border: 1px solid #eceef0;
+        }
+        .pos-ix .collect-cash-section .form-group { margin-bottom: 8px; }
+        .pos-ix .collect-cash-section .form-group:last-child { margin-bottom: 0; }
+        .pos-ix .collect-cash-section label {
+            font-size: 13px; font-weight: 500; color: #555; margin: 0;
+        }
+        .pos-ix .collect-cash-section input.form-control {
+            height: 40px; border-radius: 8px;
+            border: 1px solid #e1e3e6; font-weight: 700;
+            font-size: 15px; color: #1a1a1a;
+        }
+        .pos-ix .collect-cash-section #amount-difference {
+            background: #f8f9fa !important; border-color: #eceef0 !important;
+            color: #E67E22 !important;
+        }
+
+        /* ─── Customer-wallet cards: subtle panels ─── */
+        .pos-ix .customer-wallet-info-card,
+        .pos-ix .wallet-remaining-card {
+            margin-top: 12px !important; padding: 12px !important;
+            background: #fff !important; border-radius: 10px !important;
+            border: 1px solid #eceef0 !important; box-shadow: none !important;
+        }
+
+        /* ─── Totals block: tighter, cleaner typography ─── */
+        .pos-ix .pos-data-table { padding: 10px 0 0 0 !important; }
+        .pos-ix .pos-data-table dl.row { margin: 0; }
+        .pos-ix .pos-data-table dl.row dt,
+        .pos-ix .pos-data-table dl.row dd {
+            padding: 4px 6px; font-size: 13px;
+        }
+        .pos-ix .pos-data-table dl.row dt { color: #6a6a70; font-weight: 500; }
+        .pos-ix .pos-data-table dl.row dd { color: #1a1a1a; font-weight: 600; }
+        .pos-ix .pos-data-table dl.row dt.pos-total-row,
+        .pos-ix .pos-data-table dl.row dd.pos-total-row {
+            border-top: 1px solid #eceef0; margin-top: 6px; padding-top: 10px;
+            font-size: 16px; font-weight: 700; color: #1a1a1a;
+        }
+
+        /* ─── Cart item rows ─── */
+        .pos-ix .pos-cart-table { border: 0; }
+        .pos-ix .pos-cart-table thead { background: transparent; }
+        .pos-ix .pos-cart-table thead th {
+            font-size: 10px; letter-spacing: 0.6px; text-transform: uppercase;
+            color: #8e8e93; font-weight: 700; padding: 8px 6px;
+            border-bottom: 1px solid #eceef0 !important;
+        }
+        .pos-ix .pos-cart-table tbody tr {
+            transition: background 120ms;
+        }
+        .pos-ix .pos-cart-table tbody tr:hover { background: #fafbfc; }
+        .pos-ix .pos-cart-table tbody td {
+            padding: 12px 6px !important; vertical-align: top;
+            border-top: 1px dashed #f0f0f2 !important;
+        }
+        .pos-ix .pos-cart-table .avatar { width: 40px; height: 40px; border-radius: 8px; }
+        .pos-ix .pos-cart-table .qty {
+            width: 52px !important; height: 36px;
+            text-align: center; font-weight: 600;
+            border-radius: 8px; border: 1px solid #e1e3e6 !important;
+        }
+        /* Remove (X) button prominence on hover */
+        .pos-ix .pos-cart-table .tio-delete,
+        .pos-ix .pos-cart-table .tio-clear {
+            color: #c9cbce; transition: color 120ms, transform 120ms;
+        }
+        .pos-ix .pos-cart-table tbody tr:hover .tio-delete,
+        .pos-ix .pos-cart-table tbody tr:hover .tio-clear {
+            color: #dc3545; transform: scale(1.12);
+        }
+
+        /* ─── Running total block ─── */
+        .pos-ix .billing-section-wrap dl.row {
+            margin: 0; padding: 2px 0; font-size: 13px;
+        }
+        .pos-ix .billing-section-wrap dl.row dt { color: #6a6a70; font-weight: 500; }
+        .pos-ix .billing-section-wrap dl.row dd { color: #1a1a1a; font-weight: 600; margin: 0; }
+
+        /* ─── Place Order CTA — big sticky brand button at the very bottom ─── */
+        .pos-ix #order_place {
+            flex: 0 0 auto;
+            padding: 12px 16px !important;
+            background: rgba(255,255,255,0.96);
+            backdrop-filter: blur(6px);
+            border-top: 1px solid #eceef0;
+            position: sticky; bottom: 0; z-index: 5;
+        }
+        /* Theme ships `.pos-order-btn { position:absolute; bottom:0 }` — kills its floating
+           behaviour so Cancel/Place Order sits in normal flow below the Paid Amount row. */
+        .pos-ix .pos-order-btn {
+            position: static !important;
+            padding: 0 !important;
+            background: transparent !important;
+            width: auto !important;
+            margin-top: 14px;
+        }
+        .pos-ix .pb-130px { padding-bottom: 16px !important; }
+        .pos-ix #order_place .order-place-btn {
+            height: 56px !important; font-size: 16px !important;
+            font-weight: 700 !important; letter-spacing: 0.3px;
+            border-radius: 12px !important;
+            background: #E67E22 !important; border: 0 !important;
+            box-shadow: 0 6px 16px rgba(230,126,34,0.32);
+            transition: transform 100ms, box-shadow 100ms;
+        }
+        .pos-ix #order_place .order-place-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 22px rgba(230,126,34,0.42);
+        }
+        .pos-ix #order_place .order-place-btn:active { transform: translateY(0); }
+
+        /* Cancel Order — same height/shape as Place Order, muted palette. */
+        .pos-ix #order_place .cancel-order-btn {
+            height: 56px !important; font-size: 16px !important;
+            font-weight: 600 !important; letter-spacing: 0.3px;
+            border-radius: 12px !important;
+            display: inline-flex !important; align-items: center; justify-content: center;
+            background: #f3f4f6 !important; color: #6a6a70 !important;
+            border: 1px solid #e5e7eb !important;
+            transition: background 120ms, color 120ms, border-color 120ms;
+        }
+        .pos-ix #order_place .cancel-order-btn:hover {
+            background: #eceef0 !important; color: #1a1a1a !important;
+            border-color: #d9dbdf !important;
+        }
+
+        /* ───── Tablet-first POS tuning (inherited from previous pass). ───── */
+
+        /* Larger, more tappable product cards. Base gets a slight bump, tablet goes bigger. */
+        .pos-item-wrap {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+            gap: 16px !important;
+        }
+        @media (min-width: 768px) and (max-width: 1399px) {
+            .pos-item-wrap { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important; }
+        }
+        .pos-product-item {
+            border: 1px solid #eceef0 !important;
+            transition: transform 120ms ease, box-shadow 140ms ease, border-color 120ms ease;
+        }
+        .pos-product-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+            border-color: #E67E22 !important;
+        }
+        .pos-product-item_thumb { height: 140px !important; }
+        .pos-product-item_title { font-size: 14px; font-weight: 600; }
+        .pos-product-item_price { font-size: 15px !important; color: #E67E22 !important; }
+
+        /* 44px minimum touch targets (Apple HIG) on common POS controls. */
+        .pos-product-item { min-height: 44px; }
+        .option-buttons label,
+        .order_type_radio label { min-height: 44px; }
+        .order_type_radio { padding: 6px !important; }
+        .order_type_radio label {
+            font-size: 14px; font-weight: 500;
+            padding: 10px 12px !important; border-radius: 8px !important;
+            transition: background 120ms, color 120ms;
+        }
+        .order_type_radio input:checked + .media,
+        .order_type_radio label:has(input:checked) {
+            background: #E67E22; color: #fff;
+        }
+
+        /* Cart quantity +/- buttons — enlarge for finger use. */
+        .billing-section-wrap .qty-btn,
+        .billing-section-wrap .quantity-action,
+        .billing-section-wrap .tio-add,
+        .billing-section-wrap .tio-remove {
+            min-width: 36px; min-height: 36px;
+        }
+        .pos-cart-table td { padding-top: 10px !important; padding-bottom: 10px !important; }
+
+        /* Search input — taller, rounder, hint-friendly. */
+        #datatableSearch {
+            height: 44px; font-size: 15px;
+            border-radius: 10px !important;
+        }
+
+        /* Category select — taller on tablet. */
+        select.category { height: 44px !important; font-size: 15px !important; }
+
+        /* Place-order submit — prominent. */
+        #order_place button[type="submit"] {
+            height: 48px; font-size: 15px; font-weight: 600;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 10px rgba(230,126,34,0.18);
+        }
+
+        /* Billing section — roomier on tablet. */
+        @media (min-width: 992px) {
+            .billing-section-wrap { padding-inline: 8px !important; }
+        }
+    </style>
+
     <div class="container">
         <div class="row">
             <div class="col-md-12">
@@ -16,39 +390,58 @@
     </div>
     <div class="content">
         <section class="section-content padding-y-sm bg-default">
-            <div class="container-fluid">
+            <div class="container-fluid pos-ix">
                 <div class="row gy-3 gx-2">
-                    <div class="col-lg-7">
-                        <div class="card">
-                            <div class="pos-title">
-                                <h4 class="mb-0">{{translate('Product_Section')}}</h4>
+                    <div class="col-lg-8">
+                        <div class="pos-ix-card">
+
+                            {{-- Search — prominent, ⌘/ hint lives here via existing JS --}}
+                            <div class="pos-ix-search">
+                                <form id="search-form" class="mb-0 w-100">
+                                    <div class="pos-ix-search-wrap">
+                                        <i class="tio-search"></i>
+                                        <input id="datatableSearch" type="search"
+                                               value="{{$keyword?$keyword:''}}" name="search"
+                                               placeholder="{{ translate('Search any product…') }}"
+                                               aria-label="Search">
+                                    </div>
+                                </form>
                             </div>
 
-                            <div class="d-flex flex-wrap flex-md-nowrap justify-content-between gap-3 gap-xl-4 px-4 py-4">
-                                <div class="w-100 mr-xl-2">
-                                    <select name="category" class="form-control js-select2-custom-x mx-1 category">
-                                        <option value="">{{translate('All Categories')}}</option>
-                                        @foreach ($categories as $item)
-                                            <option value="{{$item->id}}" {{$category==$item->id?'selected':''}}>{{ Str::limit($item->name, 40)}}</option>
+                            {{-- Hidden select (existing JS binds to .category's change event). --}}
+                            <select name="category" class="category d-none">
+                                <option value="">{{translate('All Categories')}}</option>
+                                @foreach ($categories as $item)
+                                    <option value="{{$item->id}}" {{$category==$item->id?'selected':''}}>{{ Str::limit($item->name, 40)}}</option>
+                                @endforeach
+                            </select>
+
+                            {{-- Horizontal category pills. Clicking sets the hidden select + triggers change. --}}
+                            <div class="pos-ix-pills" role="tablist">
+                                <button type="button" class="pos-ix-pill pos-ix-cat {{ !$category ? 'is-active' : '' }}"
+                                        data-category-id="">{{ translate('All') }}</button>
+                                @foreach($categories as $item)
+                                    <button type="button"
+                                            class="pos-ix-pill pos-ix-cat {{ $category == $item->id ? 'is-active' : '' }}"
+                                            data-category-id="{{ $item->id }}">{{ Str::limit($item->name, 30) }}</button>
+                                @endforeach
+                            </div>
+
+                            {{-- Favorites hero row --}}
+                            @if(isset($favorites) && $favorites->count())
+                                <div class="pos-ix-favs">
+                                    <div class="pos-ix-favs-label">⭐ {{ translate('Favorites') }}</div>
+                                    <div class="pos-ix-favs-row">
+                                        @foreach($favorites as $product)
+                                            @include('admin-views.pos._single_product',['product'=>$product])
                                         @endforeach
-                                    </select>
+                                    </div>
                                 </div>
-                                <div class="w-100 ml-xl-2">
-                                    <form id="search-form">
-                                        <div class="input-group input-group-merge input-group-flush border rounded">
-                                            <div class="input-group-prepend pl-2">
-                                                <div class="input-group-text">
-                                                    <img width="13" src="{{asset('public/assets/admin/img/icons/search.png')}}" alt="">
-                                                </div>
-                                            </div>
-                                            <input id="datatableSearch" type="search" value="{{$keyword?$keyword:''}}" name="search" class="form-control border-0" placeholder="{{translate('Search here')}}" aria-label="Search here">
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                            <div class="card-body pt-0" id="items">
-                                <div class="pos-item-wrap justify-content-center">
+                            @endif
 
+                            {{-- Main product grid --}}
+                            <div id="items" class="pos-ix-grid-wrap">
+                                <div class="pos-item-wrap">
                                     @foreach($products as $product)
                                         @include('admin-views.pos._single_product',['product'=>$product])
                                     @endforeach
@@ -61,7 +454,7 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-5">
+                    <div class="col-lg-4">
                         <div class="card h-100 rounded">
                             <div class="billing-section-wrap overflow-hidden">
                                 <div class="pos-title ">
@@ -135,14 +528,14 @@
                                             <div>
                                                 <div class="form-control order_type_radio d-flex flex-xxl-nowrap flex-wrap justify-content-between">
                                                     <label class="custom-radio d-flex align-items-center m-0">
-                                                        <input type="radio" class="order-type-radio" name="order_type" value="take_away" {{ !session()->has('order_type') || session()->get('order_type') == 'take_away' ? 'checked' : '' }}>
+                                                        <input type="radio" class="order-type-radio" name="order_type" value="take_away" {{ session()->has('order_type') && session()->get('order_type') == 'take_away' ? 'checked' : '' }}>
                                                         <span class="media align-items-center mb-0">
                                                         <span class="media-body">{{translate('Take Away')}}</span>
                                                     </span>
                                                     </label>
 
                                                     <label class="custom-radio d-flex align-items-center m-0">
-                                                        <input type="radio" class="order-type-radio" name="order_type" value="dine_in" {{ session()->has('order_type') && session()->get('order_type') == 'dine_in' ? 'checked' : '' }}>
+                                                        <input type="radio" class="order-type-radio" name="order_type" value="dine_in" {{ !session()->has('order_type') || session()->get('order_type') == 'dine_in' ? 'checked' : '' }}>
                                                         <span class="media align-items-center mb-0">
                                                         <span class="media-body">{{translate('Dine-In')}}</span>
                                                     </span>
@@ -159,12 +552,12 @@
                                             </div>
                                         </div>
 
-                                        <div class="d-none" id="dine_in_section">
+                                        <div class="{{ (!session()->has('order_type') || session('order_type') == 'dine_in') ? '' : 'd-none' }}" id="dine_in_section">
                                             <div class="form-group mb-3 d-flex flex-wrap flex-sm-nowrap gap-2">
                                                 <select name="table_id" class="js-select2-custom-x form-ellipsis form-control select-table">
                                                     <option disabled selected>{{translate('select_table')}}</option>
                                                     @foreach($tables as $table)
-                                                        <option value="{{$table['id']}}" {{ session()->get('table_id') == $table['id'] ? 'selected' : '' }}>{{translate('table ')}} - {{$table['number']}}</option>
+                                                        <option value="{{$table['id']}}" data-capacity="{{ $table['capacity'] }}" {{ session()->get('table_id') == $table['id'] ? 'selected' : '' }}>{{translate('table ')}} - {{$table['number']}}{{ $table['zone'] ? ' · ' . $table['zone'] : '' }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -544,15 +937,45 @@
             </div>
         </div>
     </div>
+
+    {{-- Order Placed confirmation modal --}}
+    <div class="modal fade" id="orderPlacedModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content text-center">
+                <div class="modal-body p-4">
+                    <div style="font-size: 64px; line-height: 1; color: #28a745; margin-bottom: 12px;">&#10004;</div>
+                    <h3 class="mb-2">{{ translate('Order Placed') }}</h3>
+                    <p class="mb-1 text-muted">{{ translate('Order ID') }}: <strong id="op-order-id">—</strong></p>
+                    <p class="mb-1 text-muted" id="op-table-line" style="display:none;">
+                        {{ translate('Table') }}: <strong id="op-table">—</strong>
+                    </p>
+                    <p class="fz-18 mb-3"><strong id="op-amount">—</strong></p>
+                    <div class="d-flex justify-content-center gap-2 flex-wrap">
+                        <button type="button" class="btn btn-warning font-weight-bold px-4" id="op-send-kitchen">
+                            <i class="tio-print"></i> {{ translate('Send to Kitchen') }}
+                        </button>
+                        <button type="button" class="btn btn-primary px-4" data-dismiss="modal">
+                            {{ translate('Next Customer') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Cart-related modals rendered ONCE outside the AJAX-swapped #cart container.
+         Keeping them here (instead of inside _cart.blade.php) prevents Bootstrap's
+         modal backdrop from getting orphaned when the cart partial refreshes. --}}
+    @include('admin-views.pos._cart-modals')
 @endsection
 
 @push('script_2')
 
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
-    <script src="{{asset('public/assets/admin')}}/js/vendor.min.js"></script>
-    <script src="{{asset('public/assets/admin')}}/js/theme.min.js"></script>
-    <script src="{{asset('public/assets/admin')}}/js/sweet_alert.js"></script>
-    <script src="{{asset('public/assets/admin')}}/js/toastr.js"></script>
+    {{-- jQuery, vendor.min, theme.min, sweet_alert, toastr are all already loaded by
+         the admin layout (app.blade.php). Reloading jQuery here was resetting $.fn and
+         wiping out plugins registered on the first jQuery — specifically `.owlCarousel`
+         used by the quick-view product modal, which caused the whole POS to freeze on
+         any modal open. Kept only the page-specific Google Maps script below. --}}
     <script src="https://maps.googleapis.com/maps/api/js?key={{ \App\Model\BusinessSetting::where('key', 'map_api_client_key')->first()?->value }}&libraries=places&v=3.51"></script>
 
 
@@ -588,6 +1011,14 @@
         $('.category').change(function() {
             var selectedCategory = $(this).val();
             set_category_filter(selectedCategory);
+        });
+
+        // Category pill clicks → drive the hidden select so existing behaviour stays.
+        $(document).on('click', '.pos-ix-cat', function () {
+            var id = $(this).data('category-id') || '';
+            $('.pos-ix-cat').removeClass('is-active');
+            $(this).addClass('is-active');
+            $('.category').val(id).trigger('change');
         });
 
         $(document).ready(function() {
@@ -755,12 +1186,23 @@
 
         $('.order-type-radio').change(function() {
             var selectedOrderType = $(this).val();
+            // Mirror the choice into the form's hidden input immediately so the
+            // Place-Order POST carries it regardless of AJAX session timing.
+            $('#form_order_type').val(selectedOrderType);
             select_order_type(selectedOrderType);
         });
 
         $('.select-table').change(function() {
-            var selectedTableId = $(this).val();
+            var $selected = $(this).find(':selected');
+            var selectedTableId = $selected.val();
             store_key('table_id', selectedTableId);
+
+            // Auto-fill number of people from table capacity (cashier can still edit)
+            var capacity = parseInt($selected.data('capacity'), 10);
+            if (capacity > 0) {
+                $('#number_of_people').val(capacity);
+                store_key('people_number', capacity);
+            }
         });
 
         $('#number_of_people').keyup(function() {
@@ -775,7 +1217,7 @@
                 title: '{{translate('Do you want to logout')}}?',
                 showDenyButton: true,
                 showCancelButton: true,
-                confirmButtonColor: '#FC6A57',
+                confirmButtonColor: '#E67E22',
                 cancelButtonColor: '#363636',
                 confirmButtonText: '{{translate('Yes')}}',
                 denyButtonText: `{{translate('Do not Logout')}}`
@@ -788,11 +1230,8 @@
             });
         });
 
-        $(document).on('ready', function () {
-            @if($order)
-            $('#print-invoice').modal('show');
-            @endif
-        });
+        // Print Invoice auto-popup removed — the order-placed popup below now handles
+        // post-submit UX (with Send to Kitchen). Print/receipt happens at Checkout.
 
         function printDiv(divName) {
 
@@ -1016,7 +1455,7 @@
                     success: function (data) {
                         if (data.data == 1) {
                             Swal.fire({
-                                confirmButtonColor: '#FC6A57',
+                                confirmButtonColor: '#E67E22',
                                 icon: 'info',
                                 title: '{{translate("Cart")}}',
                                 confirmButtonText:'{{translate("Ok")}}',
@@ -1025,7 +1464,7 @@
                             return false;
                         } else if (data.data == 0) {
                             Swal.fire({
-                                confirmButtonColor: '#FC6A57',
+                                confirmButtonColor: '#E67E22',
                                 icon: 'error',
                                 title: '{{translate("Cart")}}',
                                 confirmButtonText:'{{translate("Ok")}}',
@@ -1035,7 +1474,7 @@
                         }
                         else if (data.data == 'variation_error') {
                             Swal.fire({
-                                confirmButtonColor: '#FC6A57',
+                                confirmButtonColor: '#E67E22',
                                 icon: 'error',
                                 title: 'Cart',
                                 text: data.message
@@ -1044,7 +1483,7 @@
                         }
                         else if (data.data == 'stock_limit') {
                             Swal.fire({
-                                confirmButtonColor: '#FC6A57',
+                                confirmButtonColor: '#E67E22',
                                 icon: 'error',
                                 title: 'Cart',
                                 text: data.message
@@ -1066,7 +1505,7 @@
                 });
             } else {
                 Swal.fire({
-                    confirmButtonColor: '#FC6A57',
+                    confirmButtonColor: '#E67E22',
                     type: 'info',
                     title: '{{translate("Cart")}}',
                     confirmButtonText:'{{translate("Ok")}}',
@@ -1212,8 +1651,10 @@
         $(document).ready(function() {
             var orderType = {!! json_encode(session('order_type')) !!};
 
-            if (orderType === 'dine_in') {
+            // Default to dine_in when nothing stored (new UX).
+            if (orderType === null || orderType === undefined || orderType === 'dine_in') {
                 $('#dine_in_section').removeClass('d-none');
+                $('#home_delivery_section').addClass('d-none');
             } else if (orderType === 'home_delivery') {
                 $('#home_delivery_section').removeClass('d-none');
                 $('#dine_in_section').addClass('d-none');
@@ -1315,12 +1756,19 @@
 
         $( document ).ready(function() {
             function initAutocomplete() {
+                // Guard: the map canvas only exists inside the home-delivery address modal.
+                // Without this check, `new google.maps.Map(null, ...)` throws InvalidValueError
+                // and halts every subsequent ready handler — breaking modal/event wiring.
+                var canvas = document.getElementById("location_map_canvas");
+                if (!canvas) return;
+                if (typeof google === 'undefined' || !google.maps) return;
+
                 var myLatLng = {
 
                     lat: 23.811842872190343,
                     lng: 90.356331
                 };
-                const map = new google.maps.Map(document.getElementById("location_map_canvas"), {
+                const map = new google.maps.Map(canvas, {
                     center: {
                         lat: 23.811842872190343,
                         lng: 90.356331
@@ -1590,5 +2038,196 @@
     <script>
         if (/MSIE \d|Trident.*rv:/.test(navigator.userAgent)) document.write('<script src="{{asset('public/assets/admin')}}/vendor/babel-polyfill/polyfill.min.js"><\/script>');
     </script>
+
+    @if(session('order_placed'))
+    <script>
+        (function () {
+            'use strict';
+            var data = {!! json_encode(session('order_placed')) !!};
+
+            // 1) Audio chime — synthesised via Web Audio API (no asset file needed).
+            try {
+                var AC = window.AudioContext || window.webkitAudioContext;
+                if (AC) {
+                    var ctx = new AC();
+                    function beep(freq, startMs, durMs) {
+                        var o = ctx.createOscillator(), g = ctx.createGain();
+                        o.type = 'sine'; o.frequency.value = freq;
+                        g.gain.setValueAtTime(0, ctx.currentTime + startMs/1000);
+                        g.gain.linearRampToValueAtTime(0.35, ctx.currentTime + startMs/1000 + 0.02);
+                        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (startMs+durMs)/1000);
+                        o.connect(g); g.connect(ctx.destination);
+                        o.start(ctx.currentTime + startMs/1000);
+                        o.stop (ctx.currentTime + (startMs+durMs)/1000 + 0.05);
+                    }
+                    // Cheerful two-tone ding
+                    beep(880, 0,   180);
+                    beep(1320, 180, 260);
+                }
+            } catch (e) { /* audio not available; fine */ }
+
+            // 2) Modal
+            var currency = '{{ \App\CentralLogics\Helpers::currency_symbol() }}';
+            $('#op-order-id').text('#' + data.id);
+            $('#op-amount').text(currency + Number(data.amount || 0).toFixed(2));
+            if (data.table) {
+                $('#op-table').text(data.table + (data.zone ? ' · ' + data.zone : ''));
+                $('#op-table-line').show();
+            }
+            $('#op-send-kitchen').off('click').on('click', function () {
+                var url = '{{ url('admin/orders') }}/' + data.id + '/kitchen-ticket';
+                window.open(url, '_blank');
+                $('#orderPlacedModal').modal('hide');
+            });
+            $('#orderPlacedModal').modal({ backdrop: 'static', keyboard: true, show: true });
+        })();
+    </script>
+    @endif
+
+    {{-- POS keyboard shortcuts --}}
+    <script>
+    (function () {
+        'use strict';
+
+        const isEditable = (el) => {
+            if (!el) return false;
+            const tag = el.tagName;
+            return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+                || el.isContentEditable
+                || (el.getAttribute && el.getAttribute('role') === 'textbox');
+        };
+
+        const focusSearch = () => {
+            const el = document.getElementById('datatableSearch');
+            if (el) { el.focus(); el.select(); }
+        };
+
+        const pickCategoryAtIndex = (idx) => {
+            const sel = document.querySelector('select.category');
+            if (!sel) return false;
+            const opts = sel.options;
+            if (idx < 0 || idx >= opts.length) return false;
+            sel.value = opts[idx].value;
+            const ev = new Event('change', { bubbles: true });
+            sel.dispatchEvent(ev);
+            return true;
+        };
+
+        const submitOrder = () => {
+            const form = document.getElementById('order_place');
+            if (form) { form.requestSubmit ? form.requestSubmit() : form.submit(); return true; }
+            return false;
+        };
+
+        const toggleHelp = () => {
+            const o = document.getElementById('pos-shortcuts-help');
+            if (o) o.hidden = !o.hidden;
+        };
+
+        document.addEventListener('keydown', function (e) {
+            // "?" shows help from anywhere (Shift+/ on US layouts).
+            if (e.key === '?' && !isEditable(document.activeElement)) {
+                e.preventDefault(); toggleHelp(); return;
+            }
+
+            if (isEditable(document.activeElement)) {
+                // Only Esc escapes input focus; Cmd/Ctrl+Enter submits from any input.
+                if (e.key === 'Escape') {
+                    document.activeElement.blur();
+                }
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    submitOrder();
+                }
+                return;
+            }
+
+            // Global POS shortcuts (only when NOT typing)
+            if (e.key === '/')            { e.preventDefault(); focusSearch(); return; }
+            // Esc: close help overlay if it's open; otherwise let the event
+            // propagate so Bootstrap can dismiss any open modal.
+            if (e.key === 'Escape') {
+                const helpEl = document.getElementById('pos-shortcuts-help');
+                if (helpEl && !helpEl.hidden) { helpEl.hidden = true; e.preventDefault(); }
+                return;
+            }
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault(); submitOrder(); return;
+            }
+
+            // 1-9 → Nth category, 0 → All categories
+            if (/^[0-9]$/.test(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey) {
+                const n = Number(e.key);
+                const ok = pickCategoryAtIndex(n);   // 0 = "All", 1..N = categories
+                if (ok) e.preventDefault();
+            }
+        });
+
+        // Expose help-open handler on the hint badge next to the search input.
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('#pos-shortcut-hint')) toggleHelp();
+            if (e.target.id === 'pos-shortcuts-help')   toggleHelp();
+            if (e.target.closest('#pos-shortcuts-help-close')) toggleHelp();
+        });
+    })();
+    </script>
+
+    {{-- Tiny visual hint inside the search input --}}
+    <style>
+        .pos-search-hint {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            font-size: 10px; color: #8e8e93;
+            background: #f2f2f7; border: 1px solid #d8d8dd; border-radius: 4px;
+            padding: 1px 6px; pointer-events: auto; cursor: pointer;
+            user-select: none;
+        }
+        #datatableSearch { padding-right: 40px; }
+        #datatableSearch + .pos-search-hint { pointer-events: auto; }
+    </style>
+    <script>
+        (function () {
+            const input = document.getElementById('datatableSearch');
+            if (!input) return;
+            // Ensure the input's parent is positioned so the hint anchors correctly.
+            const wrap = input.closest('.input-group') || input.parentElement;
+            if (wrap) wrap.style.position = 'relative';
+            if (!document.getElementById('pos-shortcut-hint')) {
+                const hint = document.createElement('span');
+                hint.id = 'pos-shortcut-hint';
+                hint.className = 'pos-search-hint';
+                hint.title = 'Press / to focus. Press ? for shortcuts.';
+                hint.innerHTML = '<kbd style="background:#fff;border:1px solid #d8d8dd;border-radius:3px;padding:0 4px;font-size:10px;">/</kbd>';
+                (wrap || input.parentElement).appendChild(hint);
+            }
+        })();
+    </script>
+
+    {{-- Shortcut help overlay --}}
+    <div id="pos-shortcuts-help" hidden
+         style="position:fixed;inset:0;z-index:10400;background:rgba(20,20,30,0.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;">
+        <div style="width:100%;max-width:460px;background:#fff;color:#1a1a1a;border-radius:14px;box-shadow:0 25px 60px rgba(0,0,0,.25);overflow:hidden;">
+            <div style="padding:16px 20px;border-bottom:1px solid #e5e5ea;display:flex;align-items:center;gap:8px;">
+                <strong style="flex:1;font-size:15px;">Keyboard shortcuts</strong>
+                <button type="button" id="pos-shortcuts-help-close" aria-label="Close"
+                        style="background:transparent;border:0;font-size:22px;line-height:1;color:#8e8e93;cursor:pointer;">&times;</button>
+            </div>
+            <ul style="list-style:none;margin:0;padding:10px 0;font-size:14px;">
+                <?php
+                    $kbd = 'display:inline-block;padding:1px 7px;background:#f2f2f7;border:1px solid #d8d8dd;border-radius:4px;font-family:inherit;font-size:11px;font-weight:600;color:#444;box-shadow:0 1px 0 #d8d8dd;';
+                    $row = 'display:flex;align-items:center;gap:12px;padding:8px 20px;';
+                ?>
+                <li style="{{$row}}"><span style="flex:1;">Focus search</span><kbd style="{{$kbd}}">/</kbd></li>
+                <li style="{{$row}}"><span style="flex:1;">Select category 1–9</span><kbd style="{{$kbd}}">1</kbd> – <kbd style="{{$kbd}}">9</kbd></li>
+                <li style="{{$row}}"><span style="flex:1;">All categories</span><kbd style="{{$kbd}}">0</kbd></li>
+                <li style="{{$row}}"><span style="flex:1;">Place order</span><kbd style="{{$kbd}}">⌘</kbd><kbd style="{{$kbd}}">↵</kbd></li>
+                <li style="{{$row}}"><span style="flex:1;">Clear focus / close</span><kbd style="{{$kbd}}">Esc</kbd></li>
+                <li style="{{$row}}"><span style="flex:1;">Show this help</span><kbd style="{{$kbd}}">?</kbd></li>
+                <li style="{{$row}}"><span style="flex:1;">Open command palette</span><kbd style="{{$kbd}}">⌘</kbd><kbd style="{{$kbd}}">K</kbd></li>
+            </ul>
+            <div style="padding:10px 20px;background:#f7f7fa;border-top:1px solid #e5e5ea;font-size:11px;color:#6a6a70;">
+                Shortcuts work only when you're not typing in a field.
+            </div>
+        </div>
+    </div>
 @endpush
 

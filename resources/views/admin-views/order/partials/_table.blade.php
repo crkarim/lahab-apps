@@ -58,9 +58,9 @@
                     <a class="dropdown-item"
                        href="{{route('admin.orders.details',['id'=>$order['id']])}}"><i
                             class="tio-visible"></i> {{translate('view')}}</a>
-                    <a class="dropdown-item" target="_blank"
-                       href="{{route('admin.orders.generate-invoice',[$order['id']])}}"><i
-                            class="tio-download"></i> {{translate('invoice')}}</a>
+                    <a class="dropdown-item" target="_blank" rel="noopener"
+                       href="{{ route('admin.orders.print-receipt', [$order['id']]) }}"><i
+                            class="tio-print"></i> {{ translate('Print Receipt') }}</a>
                 </div>
             </div>
         </td>

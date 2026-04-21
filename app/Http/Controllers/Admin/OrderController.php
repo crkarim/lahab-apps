@@ -1073,6 +1073,8 @@ class OrderController extends Controller
                     'name' => $detail->product?->name,
                     'price' => $detail->price,
                     'quantity' => $detail->quantity,
+                    'original_quantity' => $detail->quantity,      // snapshot to detect qty changes
+                    'original_detail_id' => $detail->id,           // so the save step can match this cart row back to its OrderDetail row
                     'variation' => $detail->variation,
                     'add_on_ids' => json_decode($detail->add_on_ids, true),
                     'add_on_qtys' => json_decode($detail->add_on_qtys, true),
@@ -1169,6 +1171,23 @@ class OrderController extends Controller
             'success' => true,
             'view' => view('admin-views.order.partials.product-search-result', compact('searchProducts', 'orderId', 'branchId'))->render(),
         ]);
+    }
+
+    /**
+     * Deterministic signature for an addon configuration — lets us tell
+     * "1 Doi + 1 Extra Meunis" apart from "4 Doi + 4 Extra Meunis" when
+     * deciding whether to merge a cart row. IDs are paired with their
+     * quantities and sorted so order-independent.
+     */
+    private function addonSignature(array $ids, array $qtys): string
+    {
+        if (empty($ids)) return 'none';
+        $pairs = [];
+        foreach ($ids as $i => $id) {
+            $pairs[] = ((int) $id) . ':' . ((int) ($qtys[$i] ?? 1));
+        }
+        sort($pairs);
+        return implode('|', $pairs);
     }
 
     public function addProductToSession(Request $request)
@@ -1288,11 +1307,20 @@ class OrderController extends Controller
         $currentVariationJson = is_string($variation) ? $variation : json_encode($variation);
         $existingIndex = null;
 
-        // Look for existing product with the same ID & same variation
+        // Addon signature: same product + same variation + SAME addons → merge.
+        // Different addon mix → keep as a separate cart row. Without this check the
+        // merge would silently discard the newly-chosen addon quantities, making
+        // kitchen tickets print the ORIGINAL addon counts regardless of what the
+        // staff just selected.
+        $newAddonSig = $this->addonSignature($addonIds, $addonQuantities);
+
         foreach ($orderProducts as $index => $item) {
             $itemVariationJson = is_string($item['variation']) ? $item['variation'] : json_encode($item['variation']);
+            $itemAddonSig = $this->addonSignature($item['add_on_ids'] ?? [], $item['add_on_qtys'] ?? []);
 
-            if ($item['id'] == $product->id && $itemVariationJson === $currentVariationJson) {
+            if ($item['id'] == $product->id
+                && $itemVariationJson === $currentVariationJson
+                && $itemAddonSig === $newAddonSig) {
                 $existingIndex = $index;
                 break;
             }
@@ -1478,6 +1506,312 @@ class OrderController extends Controller
             'success' => false,
             'message' => 'Invalid product index.'
         ]);
+    }
+
+    /**
+     * Flexible save for an already-running POS/dine_in order.
+     *
+     * Handles three operations from the edit-offcanvas session cart:
+     *   1. ADD — items flagged is_new=1 → inserted as new OrderDetail rows
+     *   2. QUANTITY CHANGE on an existing item:
+     *      - increase → insert a delta row (kitchen sees +N as an add-on fire)
+     *      - decrease → update the existing detail row (allowed only when unlocked)
+     *   3. DELETE an existing item — delete the OrderDetail row (allowed only when unlocked)
+     *
+     * Lock rule: when Order::isEditLocked() is true (cooking AND kot_sent_at ≥ 5min ago)
+     * the kitchen has committed the food; reductions and deletions are rejected.
+     * Additions and quantity increases are always allowed on a running order.
+     *
+     * Never uses $order->details()->delete() wholesale — surgical updates only.
+     * Returns after_id so the UI can open a supplementary KOT showing just the
+     * newly-inserted rows.
+     */
+    public function appendItemsToRunningOrder(Request $request)
+    {
+        $orderId = (int) $request->order_id;
+        $order = $this->order->with('details')->find($orderId);
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => translate('Order not found')], 404);
+        }
+
+        // Guard: running POS/dine_in orders only, unpaid, not closed out.
+        $editAllowed = in_array($order->order_type, ['pos', 'dine_in'])
+            && $order->payment_status !== 'paid'
+            && in_array($order->order_status, ['pending', 'confirmed', 'processing', 'cooking', 'done']);
+
+        if (!$editAllowed) {
+            return response()->json([
+                'success' => false,
+                'message' => translate('Items can only be added to a running order'),
+            ], 403);
+        }
+
+        $sessionKey = 'order_products_' . $orderId;
+        $cart = session()->get($sessionKey, []);
+        if (empty($cart)) {
+            return response()->json([
+                'success' => false,
+                'message' => translate('Cart is empty'),
+            ]);
+        }
+
+        $isLocked = $order->isEditLocked();
+        $lastDetailIdBefore = (int) $order->details->max('id');
+        $existingByDetailId = $order->details->keyBy('id');
+
+        // Classify cart rows into actions.
+        $toInsert  = [];   // new rows (additions + qty-delta rows)
+        $toUpdate  = [];   // [detail_id => new_qty] for qty reductions
+        $keepIds   = [];   // detail IDs the cart kept (everything else = deleted)
+        $addAmount = 0;
+        $addTax    = 0;
+        $addAddonTax = 0;
+
+        foreach ($cart as $c) {
+            if (!empty($c['is_new'])) {
+                [$payload, $lineSub, $lineTax, $lineAddonTax] = $this->buildOrderDetailPayload($order, $c, (int) $c['quantity']);
+                if ($payload) {
+                    $toInsert[]     = $payload;
+                    $addAmount     += $lineSub;
+                    $addTax        += $lineTax;
+                    $addAddonTax   += $lineAddonTax;
+                }
+                continue;
+            }
+
+            $detailId = (int) ($c['original_detail_id'] ?? 0);
+            $original = $existingByDetailId->get($detailId);
+            if (!$original) {
+                // Cart row references an existing detail that no longer exists — skip.
+                continue;
+            }
+            $keepIds[] = $detailId;
+
+            $newQty  = (int) ($c['quantity'] ?? $original->quantity);
+            $origQty = (int) ($c['original_quantity'] ?? $original->quantity);
+
+            if ($newQty === $origQty) {
+                continue; // no change
+            }
+
+            if ($newQty > $origQty) {
+                // Qty increase → insert delta as its own OrderDetail row so the
+                // supplementary KOT shows just the additional units.
+                $delta = $newQty - $origQty;
+                [$payload, $lineSub, $lineTax, $lineAddonTax] = $this->buildOrderDetailPayload($order, $c, $delta);
+                if ($payload) {
+                    $toInsert[]    = $payload;
+                    $addAmount    += $lineSub;
+                    $addTax       += $lineTax;
+                    $addAddonTax  += $lineAddonTax;
+                }
+            } else {
+                // Qty decrease → update the existing row. Blocked when locked.
+                if ($isLocked) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => translate('Cannot reduce quantity — kitchen has already started cooking this item'),
+                    ], 409);
+                }
+                $toUpdate[$detailId] = $newQty;
+            }
+        }
+
+        // Detect deletions: existing details not present in the cart.
+        $deletedIds = $order->details->pluck('id')
+            ->diff($keepIds)
+            ->filter(fn ($id) => !array_key_exists($id, $toUpdate))
+            ->values();
+
+        if ($deletedIds->isNotEmpty() && $isLocked) {
+            return response()->json([
+                'success' => false,
+                'message' => translate('Cannot remove items — kitchen has already started cooking. You can still add more items.'),
+            ], 409);
+        }
+
+        if (empty($toInsert) && empty($toUpdate) && $deletedIds->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => translate('Nothing to save — cart matches the current order'),
+            ]);
+        }
+
+        try {
+            DB::transaction(function () use ($toInsert, $toUpdate, $deletedIds, $order) {
+                if (!empty($toInsert)) {
+                    OrderDetail::insert($toInsert);
+                }
+                foreach ($toUpdate as $detailId => $newQty) {
+                    OrderDetail::where('id', $detailId)->update([
+                        'quantity'   => $newQty,
+                        'updated_at' => now(),
+                    ]);
+                }
+                if ($deletedIds->isNotEmpty()) {
+                    OrderDetail::whereIn('id', $deletedIds)->delete();
+                }
+
+                // Recompute totals from the fresh detail rows — more robust than
+                // adding/subtracting deltas, and handles the delete case cleanly.
+                $order->load('details');
+                $orderAmount = 0;
+                $taxAmount   = 0;
+                foreach ($order->details as $d) {
+                    $discounted = max(($d->price ?? 0) - ($d->discount_on_product ?? 0), 0);
+                    $addonTotal = 0;
+                    $prices = json_decode($d->add_on_prices, true) ?: [];
+                    $qtys   = json_decode($d->add_on_qtys, true)   ?: [];
+                    foreach ($prices as $i => $p) {
+                        $addonTotal += ($p ?? 0) * ($qtys[$i] ?? 0);
+                    }
+                    $orderAmount += ($discounted * $d->quantity) + $addonTotal;
+                    $taxAmount   += (($d->tax_amount ?? 0) * $d->quantity) + ($d->add_on_tax_amount ?? 0);
+                }
+                $order->order_amount     = $orderAmount;
+                $order->total_tax_amount = $taxAmount;
+                $order->save();
+            });
+
+            session()->forget($sessionKey);
+
+            $lastDetailIdAfter = (int) $order->details()->max('id');
+            $addedCount = max(0, $lastDetailIdAfter - $lastDetailIdBefore);
+
+            return response()->json([
+                'success'   => true,
+                'message'   => $addedCount > 0
+                    ? translate('Order updated — supplementary KOT is being prepared')
+                    : translate('Order updated'),
+                'after_id'  => $lastDetailIdBefore,
+                // Only hand a KOT URL if there was at least one insertion; the kitchen
+                // has nothing to print when the only change was a qty reduction or delete.
+                'kot_url'   => $addedCount > 0
+                    ? route('admin.orders.kitchen-ticket', $order->id) . '?after_id=' . $lastDetailIdBefore
+                    : null,
+                'new_count' => $addedCount,
+                'is_locked' => $isLocked,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Build an OrderDetail insert payload from a session cart row + a chosen qty.
+     * Returns [payload, lineSubtotal, lineTax, lineAddonTax] or [null, 0, 0, 0]
+     * when the product/branch-product pair isn't resolvable.
+     *
+     * Extracted so appendItemsToRunningOrder() can call it twice — once for
+     * net-new items and once for qty-increase deltas on existing items.
+     */
+    private function buildOrderDetailPayload($order, array $cart, int $qty): array
+    {
+        $qty = max(1, $qty);
+        $product = $this->product->find($cart['id']);
+        if (!$product) {
+            return [null, 0, 0, 0];
+        }
+
+        $branchProduct = ProductByBranch::where([
+            'product_id' => $cart['id'],
+            'branch_id'  => $order['branch_id'],
+        ])->first();
+
+        $product->halal_status = $branchProduct?->halal_status ?? 0;
+
+        $variations = [];
+        if ($branchProduct) {
+            $branchVars = $branchProduct->variations;
+            if (count($branchVars)) {
+                $raw = json_decode($cart['variation'] ?? '[]', true) ?: [];
+                foreach ($raw as &$item) {
+                    if (isset($item['values']) && is_array($item['values'])) {
+                        $item['values'] = ['label' => array_column($item['values'], 'label')];
+                    }
+                }
+                unset($item);
+                $vd = Helpers::get_varient($branchVars, $raw);
+                $price = $branchProduct['price'] + $vd['price'];
+                $variations = $vd['variations'];
+            } else {
+                $price = $branchProduct['price'];
+            }
+            $discountData = [
+                'discount_type' => $branchProduct['discount_type'],
+                'discount'      => $branchProduct['discount'],
+            ];
+        } else {
+            $productVars = json_decode($product->variations, true) ?: [];
+            if (count($productVars)) {
+                $vd = Helpers::get_varient($productVars, $cart['variation'] ?? '[]');
+                $price = $product['price'] + $vd['price'];
+                $variations = $vd['variations'];
+            } else {
+                $price = $product['price'];
+            }
+            $discountData = [
+                'discount_type' => $product['discount_type'],
+                'discount'      => $product['discount'],
+            ];
+        }
+
+        $discountOnProduct = Helpers::discount_calculate($discountData, $price);
+        $taxPerUnit = Helpers::new_tax_calculate($product, $price, $discountData);
+
+        $addonIds  = $cart['add_on_ids']  ?? [];
+        $addonQtys = $cart['add_on_qtys'] ?? [];
+        $addonPrices = [];
+        $addonTaxes  = [];
+        foreach ($addonIds as $aid) {
+            $addon = AddOn::find($aid);
+            $addonPrices[] = $addon['price'] ?? 0;
+            $addonTaxes[]  = (($addon['price'] ?? 0) * ($addon['tax'] ?? 0)) / 100;
+        }
+        $totalAddonTaxForRow = array_reduce(
+            array_map(fn ($a, $b) => $a * $b, $addonQtys, $addonTaxes),
+            fn ($carry, $v) => $carry + $v,
+            0
+        );
+        $addonRowTotal = 0;
+        foreach ($addonIds as $idx => $aid) {
+            $addonRowTotal += ($addonPrices[$idx] ?? 0) * ($addonQtys[$idx] ?? 0);
+        }
+
+        $lineSubtotal = max($price - $discountOnProduct, 0) * $qty + $addonRowTotal;
+        $lineTax      = $taxPerUnit * $qty;
+
+        $payload = [
+            'order_id'            => $order->id,
+            'product_id'          => $cart['id'],
+            'product_details'     => $product,
+            'quantity'            => $qty,
+            'price'               => $price,
+            'tax_amount'          => $taxPerUnit,
+            'discount_on_product' => $discountOnProduct,
+            'discount_type'       => 'discount_on_product',
+            'variant'             => json_encode([]),
+            'variation'           => json_encode($variations),
+            'add_on_ids'          => json_encode($addonIds),
+            'add_on_qtys'         => json_encode($addonQtys),
+            'add_on_prices'       => json_encode($addonPrices),
+            'add_on_taxes'        => json_encode($addonTaxes),
+            'add_on_tax_amount'   => $totalAddonTaxForRow,
+            'created_at'          => now(),
+            'updated_at'          => now(),
+        ];
+
+        $product->increment('popularity_count');
+        if ($branchProduct && in_array($branchProduct->stock_type, ['daily', 'fixed'])) {
+            $branchProduct->sold_quantity += $qty;
+            $branchProduct->save();
+        }
+
+        return [$payload, $lineSubtotal, $lineTax, $totalAddonTaxForRow];
     }
 
     public function updateEditOrder(Request $request)

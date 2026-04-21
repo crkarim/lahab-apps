@@ -36,6 +36,35 @@ class Helpers
         return $err_keeper;
     }
 
+    /**
+     * Human-readable label for the `order_type` column.
+     *
+     * Background: the POSController stores a take-away order as `'pos'` (legacy
+     * 6amtech bucket for "counter sale"), not `'take_away'`. Dozens of reader
+     * sites depend on that value, so we can't change storage without a large
+     * refactor. Instead, centralise the DISPLAY translation here so badges and
+     * labels never surface the raw "pos" to users.
+     *
+     *   pos         → Take Away
+     *   take_away   → Take Away
+     *   dine_in     → Dine In
+     *   delivery    → Online
+     *   (unknown)   → title-cased fallback
+     */
+    public static function order_type_label(?string $type): string
+    {
+        $map = [
+            'pos'        => 'Take Away',
+            'take_away'  => 'Take Away',
+            'dine_in'    => 'Dine In',
+            'delivery'   => 'Online',
+        ];
+        if (isset($map[$type])) {
+            return translate($map[$type]);
+        }
+        return ucwords(str_replace('_', ' ', (string) $type));
+    }
+
     public static function combinations($arrays): array
     {
         $result = [[]];

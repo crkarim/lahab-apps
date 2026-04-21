@@ -101,7 +101,40 @@ class POSController extends Controller
 
         $current_branch = $this->admin->find(auth('admin')->id());
         $branches = $this->branch->select('id', 'name')->get();
-        return view('admin-views.pos.index', compact('categories', 'products', 'category', 'keyword', 'current_branch', 'branches', 'selected_customer', 'selected_table', 'tables'));
+
+        // Hybrid Favorites: recommended products first, then top-sellers (last 30d) to fill up to 6.
+        $recommended = $this->product->with(['branch_products' => function ($q) use ($selected_branch) {
+                $q->where(['is_available' => 1, 'branch_id' => $selected_branch]);
+            }])
+            ->whereHas('branch_products', function ($q) use ($selected_branch) {
+                $q->where(['is_available' => 1, 'branch_id' => $selected_branch]);
+            })
+            ->where('is_recommended', 1)->active()->take(6)->get();
+
+        $need = 6 - $recommended->count();
+        $topSellers = collect();
+        if ($need > 0) {
+            $topSellerIds = \App\Model\OrderDetail::select('product_id', \DB::raw('SUM(quantity) as qty'))
+                ->whereHas('order', function ($q) use ($selected_branch) {
+                    $q->where('branch_id', $selected_branch)
+                      ->where('created_at', '>=', now()->subDays(30));
+                })
+                ->whereNotIn('product_id', $recommended->pluck('id'))
+                ->groupBy('product_id')
+                ->orderByDesc('qty')
+                ->take($need)
+                ->pluck('product_id');
+
+            if ($topSellerIds->isNotEmpty()) {
+                $topSellers = $this->product->with(['branch_products' => function ($q) use ($selected_branch) {
+                        $q->where(['is_available' => 1, 'branch_id' => $selected_branch]);
+                    }])
+                    ->whereIn('id', $topSellerIds)->active()->get();
+            }
+        }
+        $favorites = $recommended->concat($topSellers)->take(6);
+
+        return view('admin-views.pos.index', compact('categories', 'products', 'category', 'keyword', 'current_branch', 'branches', 'selected_customer', 'selected_table', 'tables', 'favorites'));
     }
 
     /**
@@ -462,7 +495,21 @@ class POSController extends Controller
             return back();
         }
 
-        $order_type = session()->has('order_type') ? session()->get('order_type') : 'take_away';
+        // Order-type resolution order: request → session → dine_in default.
+        // Request wins because the form now carries the user's current radio
+        // selection via a hidden #form_order_type input, which is authoritative
+        // even if the session didn't get AJAX-synced (e.g., user never changed
+        // the default). Falling back to 'take_away' caused dine-in orders to
+        // be silently stored as 'pos' and fire a take-away KOT.
+        $validOrderTypes = ['take_away', 'dine_in', 'home_delivery'];
+        $requestedType = $request->input('order_type');
+        if (in_array($requestedType, $validOrderTypes, true)) {
+            $order_type = $requestedType;
+        } elseif (session()->has('order_type')) {
+            $order_type = session()->get('order_type');
+        } else {
+            $order_type = 'dine_in';
+        }
 
         if ($order_type == 'dine_in'){
             if (!session()->has('table_id')){
@@ -533,9 +580,10 @@ class POSController extends Controller
         $order->id = $order_id;
 
         $order->user_id = session()->get('customer_id') ?? null;
+        $order->placed_by_admin_id = auth('admin')->id();
         $order->coupon_discount_title = $request->coupon_discount_title == 0 ? null : 'coupon_discount_title';
-        $order->payment_status = ($order_type == 'take_away') ? 'paid' : (($order_type == 'dine_in' && $request->type != 'pay_after_eating') ? 'paid' : 'unpaid');
-        $order->order_status = $order_type == 'take_away' ? 'delivered' : 'confirmed' ;
+        $order->payment_status = 'unpaid';
+        $order->order_status = 'confirmed';
         $order->order_type = ($order_type == 'take_away') ? 'pos' : (($order_type == 'dine_in') ? 'dine_in' : (($order_type == 'home_delivery') ? 'delivery' : null));
         $order->payment_method = $request->type;
         $order->transaction_reference = $request->transaction_reference ?? null;
@@ -690,42 +738,90 @@ class POSController extends Controller
                 }
                 $this->order_detail->insert($order_details);
 
-                if ($request->type == 'cash' || $request->type == 'card'){
+                // ────────────────────────────────────────────────────────────
+                // Payment capture at place-order time.
+                //
+                // Pre-fix: every POS order was saved payment_status='unpaid' regardless
+                // of what the cashier entered as paid_amount, and only the Checkout
+                // modal (opened LATER) would mark it paid. That meant the customer
+                // receipt printed with the KOT showed "UNPAID" even though the
+                // cashier had already taken the cash.
+                //
+                // Now: if the payment method is a settle-now type (cash, card, or
+                // wallet-covered), we record an OrderPartialPayment row AND flip
+                // payment_status='paid' AND save the change amount. "pay_after_eating"
+                // and "cash_on_delivery" stay unpaid — those are genuinely deferred.
+                // ────────────────────────────────────────────────────────────
+                $paymentMethod   = $request->type;
+                $requestedPaid   = (float) $request->input('paid_amount', 0);
+                $orderAmount     = (float) $order->order_amount;
+
+                if ($paymentMethod === 'cash' || $paymentMethod === 'card') {
+                    // Cashier collected at the counter — mark paid, save change.
+                    $paidAmount  = $requestedPaid > 0 ? $requestedPaid : $orderAmount;
+                    $changeAmount = max(0, $paidAmount - $orderAmount);
+
+                    OrderPartialPayment::create([
+                        'order_id'    => $order->id,
+                        'paid_with'   => $paymentMethod,
+                        'paid_amount' => $paidAmount,
+                        'due_amount'  => 0,
+                    ]);
+
+                    $order->payment_status      = 'paid';
+                    $order->bring_change_amount = $changeAmount;
+                    $order->save();
+
+                    // Legacy OrderChangeAmount model — kept for reports that still
+                    // join against it; mirrors what we just stored on the order.
                     $orderChangeAmount = new OrderChangeAmount();
-                    $orderChangeAmount->order_id = $order->id;
-                    $orderChangeAmount->order_amount = $order->order_amount;
-                    $orderChangeAmount->paid_amount = $request->paid_amount;
+                    $orderChangeAmount->order_id    = $order->id;
+                    $orderChangeAmount->order_amount = $orderAmount;
+                    $orderChangeAmount->paid_amount  = $paidAmount;
                     $orderChangeAmount->save();
                 }
 
-                if ($request->type == 'wallet_payment' && $order->user_id != null){
+                if ($paymentMethod === 'wallet_payment' && $order->user_id != null) {
                     $registeredUser = $this->user->find($order->user_id);
 
-                    if ($registeredUser && $registeredUser->wallet_balance > 0){
-                        $walletAmount = $registeredUser->wallet_balance;
-                        $orderAmount = $order->order_amount;
+                    if ($registeredUser && $registeredUser->wallet_balance > 0) {
+                        $walletAmount = (float) $registeredUser->wallet_balance;
 
                         if ($walletAmount >= $orderAmount) {
-                            CustomerLogic::create_wallet_transaction(user_id: $order->user_id, amount:  $orderAmount, transaction_type:  'order_place', referance:  $order->id);
+                            CustomerLogic::create_wallet_transaction(user_id: $order->user_id, amount: $orderAmount, transaction_type: 'order_place', referance: $order->id);
 
-                        }else{
+                            // Fully covered by wallet — record payment + close.
+                            OrderPartialPayment::create([
+                                'order_id'    => $order->id,
+                                'paid_with'   => 'wallet_payment',
+                                'paid_amount' => $orderAmount,
+                                'due_amount'  => 0,
+                            ]);
+                            $order->payment_status = 'paid';
+                            $order->save();
+                        } else {
                             $dueAmount = $orderAmount - $walletAmount;
 
-                            CustomerLogic::create_wallet_transaction(user_id: $order->user_id, amount:  $walletAmount, transaction_type:  'order_place', referance:  $order->id);
+                            CustomerLogic::create_wallet_transaction(user_id: $order->user_id, amount: $walletAmount, transaction_type: 'order_place', referance: $order->id);
 
                             $partialWallet = new OrderPartialPayment();
-                            $partialWallet->order_id = $order->id;
-                            $partialWallet->paid_with = 'wallet_payment';
+                            $partialWallet->order_id    = $order->id;
+                            $partialWallet->paid_with   = 'wallet_payment';
                             $partialWallet->paid_amount = $walletAmount;
-                            $partialWallet->due_amount = $dueAmount;
+                            $partialWallet->due_amount  = $dueAmount;
                             $partialWallet->save();
 
                             $partialOther = new OrderPartialPayment();
-                            $partialOther->order_id = $order->id;
-                            $partialOther->paid_with = $request->wallet_partial_payment_method ?? 'cash';
+                            $partialOther->order_id    = $order->id;
+                            $partialOther->paid_with   = $request->wallet_partial_payment_method ?? 'cash';
                             $partialOther->paid_amount = $dueAmount;
-                            $partialOther->due_amount = 0;
+                            $partialOther->due_amount  = 0;
                             $partialOther->save();
+
+                            // Cashier took the remainder in cash/card at the counter,
+                            // so the order is fully settled now.
+                            $order->payment_status = 'paid';
+                            $order->save();
                         }
                     }
                 }
@@ -740,6 +836,13 @@ class POSController extends Controller
                 session()->forget('order_type');
 
                 Toastr::success(translate('order_placed_successfully'));
+                session()->flash('order_placed', [
+                    'id'         => $order->id,
+                    'type'       => $order->order_type,
+                    'amount'     => (float) $order->order_amount,
+                    'table'      => $order->table?->number,
+                    'zone'       => $order->table?->zone,
+                ]);
 
                 //send notification to kitchen
                 if ($order->order_type == 'dine_in') {
@@ -883,8 +986,17 @@ class POSController extends Controller
         $branch_id = $request['branch_id'];
         $from = $request['from'];
         $to = $request['to'];
+        $type = $request['type'] ?? 'all';
 
-        $query = $this->order->pos()->with(['customer', 'branch']);
+        $typeFilter = match ($type) {
+            'pos'     => ['pos'],
+            'dine_in' => ['dine_in'],
+            default   => ['pos', 'dine_in'],
+        };
+
+        $query = $this->order
+            ->whereIn('order_type', $typeFilter)
+            ->with(['customer', 'branch', 'table']);
         $branches = $this->branch->all();
 
         if ($request->has('search')) {
@@ -920,7 +1032,13 @@ class POSController extends Controller
 
         $orders = $query->latest()->paginate(Helpers::getPagination())->appends($query_param);
 
-        return view('admin-views.pos.order.list', compact('orders', 'search', 'branches', 'from', 'to', 'branch_id'));
+        $counts = [
+            'all'     => $this->order->whereIn('order_type', ['pos', 'dine_in'])->count(),
+            'pos'     => $this->order->where('order_type', 'pos')->count(),
+            'dine_in' => $this->order->where('order_type', 'dine_in')->count(),
+        ];
+
+        return view('admin-views.pos.order.list', compact('orders', 'search', 'branches', 'from', 'to', 'branch_id', 'type', 'counts'));
     }
 
     /**

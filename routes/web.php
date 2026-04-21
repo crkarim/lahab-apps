@@ -40,6 +40,11 @@ Route::get('/image-proxy', function () {
 Route::post('/subscribeToTopic', [FirebaseController::class, 'subscribeToTopic']);
 
 /**
+ * Public receipt (no-auth; accessed via SMS link)
+ */
+Route::get('r/{token}', [\App\Http\Controllers\ReceiptController::class, 'show'])->name('receipt.show');
+
+/**
  * Pages
  */
 Route::get('about-us', [HomeController::class, 'about_us'])->name('about-us');

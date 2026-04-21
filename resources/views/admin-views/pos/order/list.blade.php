@@ -1,6 +1,6 @@
 @extends('layouts.admin.app')
 
-@section('title', translate('Order List'))
+@section('title', translate('In-Restaurant Orders'))
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -12,11 +12,35 @@
             <h2 class="h1 mb-0 d-flex align-items-center gap-1">
                 <img width="20" class="avatar-img" src="{{asset('public/assets/admin/img/icons/all_orders.png')}}" alt="">
                 <span class="page-header-title">
-                    {{translate('POS_Orders')}}
+                    {{translate('In-Restaurant Orders')}}
                 </span>
             </h2>
             <span class="badge badge-soft-dark rounded-50 fz-14">{{ $orders->total() }}</span>
         </div>
+
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+                <a class="nav-link {{ $type === 'all' ? 'active' : '' }}"
+                   href="{{ route('admin.pos.orders', ['type' => 'all']) }}">
+                    {{ translate('All') }}
+                    <span class="badge badge-soft-dark ml-1">{{ $counts['all'] }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $type === 'pos' ? 'active' : '' }}"
+                   href="{{ route('admin.pos.orders', ['type' => 'pos']) }}">
+                    {{ translate('Take-away (POS)') }}
+                    <span class="badge badge-soft-dark ml-1">{{ $counts['pos'] }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $type === 'dine_in' ? 'active' : '' }}"
+                   href="{{ route('admin.pos.orders', ['type' => 'dine_in']) }}">
+                    {{ translate('Dine-in') }}
+                    <span class="badge badge-soft-dark ml-1">{{ $counts['dine_in'] }}</span>
+                </a>
+            </li>
+        </ul>
 
         <div class="card">
             <div class="card">
@@ -111,6 +135,7 @@
                                 <th>{{translate('Order_Date')}}</th>
                                 <th>{{translate('Customer_Info')}}</th>
                                 <th>{{translate('Branch')}}</th>
+                                <th>{{translate('Table')}}</th>
                                 <th>{{translate('Total_Amount')}}</th>
                                 <th>{{translate('Order_Status')}}</th>
                                 <th>{{translate('Order_Type')}}</th>
@@ -141,6 +166,13 @@
                                 </td>
                                 <td>{{ $order->branch?->name }}</td>
                                 <td>
+                                    @if($order->table)
+                                        <span class="badge badge-soft-info">{{ translate('Table') }} {{ $order->table->number }}{{ $order->table->zone ? ' · ' . $order->table->zone : '' }}</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td>
                                     <div>{{Helpers::set_symbol($order['order_amount']) }}</div>
                                     @if($order->payment_status=='paid')
                                         <span class="text-success">{{translate('paid')}}</span>
@@ -149,29 +181,38 @@
                                     @endif
                                 </td>
                                 <td class="text-capitalize">
-                                    @if($order['order_status']=='pending')
-                                        <span class="badge-soft-info px-2 rounded">{{translate('pending')}}</span>
-                                    @elseif($order['order_status']=='confirmed')
-                                        <span class="badge-soft-info px-2 rounded">{{translate('confirmed')}}</span>
-                                    @elseif($order['order_status']=='processing')
-                                        <span class="badge-soft-warning px-2 rounded">{{translate('processing')}}</span>
-                                    @elseif($order['order_status']=='picked_up')
-                                        <span class="badge-soft-warning px-2 rounded">{{translate('out_for_delivery')}}</span>
-                                    @elseif($order['order_status']=='delivered')
-                                        <span class="badge-soft-success px-2 rounded">{{translate('delivered')}}</span>
-                                    @else
-                                        <span class="badge-soft-danger px-2 rounded">{{str_replace('_',' ',$order['order_status'])}}</span>
-                                    @endif
+                                    @switch($order['order_status'])
+                                        @case('confirmed')
+                                            <span class="badge-soft-info px-2 rounded">{{translate('confirmed')}}</span>
+                                            @break
+                                        @case('cooking')
+                                            <span class="badge-soft-warning px-2 rounded">{{translate('cooking')}}</span>
+                                            @break
+                                        @case('done')
+                                            <span class="badge-soft-warning px-2 rounded">{{translate('ready to serve')}}</span>
+                                            @break
+                                        @case('completed')
+                                            <span class="badge-soft-success px-2 rounded">{{translate('completed')}}</span>
+                                            @break
+                                        @case('canceled')
+                                            <span class="badge-soft-danger px-2 rounded">{{translate('canceled')}}</span>
+                                            @break
+                                        @default
+                                            <span class="badge-soft-secondary px-2 rounded">{{str_replace('_',' ',$order['order_status'])}}</span>
+                                    @endswitch
                                 </td>
                                 <td class="text-capitalize">
-                                    <span class="badge-soft-success px-2 py-1 rounded">{{translate($order['order_type'])}}</span>
+                                    <span class="badge-soft-success px-2 py-1 rounded">{{ \App\CentralLogics\Helpers::order_type_label($order['order_type']) }}</span>
                                 </td>
                                 <td>
                                     <div class="d-flex justify-content-center gap-2">
                                         <a class="btn btn-sm btn-outline-primary square-btn" href="{{route('admin.pos.order-details',['id'=>$order['id']])}}">
                                             <i class="tio-invisible"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-outline-success square-btn print-invoice-button" data-order-id="{{$order->id}}" type="button">
+                                        <button type="button" class="btn btn-sm btn-outline-success square-btn print-receipt-btn"
+                                                data-order-id="{{ $order->id }}"
+                                                data-fragment-url="{{ route('admin.orders.receipt-fragment', [$order->id]) }}"
+                                                title="{{ translate('Print Receipt') }}">
                                             <i class="tio-print"></i>
                                         </button>
                                     </div>
@@ -199,83 +240,9 @@
         </div>
     </div>
 
-    <div class="modal fade" id="print-invoice" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header flex-column">
-                    <div class="w-100 d-flex justify-content-between align-items-center gap-3">
-                        <h5 class="modal-title">{{translate('print')}} {{translate('invoice')}}</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="mt-4">
-                        <center>
-                            <input type="button" class="btn btn-primary non-printable print-button" value="{{translate('Proceed, If thermal printer is ready..')}}" />
-                            <a href="{{url()->previous()}}" class="btn btn-danger non-printable">{{translate('Back')}}</a>
-                        </center>
-                        <hr class="non-printable">
-                    </div>
-                </div>
-                <div class="modal-body row custom-modal-body overflow-auto pt-0">
-                    <div class="row custom-print-area-auto" id="printableArea">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    @include('receipt._modal')
 @endsection
 
 @push('script_2')
     <script src="{{asset('public/assets/admin/js/loyalty-point.js')}}"></script>
-    <script>
-        "use strict";
-
-        $('.print-button').click(function() {
-            printDiv('printableArea');
-        });
-
-        $('.print-invoice-button').click(function() {
-            var orderId = $(this).data('order-id');
-            print_invoice(orderId);
-        });
-
-        function print_invoice(order_id) {
-            $.get({
-                url: '{{url('/')}}/admin/pos/invoice/'+order_id,
-                dataType: 'json',
-                beforeSend: function () {
-                    $('#loading').show();
-                },
-                success: function (data) {
-                    console.log("success...")
-                    $('#print-invoice').modal('show');
-                    $('#printableArea').empty().html(data.view);
-                },
-                complete: function () {
-                    $('#loading').hide();
-                },
-            });
-        }
-
-    function printDiv(divName) {
-
-        if($('html').attr('dir') === 'rtl') {
-            $('html').attr('dir', 'ltr')
-            var printContents = document.getElementById(divName).innerHTML;
-            document.body.innerHTML = printContents;
-            $('#printableAreaContent').attr('dir', 'rtl')
-            window.print();
-            $('html').attr('dir', 'rtl')
-            location.reload();
-        }else{
-            var printContents = document.getElementById(divName).innerHTML;
-            document.body.innerHTML = printContents;
-            window.print();
-            location.reload();
-        }
-
-    }
-    </script>
-
 @endpush

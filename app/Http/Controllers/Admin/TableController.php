@@ -58,6 +58,7 @@ class TableController extends Controller
             ],
             'branch_id' => 'required',
             'capacity' => 'required|min:1|max:99',
+            'zone' => 'nullable|string|max:100',
         ], [
             'number.required' => translate('Table number is required!'),
             'number.unique' => translate('Table number is already exist in this branch!'),
@@ -68,6 +69,7 @@ class TableController extends Controller
         $table = $this->table;
         $table->number = $request->number;
         $table->capacity = $request->capacity;
+        $table->zone = $request->zone;
         $table->branch_id = $request->branch_id;
         $table->is_active = 1;
         $table->save();
@@ -119,6 +121,7 @@ class TableController extends Controller
             ],
             'branch_id' => 'required',
             'capacity' => 'required|min:1|max:99',
+            'zone' => 'nullable|string|max:100',
         ], [
             'number.required' => translate('Table number is required!'),
             'number.unique' => translate('Table number is already exist in this branch!'),
@@ -129,6 +132,7 @@ class TableController extends Controller
         $table = $this->table->find($id);
         $table->number = $request->number;
         $table->capacity = $request->capacity;
+        $table->zone = $request->zone;
         $table->branch_id = $request->branch_id;
         $table->update();
 

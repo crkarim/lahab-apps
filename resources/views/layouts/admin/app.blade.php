@@ -29,6 +29,339 @@
     <script
         src="{{asset('public/assets/admin')}}/vendor/hs-navbar-vertical-aside/hs-navbar-vertical-aside-mini-cache.js"></script>
     <link rel="stylesheet" href="{{asset('public/assets/admin')}}/css/toastr.css">
+
+    {{-- ─── Brand override layer — retunes theme's coral-red to Lahab's warm orange/brown ─── --}}
+    <style>
+        :root {
+            --lh-orange: #E67E22;
+            --lh-orange-dark: #C9661A;
+            --lh-orange-tint: #FFF3E6;
+            --lh-brown: #6B2F1A;
+            --lh-brown-dark: #4A1F10;
+        }
+        /* Buttons */
+        .btn-primary, .btn-primary:focus {
+            background-color: var(--lh-orange) !important;
+            border-color: var(--lh-orange) !important;
+        }
+        .btn-primary:hover, .btn-primary:active, .btn-primary:not(:disabled):not(.disabled):active,
+        .btn-primary:not(:disabled):not(.disabled).active {
+            background-color: var(--lh-orange-dark) !important;
+            border-color: var(--lh-orange-dark) !important;
+        }
+        .btn-outline-primary, .btn-outline-primary:focus {
+            color: var(--lh-orange) !important;
+            border-color: var(--lh-orange) !important;
+        }
+        .btn-outline-primary:hover,
+        .btn-outline-primary:not(:disabled):not(.disabled):active,
+        .btn-outline-primary:not(:disabled):not(.disabled).active {
+            background-color: var(--lh-orange) !important;
+            border-color: var(--lh-orange) !important;
+            color: #fff !important;
+        }
+        /* Links & text-primary accents */
+        a.text-primary:hover, a.text-primary:focus,
+        .text-primary { color: var(--lh-orange) !important; }
+        .bg-primary { background-color: var(--lh-orange) !important; }
+        .border-primary { border-color: var(--lh-orange) !important; }
+
+        /* Form control focus ring — matches theme's default focus behaviour */
+        .form-control:focus,
+        .custom-select:focus {
+            border-color: var(--lh-orange) !important;
+            box-shadow: 0 0 0 0.2rem rgba(230,126,34,0.15) !important;
+        }
+
+        /* Theme utility classes that lean on the coral accent */
+        .text-c2, .text-theme { color: var(--lh-orange) !important; }
+        .bg-c2 { background-color: var(--lh-orange) !important; }
+
+        /* Pagination active */
+        .page-item.active .page-link {
+            background-color: var(--lh-orange) !important;
+            border-color: var(--lh-orange) !important;
+        }
+        .page-link { color: var(--lh-orange) !important; }
+        .page-link:hover { color: var(--lh-orange-dark) !important; }
+
+        /* Nav tabs accent */
+        .nav-tabs .nav-link.active, .nav-pills .nav-link.active { color: var(--lh-orange) !important; }
+        .nav-tabs .nav-link.active { border-bottom-color: var(--lh-orange) !important; }
+
+        /* Sidebar active items */
+        .navbar-vertical-aside .nav-link.active,
+        .navbar-vertical-aside .nav-link:hover { color: var(--lh-orange) !important; }
+
+        /* Badges that use bg-primary */
+        .badge-primary { background-color: var(--lh-orange) !important; color: #fff !important; }
+
+        /* Progress bars */
+        .progress-bar { background-color: var(--lh-orange) !important; }
+
+        /* Custom controls (checkbox/radio checked state) */
+        .custom-control-input:checked ~ .custom-control-label::before {
+            background-color: var(--lh-orange) !important;
+            border-color: var(--lh-orange) !important;
+        }
+
+        /* ═════════════════════════════════════════════════════════════
+           Sidebar + Header brand polish
+           ═════════════════════════════════════════════════════════════ */
+
+        /* ─── Sidebar: brand the logo frame ───────────────────────── */
+        .navbar-vertical-aside .navbar-brand-wrapper {
+            background: linear-gradient(180deg, #FFF8F0 0%, #ffffff 100%) !important;
+            border-bottom: 1px solid #f4e6d5 !important;
+        }
+        .navbar-vertical-aside .navbar-brand-logo,
+        .navbar-vertical-aside .navbar-brand-logo-mini { max-height: 40px; }
+
+        /* ─── Top-level nav links ─────────────────────────────────── */
+        .navbar-vertical-aside .navbar-nav .nav-link {
+            border-radius: 10px !important;
+            margin: 2px 10px !important;
+            padding: 10px 12px !important;
+            font-weight: 500 !important;
+            color: #4a4a52 !important;
+            transition: background 120ms, color 120ms;
+        }
+        .navbar-vertical-aside .navbar-nav .nav-link .nav-icon {
+            color: #8e8e93 !important;
+            font-size: 18px; width: 22px;
+            transition: color 120ms;
+        }
+        .navbar-vertical-aside .navbar-nav .nav-link:hover {
+            background: var(--lh-orange-tint) !important;
+            color: var(--lh-brown) !important;
+        }
+        .navbar-vertical-aside .navbar-nav .nav-link:hover .nav-icon {
+            color: var(--lh-orange) !important;
+        }
+
+        /* Active top-level item — orange-tint bg + left edge accent + ink-brown text */
+        .navbar-vertical-aside .navbar-nav > li.active > .nav-link,
+        .navbar-vertical-aside .navbar-nav > li.show > .nav-link,
+        .navbar-vertical-aside .navbar-nav > li > .nav-link.active {
+            background: var(--lh-orange-tint) !important;
+            color: var(--lh-brown) !important;
+            font-weight: 600 !important;
+            position: relative;
+        }
+        .navbar-vertical-aside .navbar-nav > li.active > .nav-link .nav-icon,
+        .navbar-vertical-aside .navbar-nav > li.show > .nav-link .nav-icon,
+        .navbar-vertical-aside .navbar-nav > li > .nav-link.active .nav-icon {
+            color: var(--lh-orange) !important;
+        }
+        .navbar-vertical-aside .navbar-nav > li.active > .nav-link::before,
+        .navbar-vertical-aside .navbar-nav > li.show > .nav-link::before,
+        .navbar-vertical-aside .navbar-nav > li > .nav-link.active::before {
+            content: "";
+            position: absolute; left: -4px; top: 8px; bottom: 8px;
+            width: 3px; border-radius: 2px;
+            background: var(--lh-orange);
+            box-shadow: 0 0 6px rgba(230,126,34,0.4);
+        }
+
+        /* ─── Submenu (nav-sub) items ─────────────────────────────── */
+        .navbar-vertical-aside .nav-sub .nav-link {
+            margin: 1px 16px 1px 32px !important;
+            padding: 8px 12px !important;
+            font-size: 13px !important;
+            color: #6a6a70 !important;
+        }
+        .navbar-vertical-aside .nav-sub .nav-indicator-icon.tio-circle {
+            font-size: 6px !important;
+            color: #c9cbce !important;
+            transition: color 120ms;
+        }
+        .navbar-vertical-aside .nav-sub .nav-link:hover {
+            background: #fcf5ed !important; color: var(--lh-brown) !important;
+        }
+        .navbar-vertical-aside .nav-sub .nav-link:hover .nav-indicator-icon {
+            color: var(--lh-orange) !important;
+        }
+        .navbar-vertical-aside .nav-sub .nav-item.active > .nav-link {
+            background: var(--lh-orange-tint) !important;
+            color: var(--lh-brown) !important;
+            font-weight: 600 !important;
+        }
+        .navbar-vertical-aside .nav-sub .nav-item.active > .nav-link .nav-indicator-icon {
+            color: var(--lh-orange) !important;
+            font-size: 8px !important;
+        }
+
+        /* ─── Badge pills in sidebar (Running Tables / In-Restaurant counts) ─ */
+        .navbar-vertical-aside .badge-soft-success,
+        .navbar-vertical-aside .badge-soft-info,
+        .navbar-vertical-aside .badge-soft-primary {
+            background: var(--lh-orange-tint) !important;
+            color: var(--lh-brown) !important;
+            font-weight: 600 !important;
+            border: 1px solid rgba(230,126,34,0.2);
+        }
+        .sidebar--badge-container {
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+
+        /* ─── Collapse-toggle button in the brand area ────────────── */
+        .navbar-vertical-aside .navbar-vertical-aside-toggle {
+            color: var(--lh-brown) !important;
+        }
+        .navbar-vertical-aside .navbar-vertical-aside-toggle:hover {
+            background: var(--lh-orange-tint) !important;
+            color: var(--lh-orange-dark) !important;
+        }
+
+        /* ═════════════════════════════════════════════════════════════
+           HEADER (top navbar)
+           ═════════════════════════════════════════════════════════════ */
+
+        /* Notification dot (messages / cart) — brand orange */
+        #header .btn-status,
+        #header .btn-status-c1 {
+            background: var(--lh-orange) !important;
+            color: #fff !important;
+            box-shadow: 0 0 0 2px #fff, 0 2px 6px rgba(230,126,34,0.4);
+            font-weight: 700;
+        }
+
+        /* Header icon buttons — warm hover */
+        #header .btn-ghost-secondary {
+            color: #6a6a70 !important;
+            transition: background 120ms, color 120ms;
+        }
+        #header .btn-ghost-secondary:hover {
+            background: var(--lh-orange-tint) !important;
+            color: var(--lh-orange) !important;
+        }
+
+        /* Language dropdown topbar-link */
+        #header .topbar-link {
+            color: var(--lh-brown) !important;
+            font-weight: 600 !important;
+        }
+        #header .topbar-link:hover { color: var(--lh-orange) !important; }
+
+        /* Account chip — name/role on the right */
+        #header .navbar-dropdown-account-wrapper .card-title {
+            color: var(--lh-ink); font-weight: 600;
+        }
+        #header .navbar-dropdown-account-wrapper .card-text {
+            color: var(--lh-muted);
+        }
+        #header .avatar-status-success {
+            background: #16a34a !important;
+            box-shadow: 0 0 0 2px #fff;
+        }
+
+        /* Account dropdown hover accent */
+        #accountNavbarDropdown .dropdown-item:hover {
+            background: var(--lh-orange-tint) !important;
+            color: var(--lh-brown) !important;
+        }
+
+        /* Main header surface: tiny shadow for depth */
+        #header.navbar-fixed {
+            background: rgba(255,255,255,0.96) !important;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 1px 0 #eceef0, 0 2px 8px rgba(107,47,26,0.03);
+        }
+
+        /* ═════════════════════════════════════════════════════════════
+           Motion polish — re-enabled with ONLY rules that don't risk breaking
+           Bootstrap modals. Anything that applies `transform` or `filter` to
+           an ancestor of a `position: fixed` element is intentionally OUT,
+           because it creates a new containing block and orphans the backdrop.
+
+           Safe rules below — they either animate opacity, apply to leaf
+           elements (badges, tr, buttons, icons), or are utility classes.
+           ═════════════════════════════════════════════════════════════ */
+
+        /* Opacity-only: NEVER animate transform on .content/.page-header/main. */
+        @keyframes lh-fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes lh-badge-pulse {
+            0%   { transform: scale(0.85); opacity: 0; }
+            60%  { transform: scale(1.06); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes lh-status-dot {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(230,126,34,0.45); }
+            50%      { box-shadow: 0 0 0 6px rgba(230,126,34,0); }
+        }
+        @keyframes lh-shimmer {
+            0%   { background-position: -600px 0; }
+            100% { background-position: 600px 0; }
+        }
+
+        /* Page-enter fade intentionally removed — even opacity-only animations on
+           .content appeared to interact with Bootstrap 4 modal backdrop creation
+           in Chromium (symptom: POS modals freezing). Status-badge + notification
+           pulses + row hover still provide enough liveness. If we ever re-add a
+           page-enter effect, apply it to a NEW top-level wrapper, not to .content
+           which is also a modal ancestor. */
+
+        /* Status badges — leaf elements, not modal ancestors → safe. */
+        .badge-soft-success, .badge-soft-warning, .badge-soft-danger,
+        .badge-soft-info, .badge-soft-primary, .badge-soft-dark {
+            animation: lh-badge-pulse 280ms cubic-bezier(.2,.9,.3,1.2) both;
+        }
+
+        /* Header notification dot — leaf element → safe. */
+        #header .btn-status,
+        #header .btn-status-c1 {
+            animation: lh-status-dot 1.6s ease-out infinite;
+        }
+
+        /* Table rows — `tr` is never a modal ancestor. Opt-in via `.lh-hover-rows`
+           plus automatic on `.datatable`. POS cart / thermal receipt untouched. */
+        .datatable tbody tr,
+        .lh-hover-rows tbody tr {
+            transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+        }
+        .datatable tbody tr:hover,
+        .lh-hover-rows tbody tr:hover {
+            background: #fcf5ed !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px -8px rgba(107,47,26,0.18);
+        }
+
+        /* Skeleton shimmer helper — utility class, applied to AJAX targets. */
+        .lh-skeleton {
+            position: relative;
+            color: transparent !important;
+            background: linear-gradient(90deg, #f4f4f6 25%, #fafafa 50%, #f4f4f6 75%);
+            background-size: 1200px 100%;
+            background-repeat: no-repeat;
+            animation: lh-shimmer 1.2s linear infinite;
+            border-radius: 8px;
+            pointer-events: none; user-select: none;
+        }
+        .lh-skeleton * { opacity: 0 !important; }
+
+        /* Button press — leaf elements → safe. */
+        .btn-primary:active,
+        .pos-ix .order-place-btn:active,
+        .lh-btn-primary:active {
+            transition: transform 80ms;
+            transform: translateY(1px) scale(0.995);
+        }
+
+        /* Reduced motion — honor the OS preference. */
+        @media (prefers-reduced-motion: reduce) {
+            .content, main.main > .content, .page-header,
+            .badge-soft-success, .badge-soft-warning, .badge-soft-danger,
+            .badge-soft-info, .badge-soft-primary, .badge-soft-dark,
+            #header .btn-status, #header .btn-status-c1,
+            .lh-skeleton {
+                animation: none !important;
+            }
+            .datatable tbody tr:hover,
+            .lh-hover-rows tbody tr:hover {
+                transform: none !important;
+            }
+        }
+    </style>
 </head>
 
 <body class="footer-offset">
@@ -66,6 +399,7 @@
     <!-- End Content -->
 
     @include('layouts.admin.partials._confirmation-modal')
+    @include('layouts.admin.partials._command-palette')
     <!-- Footer -->
     @include('layouts.admin.partials._footer')
     <!-- End Footer -->
@@ -350,7 +684,7 @@
             type: 'warning',
             showCancelButton: true,
             cancelButtonColor: 'default',
-            confirmButtonColor: '#FC6A57',
+            confirmButtonColor: '#E67E22',
             cancelButtonText: '{{translate("No")}}',
             confirmButtonText:'{{translate("Yes")}}',
             reverseButtons: true
@@ -374,7 +708,7 @@
             type: 'warning',
             showCancelButton: true,
             cancelButtonColor: 'default',
-            confirmButtonColor: '#FC6A57',
+            confirmButtonColor: '#E67E22',
             cancelButtonText: '{{translate("No")}}',
             confirmButtonText: '{{translate("Yes")}}',
             reverseButtons: true
@@ -455,7 +789,7 @@
             text: 'Want to change status',
             type: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#FC6A57',
+            confirmButtonColor: '#E67E22',
             cancelButtonColor: 'default',
             cancelButtonText: '{{translate("No")}}',
             confirmButtonText: '{{translate("Yes")}}',
@@ -562,7 +896,13 @@
     </script>
 <script>
         $(function(){
+            // Guard: if .single-item-slider isn't on the page, or if owlCarousel isn't
+            // registered on $.fn (e.g., a page reloaded jQuery and wiped the plugin),
+            // bail silently. An uncaught throw here was breaking modal event wiring
+            // downstream (modals would open but no handlers bound → couldn't close).
             var owl = $('.single-item-slider');
+            if (!owl.length || typeof owl.owlCarousel !== 'function') return;
+
             owl.owlCarousel({
                 autoplay: false,
                 items:1,
@@ -573,15 +913,10 @@
             });
 
             function counter(event) {
-                var element   = event.target;         // DOM element, in this example .owl-carousel
-                var items     = event.item.count;     // Number of items
-                var item      = event.item.index + 1;     // Position of the current item
-
-                // it loop is true then reset counter from 1
-                if(item > items) {
-                    item = item - items
-                }
-                $('.slide-counter').html(+item+"/"+items)
+                var items = event.item.count;
+                var item  = event.item.index + 1;
+                if (item > items) { item = item - items; }
+                $('.slide-counter').html(+item+"/"+items);
             }
         });
     </script>

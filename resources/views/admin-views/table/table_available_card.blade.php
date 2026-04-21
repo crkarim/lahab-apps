@@ -5,6 +5,9 @@
                 <div class="card-body text-center">
                     <h5 class="card-title">{{ translate('table') }}</h5>
                     <h5 class="card-title">{{ $table['number'] }}</h5>
+                    @if($table['zone'])
+                        <small class="card-subtitle d-block mb-1">{{ $table['zone'] }}</small>
+                    @endif
                     <h5 class="card-title">{{ translate('capacity') }}: {{ $table['capacity'] }}</h5>
                 </div>
             </div>

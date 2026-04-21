@@ -21,18 +21,25 @@
                         <form action="{{route('branch.table.update',[$table['id']])}}" method="post">
                             @csrf
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="number">{{translate('Table Number')}} <span class="text-danger">*</span></label>
                                         <input type="number" name="number" class="form-control" id="number"
                                                placeholder="{{translate('Ex')}} : {{translate('1')}}" value="{{$table->number}}" required>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="form-group">
-                                        <label for="name">{{translate('Table Capacity')}} <span class="text-danger">*</span></label>
+                                        <label for="capacity">{{translate('Table Capacity')}} <span class="text-danger">*</span></label>
                                         <input type="number" name="capacity" class="form-control" id="capacity"
                                                placeholder="{{translate('Ex')}} : {{translate('4')}}" min="1" max="99" value="{{$table->capacity}}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="zone">{{translate('Zone / Floor')}}</label>
+                                        <input type="text" name="zone" class="form-control" id="zone" maxlength="100"
+                                               placeholder="{{translate('Ex')}} : {{translate('Ground Floor')}}" value="{{$table->zone}}">
                                     </div>
                                 </div>
                             </div>

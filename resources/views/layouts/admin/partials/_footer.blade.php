@@ -29,7 +29,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="mailto:rka.mahedi@gmail.com" title="Support: Mahedi · rka.mahedi@gmail.com · 0162001075">
+                    <a href="mailto:rka.mahedi@gmail.com" title="Support: Mahedi · rka.mahedi@gmail.com · 01620010875">
                         <span>{{translate('Support')}}</span>
                         <img width="12" class="avatar-img rounded-0" src="{{asset('public/assets/admin/img/icons/profile.png')}}" alt="Support">
                     </a>

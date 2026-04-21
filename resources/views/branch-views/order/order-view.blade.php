@@ -23,9 +23,11 @@
                     <i class="tio-edit"></i> {{translate('Edit_Order')}}
                 </button>
             @endif
-            <a class="btn btn-primary" href={{route('branch.orders.generate-invoice',[$order['id']])}}>
-                <i class="tio-print"></i> {{translate('Print_Invoice')}}
-            </a>
+            <button type="button" class="btn btn-primary print-receipt-btn"
+                    data-order-id="{{ $order['id'] }}"
+                    data-fragment-url="{{ route('branch.orders.receipt-fragment', [$order['id']]) }}">
+                <i class="tio-print"></i> {{ translate('Print Receipt') }}
+            </button>
         </div>
 
         <div class="row" id="printableArea">
@@ -50,7 +52,7 @@
                                                 <h5 class="text-capitalize">
                                                     <i class="tio-table"></i>
                                                     {{translate('table no')}} : <label
-                                                        class="badge badge-secondary">{{$order->table?$order->table->number:'Table deleted!'}}</label>
+                                                        class="badge badge-secondary">{{$order->table ? $order->table->number . ($order->table->zone ? ' · ' . $order->table->zone : '') : 'Table deleted!'}}</label>
                                                 </h5>
                                             </div>
                                             @if($order['number_of_people'] != null)
@@ -171,7 +173,7 @@
                                     <div class="d-flex gap-3 justify-content-sm-end mb-3 text-capitalize">
                                         {{translate('order')}} {{translate('type')}}
                                         : <label class="badge-soft-info px-2 rounded">
-                                            {{str_replace('_',' ',$order['order_type'])}}
+                                            {{ \App\CentralLogics\Helpers::order_type_label($order['order_type']) }}
                                         </label>
                                     </div>
                                 </div>
@@ -1292,6 +1294,7 @@
         </div>
     </div>
 
+    @include('receipt._modal')
 @endsection
 
 @push('script_2')

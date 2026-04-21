@@ -171,7 +171,10 @@
                                         <a class="btn btn-sm btn-outline-info square-btn"
                                                 href="{{route('branch.orders.details',['id'=>$order['id']])}}"><i
                                                         class="tio-visible"></i></a>
-                                        <button class="btn btn-sm btn-outline-success square-btn print-invoice-button" data-order-id="{{$order->id}}" type="button">
+                                        <button type="button" class="btn btn-sm btn-outline-success square-btn print-receipt-btn"
+                                                data-order-id="{{ $order->id }}"
+                                                data-fragment-url="{{ route('branch.orders.receipt-fragment', [$order->id]) }}"
+                                                title="{{ translate('Print Receipt') }}">
                                             <i class="tio-print"></i>
                                         </button>
                                     </div>
@@ -198,82 +201,6 @@
         </div>
     </div>
 
-    <div class="modal fade" id="print-invoice" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header flex-column">
-                    <div class="w-100 d-flex justify-content-between align-items-center gap-3">
-                        <h5 class="modal-title">{{translate('print')}} {{translate('invoice')}}</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="mt-4">
-                        <center>
-                            <input type="button" class="btn btn-primary non-printable print-button"
-                                value="{{translate('Proceed, If thermal printer is ready.')}}"/>
-                            <a href="{{url()->previous()}}" class="btn btn-danger non-printable">{{translate('Back')}}</a>
-                        </center>
-                        <hr class="non-printable">
-                    </div>
-                </div>
-                <div class="modal-body row custom-modal-body overflow-auto pt-0">
-                    <div class="row custom-print-area-auto" id="printableArea">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    @include('receipt._modal')
 @endsection
 
-@push('script_2')
-    <script>
-        "use strict";
-
-        $('.print-button').click(function() {
-            printDiv('printableArea');
-        });
-
-        $('.print-invoice-button').click(function() {
-            var orderId = $(this).data('order-id');
-            print_invoice(orderId);
-        });
-
-        function print_invoice(order_id) {
-            $.get({
-                url: '{{url('/')}}/branch/pos/invoice/'+order_id,
-                dataType: 'json',
-                beforeSend: function () {
-                    $('#loading').show();
-                },
-                success: function (data) {
-                    console.log("success...")
-                    $('#print-invoice').modal('show');
-                    $('#printableArea').empty().html(data.view);
-                },
-                complete: function () {
-                    $('#loading').hide();
-                },
-            });
-        }
-
-        function printDiv(divName) {
-
-            if($('html').attr('dir') === 'rtl') {
-                $('html').attr('dir', 'ltr')
-                var printContents = document.getElementById(divName).innerHTML;
-                document.body.innerHTML = printContents;
-                $('#printableAreaContent').attr('dir', 'rtl')
-                window.print();
-                $('html').attr('dir', 'rtl')
-                location.reload();
-            }else{
-                var printContents = document.getElementById(divName).innerHTML;
-                document.body.innerHTML = printContents;
-                window.print();
-                location.reload();
-            }
-
-        }
-    </script>
-@endpush

@@ -40,7 +40,12 @@ class SMSModuleController extends Controller
                 }
             }
         }
-        $dataValues= Setting::where('settings_type','sms_config')->whereIn('key_name', ['twilio','nexmo','2factor','msg91', 'signal_wire', 'alphanet_sms'])->get() ?? [];
+        // Bangladesh-only deployment — only AlphaNet SMS is exposed. Twilio/
+        // Nexmo/2Factor/MSG91/SignalWire code stays for historical send logs
+        // but the admin UI only shows AlphaNet.
+        $dataValues = Setting::where('settings_type','sms_config')
+            ->whereIn('key_name', ['alphanet_sms'])
+            ->get() ?? [];
 
         return view('admin-views.business-settings.sms-index',  compact('publishedStatus', 'paymentUrl', 'dataValues'));
     }

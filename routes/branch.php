@@ -73,6 +73,8 @@ Route::group(['namespace' => 'Branch', 'as' => 'branch.', 'middleware' => 'maint
             Route::get('add-delivery-man/{order_id}/{delivery_man_id}', [OrderController::class, 'addDeliveryman'])->name('add-delivery-man');
             Route::get('payment-status', [OrderController::class, 'paymentStatus'])->name('payment-status');
             Route::get('generate-invoice/{id}', [OrderController::class, 'generateInvoice'])->name('generate-invoice');
+            Route::get('{id}/print-receipt', [\App\Http\Controllers\ReceiptController::class, 'printByOrderId'])->name('print-receipt');
+            Route::get('{id}/receipt-fragment', [\App\Http\Controllers\ReceiptController::class, 'fragment'])->name('receipt-fragment');
             Route::post('add-payment-ref-code/{id}', [OrderController::class, 'addPaymentReferenceCode'])->name('add-payment-ref-code');
             Route::get('export-excel', [OrderController::class, 'exportExcel'])->name('export-excel');
             Route::get('ajax-change-delivery-time-date/{order_id}', [OrderController::class, 'changeDeliveryTimeDate'])->name('ajax-change-delivery-time-date');

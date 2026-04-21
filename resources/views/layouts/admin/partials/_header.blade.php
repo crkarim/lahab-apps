@@ -33,6 +33,21 @@
                 <!-- Navbar -->
                 <ul class="navbar-nav align-items-center flex-row">
 
+                    <li class="nav-item d-none d-md-inline-block mr-2">
+                        <button type="button"
+                                class="btn btn-sm d-flex align-items-center gap-2"
+                                style="background:#f2f2f7;border:1px solid #e5e5ea;color:#555;height:34px;padding:0 10px;border-radius:8px;"
+                                onclick="document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true}))"
+                                title="{{ translate('Quick search (⌘K / Ctrl+K)') }}">
+                            <i class="tio-search" style="font-size:14px;"></i>
+                            <span style="color:#888;font-size:12px;">{{ translate('Search') }}</span>
+                            <span style="display:inline-flex;gap:2px;">
+                                <kbd style="background:#fff;border:1px solid #d8d8dd;border-radius:4px;padding:0 4px;font-size:10px;line-height:18px;color:#6a6a70;">⌘</kbd>
+                                <kbd style="background:#fff;border:1px solid #d8d8dd;border-radius:4px;padding:0 4px;font-size:10px;line-height:18px;color:#6a6a70;">K</kbd>
+                            </span>
+                        </button>
+                    </li>
+
                     <li class="nav-item d-none d-sm-inline-block">
                         <div class="hs-unfold">
                             <div class="bg-white p-1 rounded">
@@ -146,7 +161,7 @@
                                     title: '{{translate("Do you want to logout?")}}',
                                     showDenyButton: true,
                                     showCancelButton: true,
-                                    confirmButtonColor: '#FC6A57',
+                                    confirmButtonColor: '#E67E22',
                                     cancelButtonColor: '#363636',
                                     confirmButtonText: '{{translate("Yes")}}',
                                     cancelButtonText: `{{translate('No')}}`,

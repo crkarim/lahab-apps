@@ -290,16 +290,19 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="badge-soft-success px-2 py-1 rounded">{{translate($order['order_type'])}}</span>
+                                    <span class="badge-soft-success px-2 py-1 rounded">{{ \App\CentralLogics\Helpers::order_type_label($order['order_type']) }}</span>
                                 </td>
                                 <td>
                                     <div class="d-flex justify-content-center gap-2">
                                         <a class="btn btn-sm btn-outline-primary square-btn" href="{{route('admin.orders.details',['id'=>$order['id']])}}">
                                             <i class="tio-invisible"></i>
                                         </a>
-                                        <a href="{{route('admin.orders.generate-invoice',[$order['id']])}}" class="btn btn-sm btn-outline-success square-btn" target="_blank">
+                                        <button type="button" class="btn btn-sm btn-outline-success square-btn print-receipt-btn"
+                                                data-order-id="{{ $order['id'] }}"
+                                                data-fragment-url="{{ route('admin.orders.receipt-fragment', [$order['id']]) }}"
+                                                title="{{ translate('Print Receipt') }}">
                                             <i class="tio-print"></i>
-                                        </a>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -325,6 +328,7 @@
             @endif
         </div>
     </div>
+    @include('receipt._modal')
 @endsection
 
 @push('script_2')

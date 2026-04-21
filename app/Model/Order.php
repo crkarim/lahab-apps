@@ -26,6 +26,7 @@ class Order extends Model
         'user_id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'kot_sent_at' => 'datetime',
         'delivery_address' => 'array',
         'table_id' => 'integer',
         'number_of_people' => 'integer',
@@ -60,6 +61,26 @@ class Order extends Model
         return $this->hasMany(OrderDetail::class);
     }
 
+    /**
+     * Is this order's line-up locked against reductions/deletions?
+     *
+     * Business rule: once the kitchen is actively cooking (status=cooking AND
+     * the KOT was sent 5+ minutes ago), existing items can't be removed or
+     * have their quantity reduced — the food is on the grill. Staff can still
+     * ADD items or INCREASE quantity on existing items (delta fires a
+     * supplementary KOT). Everything is permissive in earlier states.
+     */
+    public function isEditLocked(): bool
+    {
+        if ($this->order_status !== 'cooking') {
+            return false;
+        }
+        if (!$this->kot_sent_at) {
+            return false;
+        }
+        return $this->kot_sent_at->lte(now()->subMinutes(5));
+    }
+
     public function delivery_man(): BelongsTo
     {
         return $this->belongsTo(DeliveryMan::class, 'delivery_man_id')->withCount('orders');
@@ -68,6 +89,11 @@ class Order extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id')->withCount('orders');
+    }
+
+    public function placedBy(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'placed_by_admin_id');
     }
 
     public function branch(): BelongsTo

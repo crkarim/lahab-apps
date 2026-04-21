@@ -75,6 +75,7 @@ class TableController extends Controller
                 }),
             ],
             'capacity' => 'required|min:1|max:99',
+            'zone' => 'nullable|string|max:100',
         ], [
             'number.required' => translate('Table number is required!'),
             'number.unique' => translate('Table number is already exist in this branch!'),
@@ -84,6 +85,7 @@ class TableController extends Controller
         $table = $this->table;
         $table->number = $request->number;
         $table->capacity = $request->capacity;
+        $table->zone = $request->zone;
         $table->branch_id = auth('branch')->user()->id;
         $table->is_active = 1;
         $table->save();
@@ -132,6 +134,7 @@ class TableController extends Controller
                 }),
             ],
             'capacity' => 'required|min:1|max:99',
+            'zone' => 'nullable|string|max:100',
         ], [
             'number.required' => translate('Table number is required!'),
             'number.unique' => translate('Table number is already exist in this branch!'),
@@ -141,6 +144,7 @@ class TableController extends Controller
         $table = $this->table->where(['id' => $id, 'branch_id' => auth('branch')->user()->id])->first();
         $table->number = $request->number;
         $table->capacity = $request->capacity;
+        $table->zone = $request->zone;
         $table->update();
 
         Toastr::success(translate('Table updated successfully!'));

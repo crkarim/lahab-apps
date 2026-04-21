@@ -292,9 +292,12 @@
                                         <a class="btn btn-sm btn-outline-info square-btn"
                                         href="{{route('branch.orders.details',['id'=>$order['id']])}}"><i
                                                 class="tio-visible"></i></a>
-                                        <a href="{{route('branch.orders.generate-invoice',[$order['id']])}}" class="btn btn-sm btn-outline-success square-btn" target="_blank">
+                                        <button type="button" class="btn btn-sm btn-outline-success square-btn print-receipt-btn"
+                                                data-order-id="{{ $order['id'] }}"
+                                                data-fragment-url="{{ route('branch.orders.receipt-fragment', [$order['id']]) }}"
+                                                title="{{ translate('Print Receipt') }}">
                                             <i class="tio-print"></i>
-                                        </a>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -318,6 +321,7 @@
         </div>
     </div>
 
+    @include('receipt._modal')
 @endsection
 
 @push('script_2')

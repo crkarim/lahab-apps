@@ -17,6 +17,142 @@
                     </div>
                 </div>
             </div>
+
+            {{-- ───────────────────────────── Today's Snapshot ───────────────────────────── --}}
+            <?php
+                $todayStart    = \Carbon\Carbon::today();
+                $yestStart     = \Carbon\Carbon::yesterday();
+                $ordersToday   = \App\Model\Order::whereDate('created_at', $todayStart)->count();
+                $ordersYest    = \App\Model\Order::whereDate('created_at', $yestStart)->count();
+                $revenueToday  = (float) \App\Model\Order::whereDate('created_at', $todayStart)
+                                    ->where('order_status', '!=', 'canceled')
+                                    ->sum('order_amount');
+                $revenueYest   = (float) \App\Model\Order::whereDate('created_at', $yestStart)
+                                    ->where('order_status', '!=', 'canceled')
+                                    ->sum('order_amount');
+                $aovToday      = $ordersToday > 0 ? ($revenueToday / $ordersToday) : 0;
+                $runningTables = \App\Model\Order::where('order_type', 'dine_in')
+                                    ->where('payment_status', '!=', 'paid')
+                                    ->whereNotIn('order_status', ['completed', 'canceled', 'failed', 'refunded'])
+                                    ->count();
+                $pendingKOT    = \App\Model\Order::whereIn('order_type', ['pos', 'dine_in'])
+                                    ->where('order_status', 'confirmed')
+                                    ->whereNull('kot_sent_at')
+                                    ->count();
+                $pctChange = function ($now, $prev) {
+                    if ($prev == 0) return $now > 0 ? 100 : 0;
+                    return round((($now - $prev) / $prev) * 100);
+                };
+                $ordersPct  = $pctChange($ordersToday,  $ordersYest);
+                $revenuePct = $pctChange($revenueToday, $revenueYest);
+            ?>
+
+            <style>
+                .lh-hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+                @media (max-width: 991px) { .lh-hero { grid-template-columns: repeat(2, 1fr); } }
+                @media (max-width: 575px) { .lh-hero { grid-template-columns: 1fr; } }
+                .lh-tile {
+                    background: #fff; border: 1px solid #eceef0; border-radius: 12px;
+                    padding: 16px 18px; position: relative; overflow: hidden;
+                    transition: transform 120ms ease, box-shadow 120ms ease;
+                }
+                .lh-tile:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.04); }
+                .lh-tile-label { font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase; color: #8e8e93; margin-bottom: 6px; font-weight: 600; }
+                .lh-tile-value { font-size: 26px; font-weight: 700; line-height: 1.1; color: #1a1a1a; }
+                .lh-tile-unit  { font-size: 14px; font-weight: 600; color: #8e8e93; margin-left: 3px; }
+                .lh-tile-delta { font-size: 11px; font-weight: 600; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; }
+                .lh-tile-delta.up   { color: #28a745; }
+                .lh-tile-delta.down { color: #dc3545; }
+                .lh-tile-delta.flat { color: #8e8e93; }
+                .lh-tile-ico {
+                    position: absolute; top: 12px; right: 14px;
+                    width: 34px; height: 34px; border-radius: 10px;
+                    display: inline-flex; align-items: center; justify-content: center;
+                    font-size: 18px; background: #f5f6f8;
+                }
+                .lh-tile.accent-orange .lh-tile-ico { background: rgba(252,106,87,0.12); }
+                .lh-tile.accent-green  .lh-tile-ico { background: rgba(40,167,69,0.12); }
+                .lh-tile.accent-blue   .lh-tile-ico { background: rgba(74,144,226,0.12); }
+                .lh-tile.accent-purple .lh-tile-ico { background: rgba(142,68,173,0.12); }
+
+                .lh-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+                @media (max-width: 767px) { .lh-quick { grid-template-columns: repeat(2, 1fr); } }
+                .lh-quick a {
+                    display: flex; align-items: center; gap: 10px;
+                    padding: 12px 14px; background: #fff; border: 1px solid #eceef0;
+                    border-radius: 12px; color: #1a1a1a; text-decoration: none;
+                    font-weight: 500; font-size: 14px;
+                    transition: border-color 120ms, transform 120ms, box-shadow 120ms;
+                }
+                .lh-quick a:hover { border-color: #E67E22; color: #E67E22; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(230,126,34,0.10); }
+                .lh-quick-ico {
+                    width: 28px; height: 28px; border-radius: 8px;
+                    display: inline-flex; align-items: center; justify-content: center;
+                    background: #f5f6f8; font-size: 14px;
+                }
+            </style>
+
+            <div class="lh-hero">
+                <div class="lh-tile accent-orange">
+                    <span class="lh-tile-ico">📦</span>
+                    <div class="lh-tile-label">{{ translate("Today's Orders") }}</div>
+                    <div class="lh-tile-value">{{ $ordersToday }}</div>
+                    @if($ordersPct > 0)
+                        <div class="lh-tile-delta up">▲ {{ $ordersPct }}% {{ translate('vs yesterday') }}</div>
+                    @elseif($ordersPct < 0)
+                        <div class="lh-tile-delta down">▼ {{ abs($ordersPct) }}% {{ translate('vs yesterday') }}</div>
+                    @else
+                        <div class="lh-tile-delta flat">— {{ translate('same as yesterday') }}</div>
+                    @endif
+                </div>
+
+                <div class="lh-tile accent-green">
+                    <span class="lh-tile-ico">💰</span>
+                    <div class="lh-tile-label">{{ translate("Today's Revenue") }}</div>
+                    <div class="lh-tile-value">{{ \App\CentralLogics\Helpers::set_symbol($revenueToday) }}</div>
+                    @if($revenuePct > 0)
+                        <div class="lh-tile-delta up">▲ {{ $revenuePct }}%</div>
+                    @elseif($revenuePct < 0)
+                        <div class="lh-tile-delta down">▼ {{ abs($revenuePct) }}%</div>
+                    @else
+                        <div class="lh-tile-delta flat">—</div>
+                    @endif
+                </div>
+
+                <div class="lh-tile accent-blue">
+                    <span class="lh-tile-ico">📊</span>
+                    <div class="lh-tile-label">{{ translate('Avg Order Value') }}</div>
+                    <div class="lh-tile-value">{{ \App\CentralLogics\Helpers::set_symbol($aovToday) }}</div>
+                    <div class="lh-tile-delta flat">{{ translate('today') }}</div>
+                </div>
+
+                <div class="lh-tile accent-purple">
+                    <span class="lh-tile-ico">🍽</span>
+                    <div class="lh-tile-label">{{ translate('Running Tables') }}</div>
+                    <div class="lh-tile-value">{{ $runningTables }}</div>
+                    @if($pendingKOT > 0)
+                        <div class="lh-tile-delta down">{{ $pendingKOT }} {{ translate('need KOT') }}</div>
+                    @else
+                        <div class="lh-tile-delta up">✓ {{ translate('all sent') }}</div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="lh-quick">
+                <a href="{{ route('admin.pos.index') }}">
+                    <span class="lh-quick-ico">🛒</span>{{ translate('New Sale') }}
+                </a>
+                <a href="{{ route('admin.pos.orders') }}">
+                    <span class="lh-quick-ico">📦</span>{{ translate('In-Restaurant Orders') }}
+                </a>
+                <a href="{{ route('admin.table.order.running') }}">
+                    <span class="lh-quick-ico">🍽</span>{{ translate('Running Tables') }}
+                </a>
+                <a href="{{ route('admin.product.add-new') }}">
+                    <span class="lh-quick-ico">➕</span>{{ translate('Add Product') }}
+                </a>
+            </div>
+
             @if(Helpers::module_permission_check(MANAGEMENT_SECTION['dashboard_management']))
 
             <div class="card card-body mb-3">

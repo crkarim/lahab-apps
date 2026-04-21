@@ -38,6 +38,9 @@
                                 <div class="card-body mx-3 position-relative text-center">
                                     <h3 class="card-title mb-2">{{ translate('table') }}</h3>
                                     <h5 class="card-title mb-1">{{ $table['number'] }}</h5>
+                                    @if($table['zone'])
+                                        <small class="card-subtitle d-block mb-1">{{ $table['zone'] }}</small>
+                                    @endif
                                     <h5 class="card-title mb-1">{{ translate('capacity') }}: {{ $table['capacity'] }}</h5>
                                 </div>
                             </div>

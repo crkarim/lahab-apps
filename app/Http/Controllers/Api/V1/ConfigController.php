@@ -257,9 +257,12 @@ class ConfigController extends Controller
             return [];
         }
 
+        // Bangladesh-only deployment — customer-facing mobile apps only see
+        // gateways that work here. Keeps the list in lockstep with the admin
+        // UI at BusinessSettingsController@paymentMethod.
         $methods = DB::table('addon_settings')
             ->whereIn('settings_type', ['payment_config'])
-            ->whereIn('key_name', ['ssl_commerz','paypal','stripe','razor_pay','senang_pay','paystack','paymob_accept','flutterwave','bkash','mercadopago'])
+            ->whereIn('key_name', ['bkash', 'ssl_commerz'])
             ->get();
 
         $env = env('APP_MODE') == 'live' ? 'live' : 'test';

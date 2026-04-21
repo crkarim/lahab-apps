@@ -334,8 +334,12 @@ class BusinessSettingsController extends Controller
             }
         }
 
+        // Bangladesh-only deployment — expose only the gateways that actually
+        // support BDT and have local merchant support. PayPal/Stripe/Razorpay/
+        // SenangPay/Paystack/Paymob/Flutterwave/MercadoPago code stays in the
+        // codebase for historical orders but is hidden from the admin UI.
         $data_values = Setting::whereIn('settings_type', ['payment_config'])
-            ->whereIn('key_name', ['ssl_commerz', 'paypal', 'stripe', 'razor_pay', 'senang_pay', 'paystack', 'paymob_accept', 'flutterwave', 'bkash', 'mercadopago'])
+            ->whereIn('key_name', ['bkash', 'ssl_commerz'])
             ->get();
 
         return view('admin-views.business-settings.payment-index', compact('published_status', 'payment_url', 'data_values'));

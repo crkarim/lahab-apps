@@ -40,7 +40,7 @@
 <div class="footer text-center">
     <ul class="list-inline list-separator">
         <li class="list-inline-item">
-            <a class="list-separator-link" href="mailto:rka.mahedi@gmail.com">{{ translate('Support') }}: Mahedi · rka.mahedi@gmail.com · 0162001075</a>
+            <a class="list-separator-link" href="mailto:rka.mahedi@gmail.com">{{ translate('Support') }}: Mahedi · rka.mahedi@gmail.com · 01620010875</a>
         </li>
     </ul>
 </div>

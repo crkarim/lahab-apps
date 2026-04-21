@@ -18,6 +18,9 @@
                             <div class="card-body text-center {{ $table['order'] != null ? 'bg-danger' : 'bg-gray'}}">
                                 <h5 class="card-title">{{ translate('table') }}</h5>
                                 <h5 class="card-title">{{ $table['number'] }}</h5>
+                                @if($table['zone'])
+                                    <small class="d-block mb-1">{{ $table['zone'] }}</small>
+                                @endif
                                 <h5 class="card-title">{{ translate('capacity') }}: {{ $table['capacity'] }}</h5>
                                 <button type="button" class="btn btn-primary" data-toggle="collapse" data-target="#demo_{{$table->id}}">Show Orders</button>
                             </div>

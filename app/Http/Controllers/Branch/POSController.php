@@ -515,9 +515,10 @@ class POSController extends Controller
         $order->id = $orderId;
 
         $order->user_id = session()->get('customer_id') ?? null;
+        // Branch-panel orders attribute to the branch itself (rendered as "Branch: <name>" on KOT).
         $order->coupon_discount_title = $request->coupon_discount_title == 0 ? null : 'coupon_discount_title';
-        $order->payment_status = ($orderType == 'take_away') ? 'paid' : (($orderType == 'dine_in' && $request->type != 'pay_after_eating') ? 'paid' : 'unpaid');
-        $order->order_status = $orderType == 'take_away' ? 'delivered' : 'confirmed' ;
+        $order->payment_status = 'unpaid';
+        $order->order_status = 'confirmed';
         $order->order_type = ($orderType == 'take_away') ? 'pos' : (($orderType == 'dine_in') ? 'dine_in' : (($orderType == 'home_delivery') ? 'delivery' : null));
         $order->payment_method = $request->type;
         $order->transaction_reference = $request->transaction_reference ?? null;

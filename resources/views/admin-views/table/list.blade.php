@@ -20,21 +20,28 @@
                     <div class="card">
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-group">
                                         <label for="number">{{translate('Table_Number')}} <span class="text-danger">*</span></label>
                                         <input type="number" name="number" class="form-control" id="number"
                                             placeholder="{{translate('Ex')}} : {{translate('1')}}" value="{{old('number')}}" required>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <div class="form-group">
-                                        <label for="name">{{translate('Table Capacity')}} <span class="text-danger">*</span></label>
+                                        <label for="capacity">{{translate('Table Capacity')}} <span class="text-danger">*</span></label>
                                         <input type="number" name="capacity" class="form-control" id="capacity"
                                             placeholder="{{translate('Ex')}} : {{translate('4')}}" min="1" max="99" value="{{old('capacity')}}" required>
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="zone">{{translate('Zone / Floor')}}</label>
+                                        <input type="text" name="zone" class="form-control" id="zone" maxlength="100"
+                                            placeholder="{{translate('Ex')}} : {{translate('Ground Floor')}}" value="{{old('zone')}}">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
                                     <div class="form-group">
                                         <label class="input-label" for="exampleFormControlSelect1">{{translate('Select_Branch')}} <span class="text-danger">*</span></label>
                                         <select name="branch_id" class="custom-select" required>
@@ -85,6 +92,7 @@
                                     <th>{{translate('SL')}}</th>
                                     <th>{{translate('Table Number')}}</th>
                                     <th>{{translate('Table Capacity')}}</th>
+                                    <th>{{translate('Zone / Floor')}}</th>
                                     <th>{{translate('Branch')}}</th>
                                     <th>{{translate('Status')}}</th>
                                     <th class="text-center">{{translate('action')}}</th>
@@ -96,6 +104,7 @@
                                         <th scope="row">{{$tables->firstitem()+$k}}</th>
                                         <td>{{$table['number']}}</td>
                                         <td>{{$table['capacity']}}</td>
+                                        <td>{{$table['zone'] ?: '—'}}</td>
                                         <td class="{{ $table?->branch?->name? '' : 'text-danger' }}">{{$table?->branch?->name ?? translate('Branch Deleted')}}</td>
                                         <td>
                                             <label class="switcher">
