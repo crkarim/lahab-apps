@@ -1,0 +1,79 @@
+name: Deploy to cPanel
+
+# Runs on every push to main, and on-demand from the Actions tab.
+# Installs composer deps in the GitHub runner (so the server doesn't need
+# composer access), then uploads the whole app over FTPS.
+#
+# Requires GitHub Secrets:
+#   FTP_PASSWORD — the password for the FTP account lahab@office.lahab.com.bd
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up PHP 8.2 with composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: mbstring, bcmath, gd, intl, exif, pdo_mysql, zip, mysqli
+
+      - name: Install composer dependencies (prod)
+        run: composer install --no-dev --optimize-autoloader --no-progress --prefer-dist --no-interaction
+
+      - name: Deploy via FTPS (explicit TLS on port 21)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftp.lazpos.xyz
+          username: lahab@office.lahab.com.bd
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          # App lives at /home/lazpo23/office.lahab.com.bd/ on the server —
+          # relative path from FTP root (which lands you at the account home).
+          local-dir: ./
+          server-dir: ./office.lahab.com.bd/
+          # Preserve server-owned files and long-lived state. The action only
+          # uploads files that changed; the excludes make sure these survive:
+          #   .env            — live credentials
+          #   storage/app/public/* — user uploads (logos, product images, etc.)
+          #   storage/logs/*  — runtime logs
+          #   storage/framework/* — cache/sessions/views
+          #   installation/backup/* — DB backup that the wizard produces
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            node_modules/**
+            tests/**
+            Tests/**
+            *.md
+            .editorconfig
+            .styleci.yml
+            phpunit.xml
+            .env
+            .env.backup
+            .env.production
+            .env.example
+            Dockerfile
+            docker-compose.yml
+            storage/logs/**
+            storage/framework/cache/**
+            storage/framework/sessions/**
+            storage/framework/views/**
+            storage/app/public/restaurant/**
+            storage/app/public/product/**
+            storage/app/public/users/**
+            storage/app/public/admin/**
+            storage/app/public/delivery-man/**
+            storage/app/public/payment_modules/**
+            storage/app/public/loyalty/**
+            installation/backup/**
