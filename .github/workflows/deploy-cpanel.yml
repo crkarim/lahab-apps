@@ -1,11 +1,18 @@
 name: Deploy to cPanel
 
-# Runs on every push to main, and on-demand from the Actions tab.
-# Installs composer deps in the GitHub runner (so the server doesn't need
-# composer access), then uploads the whole app over FTPS.
+# SFTP deploy (port 22) via lftp mirror.
 #
-# Requires GitHub Secrets:
-#   FTP_PASSWORD — the password for the FTP account lahab@office.lahab.com.bd
+# Why SFTP over FTPS: plain FTP on port 21 times out from GitHub Actions IPs
+# on many shared hosts — the control socket can't even connect. Port 22 (SFTP)
+# rides on SSH and is almost always reachable from any IP.
+#
+# Required GitHub Secrets:
+#   SFTP_PASSWORD  — the cPanel login password (same password as SSH access)
+#
+# Adjust if needed:
+#   SFTP_HOST — the cPanel server hostname or the domain
+#   SFTP_USER — the main cPanel username (NOT the per-domain FTP email)
+#   SFTP_PORT — 22 for most hosts; some use 2222
 
 on:
   push:
@@ -29,51 +36,54 @@ jobs:
       - name: Install composer dependencies (prod)
         run: composer install --no-dev --optimize-autoloader --no-progress --prefer-dist --no-interaction
 
-      - name: Deploy via FTPS (explicit TLS on port 21)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ftp.lazpos.xyz
-          username: lahab@office.lahab.com.bd
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          # App lives at /home/lazpo23/office.lahab.com.bd/ on the server —
-          # relative path from FTP root (which lands you at the account home).
-          local-dir: ./
-          server-dir: ./office.lahab.com.bd/
-          # Preserve server-owned files and long-lived state. The action only
-          # uploads files that changed; the excludes make sure these survive:
-          #   .env            — live credentials
-          #   storage/app/public/* — user uploads (logos, product images, etc.)
-          #   storage/logs/*  — runtime logs
-          #   storage/framework/* — cache/sessions/views
-          #   installation/backup/* — DB backup that the wizard produces
-          exclude: |
-            **/.git*
-            **/.git*/**
-            .github/**
-            node_modules/**
-            tests/**
-            Tests/**
-            *.md
-            .editorconfig
-            .styleci.yml
-            phpunit.xml
-            .env
-            .env.backup
-            .env.production
-            .env.example
-            Dockerfile
-            docker-compose.yml
-            storage/logs/**
-            storage/framework/cache/**
-            storage/framework/sessions/**
-            storage/framework/views/**
-            storage/app/public/restaurant/**
-            storage/app/public/product/**
-            storage/app/public/users/**
-            storage/app/public/admin/**
-            storage/app/public/delivery-man/**
-            storage/app/public/payment_modules/**
-            storage/app/public/loyalty/**
-            installation/backup/**
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+
+      - name: Deploy via SFTP (lftp mirror)
+        env:
+          SFTP_HOST: ftp.lazpos.xyz
+          SFTP_PORT: 22
+          SFTP_USER: lazpo23
+          SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
+          REMOTE_DIR: /home/lazpo23/office.lahab.com.bd
+        run: |
+          # --delete is intentionally OFF so user uploads + .env never vanish.
+          # Each exclude is applied to source paths (relative to repo root).
+          lftp <<LFTPEOF
+          set ssl:verify-certificate no
+          set sftp:auto-confirm yes
+          set net:timeout 30
+          set net:max-retries 2
+          set mirror:parallel-transfer-count 4
+          open -u "$SFTP_USER","$SFTP_PASS" -p $SFTP_PORT sftp://$SFTP_HOST
+          mirror -R -v --parallel=4 \
+            --exclude-glob .git/ \
+            --exclude-glob .github/ \
+            --exclude-glob node_modules/ \
+            --exclude-glob tests/ \
+            --exclude-glob Tests/ \
+            --exclude-glob '*.md' \
+            --exclude-glob .editorconfig \
+            --exclude-glob .styleci.yml \
+            --exclude-glob phpunit.xml \
+            --exclude-glob .env \
+            --exclude-glob .env.backup \
+            --exclude-glob .env.production \
+            --exclude-glob .env.example \
+            --exclude-glob Dockerfile \
+            --exclude-glob docker-compose.yml \
+            --exclude-glob storage/logs/ \
+            --exclude-glob storage/framework/cache/ \
+            --exclude-glob storage/framework/sessions/ \
+            --exclude-glob storage/framework/views/ \
+            --exclude-glob storage/app/public/restaurant/ \
+            --exclude-glob storage/app/public/product/ \
+            --exclude-glob storage/app/public/users/ \
+            --exclude-glob storage/app/public/admin/ \
+            --exclude-glob storage/app/public/delivery-man/ \
+            --exclude-glob storage/app/public/payment_modules/ \
+            --exclude-glob storage/app/public/loyalty/ \
+            --exclude-glob installation/backup/ \
+            . "$REMOTE_DIR/"
+          bye
+          LFTPEOF
