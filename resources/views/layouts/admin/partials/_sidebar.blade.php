@@ -119,10 +119,16 @@
                                             <span class="text-truncate">{{ translate('Products') }}</span>
                                         </a>
                                     </li>
-                                    <li class="nav-item {{ Request::is('admin/category*') ? 'active' : '' }}">
+                                    <li class="nav-item {{ Request::is('admin/category') || Request::is('admin/category/add') || Request::is('admin/category/edit*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('admin.category.add') }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span class="text-truncate">{{ translate('Categories') }}</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item {{ Request::is('admin/category/add-sub-category*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.category.add-sub-category') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('Sub Categories') }}</span>
                                         </a>
                                     </li>
                                     <li class="nav-item {{ Request::is('admin/cuisine*') ? 'active' : '' }}">
