@@ -23,7 +23,10 @@ jobs:
       - name: Deploy (pull + build on server)
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ftp.lazpos.xyz
+          # ftp.lazpos.xyz resolves to an AWS edge IP that only proxies FTP.
+          # SSH has to go to the actual cPanel server — same host we see in
+          # the /cpsess... URL when we log into cPanel.
+          host: p701.serverdiana.com
           username: lazpo23
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
