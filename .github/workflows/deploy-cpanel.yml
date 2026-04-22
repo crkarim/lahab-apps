@@ -32,27 +32,34 @@ jobs:
           script_stop: true
           script: |
             set -e
+
+            # Absolute paths — appleboy/ssh-action uses a non-login shell that
+            # doesn't source cPanel's PATH. Confirmed via `which` on 2026-04-22.
+            GIT=/usr/local/cpanel/3rdparty/lib/path-bin/git
+            PHP=/usr/local/bin/php
+            COMPOSER=/opt/cpanel/composer/bin/composer
+
             cd ~/office.lahab.com.bd
 
             echo "==> Pulling latest code"
-            git fetch origin main
-            git reset --hard origin/main
+            $GIT fetch origin main
+            $GIT reset --hard origin/main
 
             echo "==> Composer install (prod, optimized)"
-            composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+            $COMPOSER install --no-dev --optimize-autoloader --no-interaction --no-progress
 
             echo "==> Clearing stale caches"
-            php artisan config:clear || true
-            php artisan route:clear || true
-            php artisan view:clear || true
+            $PHP artisan config:clear || true
+            $PHP artisan route:clear || true
+            $PHP artisan view:clear || true
 
             echo "==> Running migrations"
-            php artisan migrate --force
+            $PHP artisan migrate --force
 
             echo "==> Rebuilding caches"
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
+            $PHP artisan config:cache
+            $PHP artisan route:cache
+            $PHP artisan view:cache
 
             echo "==> Storage permissions"
             chmod -R 755 storage bootstrap/cache
