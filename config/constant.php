@@ -1,5 +1,11 @@
 <?php
 
+// Guard: this file defines 24 bare `const` statements at global scope, so it
+// fails with "Constant DEMO already defined" if loaded twice — which happens
+// during `artisan config:cache` (the command boots the app once, then re-
+// loads every config file to serialize to bootstrap/cache/config.php).
+// Returning early on re-entry makes the file idempotent.
+if (defined('DEMO')) { return; }
 
 //app mood
 const DEMO = 'demo';
