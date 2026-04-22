@@ -1,18 +1,15 @@
 name: Deploy to cPanel
 
-# SFTP deploy (port 22) via lftp mirror.
+# SSH-based deploy. GitHub Actions connects to the cPanel server with a
+# persistent SSH key (stored in ~/.ssh/authorized_keys on the server) and
+# runs git pull + composer install + artisan migrate DIRECTLY ON THE SERVER.
 #
-# Why SFTP over FTPS: plain FTP on port 21 times out from GitHub Actions IPs
-# on many shared hosts — the control socket can't even connect. Port 22 (SFTP)
-# rides on SSH and is almost always reachable from any IP.
+# This survives any future changes to SSH password policy or terminal access,
+# because authorized_keys auth is independent of the account password.
 #
 # Required GitHub Secrets:
-#   SFTP_PASSWORD  — the cPanel login password (same password as SSH access)
-#
-# Adjust if needed:
-#   SFTP_HOST — the cPanel server hostname or the domain
-#   SFTP_USER — the main cPanel username (NOT the per-domain FTP email)
-#   SFTP_PORT — 22 for most hosts; some use 2222
+#   SSH_PRIVATE_KEY — the private key generated on the server as
+#                     ~/.ssh/gh_actions_deploy (full -----BEGIN...----- block)
 
 on:
   push:
@@ -23,67 +20,41 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up PHP 8.2 with composer
-        uses: shivammathur/setup-php@v2
+      - name: Deploy (pull + build on server)
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          php-version: '8.2'
-          tools: composer:v2
-          extensions: mbstring, bcmath, gd, intl, exif, pdo_mysql, zip, mysqli
+          host: ftp.lazpos.xyz
+          username: lazpo23
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 10m
+          script_stop: true
+          script: |
+            set -e
+            cd ~/office.lahab.com.bd
 
-      - name: Install composer dependencies (prod)
-        run: composer install --no-dev --optimize-autoloader --no-progress --prefer-dist --no-interaction
+            echo "==> Pulling latest code"
+            git fetch origin main
+            git reset --hard origin/main
 
-      - name: Install lftp
-        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+            echo "==> Composer install (prod, optimized)"
+            composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 
-      - name: Deploy via SFTP (lftp mirror)
-        env:
-          SFTP_HOST: ftp.lazpos.xyz
-          SFTP_PORT: 22
-          SFTP_USER: lazpo23
-          SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
-          REMOTE_DIR: /home/lazpo23/office.lahab.com.bd
-        run: |
-          # --delete is intentionally OFF so user uploads + .env never vanish.
-          # Each exclude is applied to source paths (relative to repo root).
-          lftp <<LFTPEOF
-          set ssl:verify-certificate no
-          set sftp:auto-confirm yes
-          set net:timeout 30
-          set net:max-retries 2
-          set mirror:parallel-transfer-count 4
-          open -u "$SFTP_USER","$SFTP_PASS" -p $SFTP_PORT sftp://$SFTP_HOST
-          mirror -R -v --parallel=4 \
-            --exclude-glob .git/ \
-            --exclude-glob .github/ \
-            --exclude-glob node_modules/ \
-            --exclude-glob tests/ \
-            --exclude-glob Tests/ \
-            --exclude-glob '*.md' \
-            --exclude-glob .editorconfig \
-            --exclude-glob .styleci.yml \
-            --exclude-glob phpunit.xml \
-            --exclude-glob .env \
-            --exclude-glob .env.backup \
-            --exclude-glob .env.production \
-            --exclude-glob .env.example \
-            --exclude-glob Dockerfile \
-            --exclude-glob docker-compose.yml \
-            --exclude-glob storage/logs/ \
-            --exclude-glob storage/framework/cache/ \
-            --exclude-glob storage/framework/sessions/ \
-            --exclude-glob storage/framework/views/ \
-            --exclude-glob storage/app/public/restaurant/ \
-            --exclude-glob storage/app/public/product/ \
-            --exclude-glob storage/app/public/users/ \
-            --exclude-glob storage/app/public/admin/ \
-            --exclude-glob storage/app/public/delivery-man/ \
-            --exclude-glob storage/app/public/payment_modules/ \
-            --exclude-glob storage/app/public/loyalty/ \
-            --exclude-glob installation/backup/ \
-            . "$REMOTE_DIR/"
-          bye
-          LFTPEOF
+            echo "==> Clearing stale caches"
+            php artisan config:clear || true
+            php artisan route:clear || true
+            php artisan view:clear || true
+
+            echo "==> Running migrations"
+            php artisan migrate --force
+
+            echo "==> Rebuilding caches"
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            echo "==> Storage permissions"
+            chmod -R 755 storage bootstrap/cache
+
+            echo "==> Deploy complete at $(date)"
