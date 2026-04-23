@@ -13,9 +13,21 @@ use Brian2694\Toastr\Facades\Toastr;
 
 class EmailTemplateController extends Controller
 {
-    public function emailIndex(Request $request,$type,$tab)
+    public function emailIndex(Request $request, $type, $tab = null)
     {
-        $template = $request->query('template',null);
+        // The route defines $tab as optional but the method originally required
+        // it, so /admin/business-settings/email-setup/user (no tab) threw
+        // ArgumentCountError and 500'd. Default $tab to the first sensible
+        // sub-tab per type and render that directly.
+        $defaultTabByType = [
+            'user'        => 'new-order',
+            'deliveryman' => 'registration',
+        ];
+        if ($tab === null || $tab === '') {
+            $tab = $defaultTabByType[$type] ?? 'new-order';
+        }
+
+        $template = $request->query('template', null);
 
         //user
         if ($tab == 'new-order') {
@@ -33,6 +45,11 @@ class EmailTemplateController extends Controller
         } else if ($tab == 'deny') {
             return view('admin-views.business-settings.email-format-setting.'.$type.'-email-formats.deny-format',compact('template'));
         }
+
+        // Unknown tab for this type — fall back to the type's default so
+        // the page still renders rather than a blank 200.
+        $fallback = $defaultTabByType[$type] ?? 'new-order';
+        return redirect()->route('admin.business-settings.email-setup', ['type' => $type, 'tab' => $fallback]);
     }
 
     /**
