@@ -80,7 +80,8 @@
             "app/CentralLogics/FileUploader.php",
             "app/CentralLogics/CouponLogic.php",
             "app/Library/Constant.php",
-            "app/Library/Responses.php"
+            "app/Library/Responses.php",
+            "config/constant.php"
         ],
         "psr-4": {
             "App\\": "app/",

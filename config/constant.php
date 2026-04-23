@@ -1,28 +1,27 @@
 <?php
 
-// Guard: this file defines 24 bare `const` statements at global scope, so it
-// fails with "Constant DEMO already defined" if loaded twice — which happens
-// during `artisan config:cache` (the command boots the app once, then re-
-// loads every config file to serialize to bootstrap/cache/config.php).
-// Returning early on re-entry makes the file idempotent.
-if (defined('DEMO')) { return; }
+// This file defines global PHP constants used across the admin panel. It's
+// registered via composer.json's autoload.files, so it runs on every request
+// regardless of Laravel's config cache (unlike `const` statements in config
+// files, which do NOT survive config:cache).
+//
+// Each constant uses the `defined() || define()` pattern so the file is
+// safely re-entrant — Laravel's config discovery will still attempt to
+// include this file at boot, so we MUST be idempotent.
 
 //app mood
-const DEMO = 'demo';
-const DEV = 'dev';
-const LIVE = 'live';
+defined('DEMO') || define('DEMO', 'demo');
+defined('DEV')  || define('DEV',  'dev');
+defined('LIVE') || define('LIVE', 'live');
 
-//
-const EXAMPLE_MAIL = 'example@example.com';
+defined('EXAMPLE_MAIL') || define('EXAMPLE_MAIL', 'example@example.com');
 
 //status
-const ACTIVE = 'active';
-const INACTIVE = 'inactive';
-
+defined('ACTIVE')   || define('ACTIVE',   'active');
+defined('INACTIVE') || define('INACTIVE', 'inactive');
 
 //management section
-
-const MANAGEMENT_SECTION = [
+defined('MANAGEMENT_SECTION') || define('MANAGEMENT_SECTION', [
     'dashboard_management' => 'dashboard_management',
     'pos_management' => 'pos_management',
     'order_management' => 'order_management',
@@ -33,30 +32,28 @@ const MANAGEMENT_SECTION = [
     'user_management' => 'user_management',
     'table_management' => 'table_management',
     'system_management' => 'system_management',
-];
+]);
 
-const CACHE_BUSINESS_SETTINGS_TABLE = 'cache_business_settings_table';
-const CACHE_LOGIN_SETUP_TABLE = 'cache_login_setup_table';
-const CATEGORIES_WITH_CHILDES = 'categories_with_childes';
-
+defined('CACHE_BUSINESS_SETTINGS_TABLE') || define('CACHE_BUSINESS_SETTINGS_TABLE', 'cache_business_settings_table');
+defined('CACHE_LOGIN_SETUP_TABLE')       || define('CACHE_LOGIN_SETUP_TABLE',       'cache_login_setup_table');
+defined('CATEGORIES_WITH_CHILDES')       || define('CATEGORIES_WITH_CHILDES',       'categories_with_childes');
 
 //order status
+defined('PENDING')          || define('PENDING',          'pending');
+defined('CONFIRMED')        || define('CONFIRMED',        'confirmed');
+defined('PROCESSING')       || define('PROCESSING',       'processing');
+defined('OUT_FOR_DELIVERY') || define('OUT_FOR_DELIVERY', 'out_for_delivery');
+defined('DELIVERED')        || define('DELIVERED',        'delivered');
+defined('RETURNED')         || define('RETURNED',         'returned');
+defined('FAILED')           || define('FAILED',           'failed');
+defined('CANCELED')         || define('CANCELED',         'canceled');
+defined('COOKING')          || define('COOKING',          'cooking');
+defined('COMPLETED')        || define('COMPLETED',        'completed');
 
-const PENDING = 'pending';
-const CONFIRMED = 'confirmed';
-const PROCESSING = 'processing';
-const OUT_FOR_DELIVERY = 'out_for_delivery';
-const DELIVERED = 'delivered';
-const RETURNED = 'returned';
-const FAILED = 'failed';
-const CANCELED = 'canceled';
-const COOKING = 'cooking';
-const COMPLETED = 'completed';
+defined('ADD_WALLET_MESSAGE')       || define('ADD_WALLET_MESSAGE',       'add_wallet_message');
+defined('ADD_WALLET_BONUS_MESSAGE') || define('ADD_WALLET_BONUS_MESSAGE', 'add_wallet_bonus_message');
 
-const ADD_WALLET_MESSAGE = 'add_wallet_message';
-const ADD_WALLET_BONUS_MESSAGE = 'add_wallet_bonus_message';
-
-const PAYMENT_GATEWAY_IMAGE_ARRAY = [
+defined('PAYMENT_GATEWAY_IMAGE_ARRAY') || define('PAYMENT_GATEWAY_IMAGE_ARRAY', [
     'ssl_commerz_payment' => 'ssl.png',
     'razor_pay' => 'razor_pay.png',
     'paypal' => 'paypal.png',
@@ -66,9 +63,9 @@ const PAYMENT_GATEWAY_IMAGE_ARRAY = [
     'paymob' => 'paymob.png',
     'flutterwave' => 'flutterwave.png',
     'mercadopago' => 'mercadopago.png',
-];
+]);
 
-const TELEPHONE_CODES = [
+defined('TELEPHONE_CODES') || define('TELEPHONE_CODES', [
     ["name" => 'UK (+44)', "code" => '44'],
     ["name" => 'USA (+1)', "code" => '1'],
     ["name" => 'Algeria (+213)', "code" => '213'],
@@ -282,4 +279,4 @@ const TELEPHONE_CODES = [
     ["name" => 'Yemen (South)(+967)', "code" => '967'],
     ["name" => 'Zambia (+260)', "code" => '260'],
     ["name" => 'Zimbabwe (+263)', "code" => '263'],
-];
+]);
