@@ -11,8 +11,8 @@ return new class extends Migration {
                 'method_name'         => 'bKash',
                 'payment_note'        => 'Send to 01XXXXXXXXX and enter the transaction ID.',
                 'method_fields'       => json_encode([
-                    ['field_name' => 'sender_number', 'placeholder' => 'Sender Mobile Number'],
-                    ['field_name' => 'trx_id',        'placeholder' => 'Transaction ID'],
+                    ['field_name' => 'sender_number', 'field_data' => 'Sender Mobile Number'],
+                    ['field_name' => 'trx_id',        'field_data' => 'Transaction ID'],
                 ]),
                 'method_informations' => json_encode([]),
                 'status'              => 1,
@@ -21,8 +21,8 @@ return new class extends Migration {
                 'method_name'         => 'Nagad',
                 'payment_note'        => 'Send to 01XXXXXXXXX and enter the transaction ID.',
                 'method_fields'       => json_encode([
-                    ['field_name' => 'sender_number', 'placeholder' => 'Sender Mobile Number'],
-                    ['field_name' => 'trx_id',        'placeholder' => 'Transaction ID'],
+                    ['field_name' => 'sender_number', 'field_data' => 'Sender Mobile Number'],
+                    ['field_name' => 'trx_id',        'field_data' => 'Transaction ID'],
                 ]),
                 'method_informations' => json_encode([]),
                 'status'              => 1,
@@ -31,8 +31,8 @@ return new class extends Migration {
                 'method_name'         => 'Rocket',
                 'payment_note'        => 'Send to 01XXXXXXXXX and enter the transaction ID.',
                 'method_fields'       => json_encode([
-                    ['field_name' => 'sender_number', 'placeholder' => 'Sender Mobile Number'],
-                    ['field_name' => 'trx_id',        'placeholder' => 'Transaction ID'],
+                    ['field_name' => 'sender_number', 'field_data' => 'Sender Mobile Number'],
+                    ['field_name' => 'trx_id',        'field_data' => 'Transaction ID'],
                 ]),
                 'method_informations' => json_encode([]),
                 'status'              => 1,
