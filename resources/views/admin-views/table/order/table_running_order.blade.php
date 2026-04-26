@@ -237,94 +237,152 @@
                                         <span class="badge {{ $statusBadgeClass }}"><span class="legend-indicator {{ $indicatorClass }}"></span>{{ $statusLabel }}</span>
                                     </td>
                                     <td>
-                                        {{-- Inline action toolbar. Buttons are gated by status
-                                             and order type so the operator only sees what's
-                                             actually applicable for the row. The .lh-row-action
-                                             class on each control prevents the row-click
-                                             handler from also navigating to details. --}}
-                                        <div class="d-flex justify-content-center align-items-center gap-1 flex-wrap">
-                                            @switch($order->order_status)
-                                                @case('pending')
-                                                @case('confirmed')
-                                                    <a class="btn btn-sm btn-outline-warning lh-row-action route-alert"
-                                                       href="javascript:"
-                                                       data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'cooking']) }}"
-                                                       data-message="{{ translate('Start cooking this order?') }}"
-                                                       title="{{ translate('Start Cooking') }}">
-                                                        <i class="tio-fire"></i>
-                                                    </a>
-                                                    @break
-                                                @case('cooking')
-                                                    <a class="btn btn-sm btn-outline-success lh-row-action route-alert"
-                                                       href="javascript:"
-                                                       data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'done']) }}"
-                                                       data-message="{{ $isTakeAwayRow ? translate('Mark food as ready for handover?') : translate('Mark food as ready to serve?') }}"
-                                                       title="{{ $isTakeAwayRow ? translate('Mark Ready for Handover') : translate('Mark Ready') }}">
-                                                        <i class="tio-done"></i>
-                                                    </a>
-                                                    @break
-                                                @case('done')
-                                                    @if($isTakeAwayRow)
-                                                        <a class="btn btn-sm btn-success lh-row-action route-alert"
-                                                           href="javascript:"
-                                                           data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'completed']) }}"
-                                                           data-message="{{ translate('Mark this order as handed over to the customer?') }}"
-                                                           title="{{ translate('Mark Handed Over') }}">
-                                                            <i class="tio-checkmark-circle"></i>
-                                                        </a>
-                                                    @elseif($isDineInRow)
-                                                        {{-- Dine-in checkout needs the modal on
-                                                             the details page (split payments etc.). --}}
-                                                        <a class="btn btn-sm btn-success lh-row-action"
-                                                           href="{{ route('admin.orders.details', ['id' => $order['id']]) }}"
-                                                           title="{{ translate('Checkout') }}">
-                                                            <i class="tio-checkmark-circle"></i>
-                                                        </a>
-                                                    @endif
-                                                    @break
-                                                @case('processing')
-                                                    @if($isDeliveryRow)
-                                                        <a class="btn btn-sm btn-outline-warning lh-row-action route-alert"
-                                                           href="javascript:"
-                                                           data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'out_for_delivery']) }}"
-                                                           data-message="{{ translate('Mark order as out for delivery?') }}"
-                                                           title="{{ translate('Out For Delivery') }}">
-                                                            <i class="tio-bike"></i>
-                                                        </a>
-                                                    @endif
-                                                    @break
-                                                @case('out_for_delivery')
-                                                    <a class="btn btn-sm btn-success lh-row-action route-alert"
-                                                       href="javascript:"
-                                                       data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'delivered']) }}"
-                                                       data-message="{{ translate('Confirm order delivered?') }}"
-                                                       title="{{ translate('Delivered') }}">
-                                                        <i class="tio-checkmark-circle"></i>
-                                                    </a>
-                                                    @break
-                                            @endswitch
+                                        {{-- Fixed 4-slot action toolbar. Same positions on
+                                             every row so the operator's muscle memory works
+                                             — only the primary slot's label/colour/route
+                                             swap with status. Disabled buttons show as
+                                             greyed but stay in place. .lh-row-action
+                                             prevents the row-click handler from also
+                                             navigating to details. --}}
+                                        @php
+                                            // Slot 1 — primary next-action. Resolved per
+                                            // (status × type × delivery_man_id) in one place
+                                            // so the markup below stays a single button slot.
+                                            $primary = ['enabled' => false, 'class' => 'btn-secondary', 'icon' => 'tio-blocked', 'title' => '—', 'route' => null, 'message' => null];
+                                            $status  = $order->order_status;
+                                            $hasRider = !empty($order->delivery_man_id);
+                                            if ($status === 'cooking') {
+                                                if ($isDeliveryRow) {
+                                                    $primary = [
+                                                        'enabled' => true, 'class' => 'btn-success', 'icon' => 'tio-done',
+                                                        'title'   => translate('Mark Ready for Rider'),
+                                                        'route'   => route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'done']),
+                                                        'message' => translate('Mark food as ready for the rider to pick up?'),
+                                                    ];
+                                                } elseif ($isTakeAwayRow) {
+                                                    $primary = [
+                                                        'enabled' => true, 'class' => 'btn-success', 'icon' => 'tio-done',
+                                                        'title'   => translate('Mark Ready for Handover'),
+                                                        'route'   => route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'done']),
+                                                        'message' => translate('Mark food as ready for handover?'),
+                                                    ];
+                                                } elseif ($isDineInRow) {
+                                                    $primary = [
+                                                        'enabled' => true, 'class' => 'btn-success', 'icon' => 'tio-done',
+                                                        'title'   => translate('Mark Ready'),
+                                                        'route'   => route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'done']),
+                                                        'message' => translate('Mark food as ready to serve?'),
+                                                    ];
+                                                }
+                                            } elseif ($status === 'done') {
+                                                if ($isTakeAwayRow) {
+                                                    $primary = [
+                                                        'enabled' => true, 'class' => 'btn-success', 'icon' => 'tio-checkmark-circle',
+                                                        'title'   => translate('Mark Handed Over'),
+                                                        'route'   => route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'completed']),
+                                                        'message' => translate('Mark this order as handed over to the customer?'),
+                                                    ];
+                                                } elseif ($isDineInRow) {
+                                                    // Checkout needs the modal on details page.
+                                                    $primary = [
+                                                        'enabled'   => true, 'class' => 'btn-success', 'icon' => 'tio-checkmark-circle',
+                                                        'title'     => translate('Checkout'),
+                                                        'href'      => route('admin.orders.details', ['id' => $order['id']]),
+                                                    ];
+                                                } elseif ($isDeliveryRow && !$hasRider) {
+                                                    // No rider yet — send the operator to the
+                                                    // existing assign-rider modal on details.
+                                                    $primary = [
+                                                        'enabled' => true, 'class' => 'btn-info', 'icon' => 'tio-add-to-list',
+                                                        'title'   => translate('Assign Rider'),
+                                                        'href'    => route('admin.orders.details', ['id' => $order['id']]) . '#assignDeliveryMan',
+                                                    ];
+                                                } elseif ($isDeliveryRow && $hasRider) {
+                                                    $primary = [
+                                                        'enabled' => true, 'class' => 'btn-success', 'icon' => 'tio-bike',
+                                                        'title'   => translate('Handed to Rider'),
+                                                        'route'   => route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'out_for_delivery']),
+                                                        'message' => translate('Handed the food to the rider for delivery?'),
+                                                    ];
+                                                }
+                                            } elseif ($status === 'out_for_delivery') {
+                                                $primary = [
+                                                    'enabled' => true, 'class' => 'btn-success', 'icon' => 'tio-checkmark-circle',
+                                                    'title'   => translate('Mark Delivered'),
+                                                    'route'   => route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'delivered']),
+                                                    'message' => translate('Confirm order delivered?'),
+                                                ];
+                                            }
+                                            // Slot 2 — Kitchen. Send to Kitchen does both:
+                                            // print KOT + flip status to cooking. Past
+                                            // confirmed it degrades to "Reprint KOT" with no
+                                            // status side-effect.
+                                            $kitchenSendable = in_array($status, ['pending', 'confirmed'], true);
+                                            $kitchenReprintable = in_array($status, ['cooking', 'processing', 'done'], true);
+                                        @endphp
 
-                                            @if($canPrintKot)
-                                                <a class="btn btn-sm btn-outline-secondary lh-row-action"
-                                                   href="{{ route('admin.orders.kitchen-ticket', $order['id']) }}"
-                                                   target="_blank"
-                                                   title="{{ $order->kot_number ? translate('Reprint KOT') : translate('Print KOT') }}">
-                                                    <i class="tio-print"></i>
+                                        <div class="d-flex justify-content-center align-items-center gap-1 flex-nowrap">
+                                            {{-- SLOT 1 — Primary action --}}
+                                            @if($primary['enabled'] && isset($primary['route']))
+                                                <a class="btn btn-sm {{ $primary['class'] }} lh-row-action lh-action-fixed route-alert"
+                                                   href="javascript:"
+                                                   data-route="{{ $primary['route'] }}"
+                                                   data-message="{{ $primary['message'] }}"
+                                                   title="{{ $primary['title'] }}">
+                                                    <i class="{{ $primary['icon'] }}"></i>
                                                 </a>
+                                            @elseif($primary['enabled'] && isset($primary['href']))
+                                                <a class="btn btn-sm {{ $primary['class'] }} lh-row-action lh-action-fixed"
+                                                   href="{{ $primary['href'] }}"
+                                                   title="{{ $primary['title'] }}">
+                                                    <i class="{{ $primary['icon'] }}"></i>
+                                                </a>
+                                            @else
+                                                <span class="btn btn-sm btn-light lh-row-action lh-action-fixed disabled"
+                                                      title="{{ translate('Waiting for next step') }}">
+                                                    <i class="tio-time"></i>
+                                                </span>
                                             @endif
 
+                                            {{-- SLOT 2 — Send to Kitchen / Reprint KOT --}}
+                                            @if($kitchenSendable)
+                                                <a class="btn btn-sm btn-warning lh-row-action lh-action-fixed lh-send-to-kitchen"
+                                                   href="javascript:"
+                                                   data-kot="{{ route('admin.orders.kitchen-ticket', $order['id']) }}"
+                                                   data-cook-status="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'cooking']) }}"
+                                                   title="{{ translate('Send to Kitchen') }}">
+                                                    <i class="tio-fire"></i>
+                                                </a>
+                                            @elseif($kitchenReprintable)
+                                                <a class="btn btn-sm btn-outline-secondary lh-row-action lh-action-fixed"
+                                                   href="{{ route('admin.orders.kitchen-ticket', $order['id']) }}"
+                                                   target="_blank"
+                                                   title="{{ translate('Reprint KOT') }}">
+                                                    <i class="tio-print"></i>
+                                                </a>
+                                            @else
+                                                <span class="btn btn-sm btn-light lh-row-action lh-action-fixed disabled"
+                                                      title="{{ translate('Kitchen — not applicable') }}">
+                                                    <i class="tio-print"></i>
+                                                </span>
+                                            @endif
+
+                                            {{-- SLOT 3 — Add Items (deep-link to modal) --}}
                                             @if($canAppend)
-                                                {{-- Add Items modal lives on the details page, so
-                                                     we deep-link there — opens with the modal hash
-                                                     that JS on the details page picks up. --}}
-                                                <a class="btn btn-sm btn-outline-info lh-row-action"
+                                                <a class="btn btn-sm btn-info lh-row-action lh-action-fixed"
                                                    href="{{ route('admin.orders.details', ['id' => $order['id']]) }}#add-items"
                                                    title="{{ translate('Add Items') }}">
                                                     <i class="tio-add-circle-outlined"></i>
                                                 </a>
+                                            @else
+                                                <span class="btn btn-sm btn-light lh-row-action lh-action-fixed disabled"
+                                                      title="{{ translate('Cannot add items at this stage') }}">
+                                                    <i class="tio-add-circle-outlined"></i>
+                                                </span>
                                             @endif
 
-                                            <a class="btn btn-sm btn-outline-primary lh-row-action"
+                                            {{-- SLOT 4 — View Details (always enabled) --}}
+                                            <a class="btn btn-sm btn-outline-primary lh-row-action lh-action-fixed"
                                                href="{{ route('admin.orders.details', ['id' => $order['id']]) }}"
                                                title="{{ translate('View Details') }}">
                                                 <i class="tio-invisible"></i>
@@ -435,6 +493,40 @@
                 }
             });
 
+            // Send to Kitchen — chain two existing endpoints in one click:
+            // (1) open the KOT printable in a new tab so the kitchen has the
+            // ticket; (2) navigate the current tab to the status update so
+            // the order moves to `cooking`. Confirmation modal first so a
+            // mis-click doesn't fire the print job. No backend changes.
+            $(document).on('click', '.lh-send-to-kitchen', function (e) {
+                e.preventDefault();
+                const kotUrl    = $(this).data('kot');
+                const cookUrl   = $(this).data('cook-status');
+                Swal.fire({
+                    title: '{{ translate("Send to Kitchen?") }}',
+                    text:  '{{ translate("This will print the kitchen ticket and start cooking.") }}',
+                    type: 'warning',
+                    showCancelButton: true,
+                    cancelButtonColor: 'default',
+                    confirmButtonColor: '#E67E22',
+                    cancelButtonText:  '{{ translate("Cancel") }}',
+                    confirmButtonText: '{{ translate("Yes, Send") }}',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (!result.value) return;
+                    // Open KOT first so the new-tab pop happens inside the
+                    // user-gesture window — popup blockers won't fire.
+                    if (kotUrl) {
+                        window.open(kotUrl, '_blank');
+                    }
+                    // Navigate THIS tab to the status update; the controller
+                    // redirects back to the listing on success.
+                    if (cookUrl) {
+                        window.location = cookUrl;
+                    }
+                });
+            });
+
             // Auto-refresh every 30 seconds so the queue reflects new orders +
             // status changes without the operator hammering F5. Skipped if any
             // modal is open (e.g. branch picker) so we don't yank the UI.
@@ -454,5 +546,20 @@
         tr.lh-row-clickable          { cursor: pointer; }
         tr.lh-row-clickable:hover    { background-color: rgba(230, 126, 34, 0.05); }
         tr.lh-row-clickable .lh-row-action { cursor: pointer; }
+
+        /* Fixed-width slots in the actions column so a disabled button in
+           slot 2 doesn't shove slot 3+4 to a new horizontal position. The
+           operator's eye stays trained on the same x-coordinates regardless
+           of order status. */
+        .lh-action-fixed {
+            width: 36px; height: 36px;
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0; flex: 0 0 36px;
+        }
+        .lh-action-fixed.disabled {
+            background-color: #f5f5f5; color: #c8c8c8; border-color: #e9e9e9;
+            cursor: not-allowed; opacity: 0.55;
+        }
+        .lh-action-fixed i { font-size: 1.05rem; }
     </style>
 @endpush

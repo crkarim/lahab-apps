@@ -206,7 +206,7 @@ class TableOrderController extends Controller
 
         // Build the main list query based on the selected tab.
         $orders = $this->order
-            ->with('table_order', 'table', 'customer', 'branch', 'placedBy')
+            ->with('table_order', 'table', 'customer', 'branch', 'placedBy', 'delivery_man')
             ->where('branch_id', $branchId)
             ->where(function ($q) use ($type, $dineInActive, $deliveryActive, $takeAwayActive) {
                 if ($type === 'dine_in') {
