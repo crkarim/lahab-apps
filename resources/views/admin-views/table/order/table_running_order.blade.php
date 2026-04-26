@@ -293,7 +293,7 @@
                                                     // No rider yet — send the operator to the
                                                     // existing assign-rider modal on details.
                                                     $primary = [
-                                                        'enabled' => true, 'class' => 'btn-info', 'icon' => 'tio-add-to-list',
+                                                        'enabled' => true, 'class' => 'btn-info', 'icon' => 'tio-user-add',
                                                         'title'   => translate('Assign Rider'),
                                                         'href'    => route('admin.orders.details', ['id' => $order['id']]) . '#assignDeliveryMan',
                                                     ];
@@ -344,14 +344,18 @@
                                                 </span>
                                             @endif
 
-                                            {{-- SLOT 2 — Send to Kitchen / Reprint KOT --}}
+                                            {{-- SLOT 2 — Send to Kitchen / Reprint KOT.
+                                                 Pending / confirmed orders MUST be sent to
+                                                 the kitchen before anything else can happen,
+                                                 so this slot uses btn-danger (red) + a pulse
+                                                 to draw the operator's eye. --}}
                                             @if($kitchenSendable)
-                                                <a class="btn btn-sm btn-warning lh-row-action lh-action-fixed lh-send-to-kitchen"
+                                                <a class="btn btn-sm btn-danger lh-row-action lh-action-fixed lh-send-to-kitchen lh-action-urgent"
                                                    href="javascript:"
                                                    data-kot="{{ route('admin.orders.kitchen-ticket', $order['id']) }}"
                                                    data-cook-status="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'cooking']) }}"
-                                                   title="{{ translate('Send to Kitchen') }}">
-                                                    <i class="tio-fire"></i>
+                                                   title="{{ translate('Send to Kitchen — required next step') }}">
+                                                    <i class="tio-send"></i>
                                                 </a>
                                             @elseif($kitchenReprintable)
                                                 <a class="btn btn-sm btn-outline-secondary lh-row-action lh-action-fixed"
@@ -561,5 +565,19 @@
             cursor: not-allowed; opacity: 0.55;
         }
         .lh-action-fixed i { font-size: 1.05rem; }
+
+        /* Urgent next-step (Send to Kitchen) — soft pulsing red shadow so
+           the operator's eye locks onto pending orders even in a long
+           queue. Subtle enough to not feel like a strobe light. */
+        .lh-action-urgent {
+            animation: lh-urgent-pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes lh-urgent-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.55); }
+            50%      { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .lh-action-urgent { animation: none; }
+        }
     </style>
 @endpush
