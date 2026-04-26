@@ -68,7 +68,11 @@
                                             </div>
                                         </td>
 
-                                        @php $productByBranch = json_decode($product->product_by_branch, true); @endphp
+                                        @php
+
+                                            $productByBranch = json_decode($product->product_by_branch, true);
+
+                                        @endphp
                                         @if(isset($productByBranch[0]))
                                             <td>{{ Helpers::set_symbol($productByBranch[0]['price']) }}</td>
                                         @else

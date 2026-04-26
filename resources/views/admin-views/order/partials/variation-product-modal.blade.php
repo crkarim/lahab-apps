@@ -50,7 +50,9 @@
                                     <img width="13" class="mr-1" src="{{asset('public/assets/admin/img/icons/leaf.svg')}}" alt="{{ translate('veg tag') }}">
                                     {{ translate($product?->product_type) }}
                                 </span>
-                                @php $halalTagStatus = (integer) (\App\CentralLogics\Helpers::get_business_settings('halal_tag_status') ?? 0); @endphp
+                                @php
+                                    $halalTagStatus = (integer) (\App\CentralLogics\Helpers::get_business_settings('halal_tag_status') ?? 0);
+                                @endphp
                                 @if($halalTagStatus && $productData['halal_status'] ?? 0 )
                                     <span class="badge badge-soft-secondary fz-12 px-3 py-2 text-title">
                                         <img width="13" class="mr-1" src="{{asset('public/assets/admin/img/halal-tags.png')}}" alt="{{ translate('halal tag') }}">{{ translate("Halal") }}
@@ -118,7 +120,11 @@
                                     @endforeach
                                 </div>
 
-                                @php $add_ons = json_decode($product->add_ons); @endphp
+                                @php
+
+                                    $add_ons = json_decode($product->add_ons);
+
+                                @endphp
                                 @if(count($add_ons)>0)
                                     <div class="p-3 shadow rounded-10">
                                         <h3>{{ translate('addon') }}</h3>

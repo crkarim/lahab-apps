@@ -12,7 +12,9 @@ $company_name = App\Models\BusinessSetting::where('key', 'business_name')->first
                         <tr>
                             <td class="p-10">
                                 <span class="d-block text-center">
-                                    @php $restaurant_logo = \App\Model\BusinessSetting::where(['key' => 'logo'])->first()->value; @endphp
+                                    @php
+                                        $restaurant_logo = \App\Model\BusinessSetting::where(['key' => 'logo'])->first()->value;
+                                    @endphp
                                     <img class="mb-2 mail-img-2" onerror="this.src='{{ asset('storage/app/public/business/' . $restaurant_logo) }}'"
                                     src="{{ asset('storage/app/public/email_template/') }}/{{ $data['logo']??'' }}" id="logoViewer" alt="">
                                     <h3 class="mb-3 mt-0">{{ translate('Order_Info') }}</h3>

@@ -21,7 +21,9 @@
                         <form action="{{route('admin.business-settings.restaurant.otp-setup-update')}}" method="post">
                             @csrf
                             <div class="row">
-                                @php $maximumOTPHit=\App\Model\BusinessSetting::where('key','maximum_otp_hit')->first()?->value; @endphp
+                                @php
+                                    $maximumOTPHit=\App\Model\BusinessSetting::where('key','maximum_otp_hit')->first()?->value;
+                                @endphp
                                 <div class="col-md-4 col-sm-6">
                                     <div class="form-group">
                                         <label class="input-label text-capitalize">{{translate('maximum_OTP_submit_attempt')}}
@@ -36,7 +38,11 @@
                                     </div>
                                 </div>
 
-                                @php $OTPResendTime=\App\Model\BusinessSetting::where('key','otp_resend_time')->first()?->value; @endphp
+                                @php
+
+                                    $OTPResendTime=\App\Model\BusinessSetting::where('key','otp_resend_time')->first()?->value;
+
+                                @endphp
                                 <div class="col-md-4 col-sm-6">
                                     <div class="form-group">
                                         <label class="input-label text-capitalize">{{translate('otp_resend_time')}}
@@ -52,7 +58,11 @@
                                     </div>
                                 </div>
 
-                                @php $temporaryBlockTime=\App\Model\BusinessSetting::where('key','temporary_block_time')->first()?->value; @endphp
+                                @php
+
+                                    $temporaryBlockTime=\App\Model\BusinessSetting::where('key','temporary_block_time')->first()?->value;
+
+                                @endphp
                                 <div class="col-md-4 col-sm-6">
                                     <div class="form-group">
                                         <label class="input-label text-capitalize">{{translate('temporary_block_time')}}
@@ -68,7 +78,11 @@
                                     </div>
                                 </div>
 
-                                @php $maximumLoginHit=\App\Model\BusinessSetting::where('key','maximum_login_hit')->first()?->value; @endphp
+                                @php
+
+                                    $maximumLoginHit=\App\Model\BusinessSetting::where('key','maximum_login_hit')->first()?->value;
+
+                                @endphp
                                 <div class="col-md-4 col-sm-6">
                                     <div class="form-group">
                                         <label class="input-label text-capitalize">{{translate('maximum_login_attempt')}}
@@ -83,7 +97,11 @@
                                     </div>
                                 </div>
 
-                                @php $temporaryLoginBlockTime=\App\Model\BusinessSetting::where('key','temporary_login_block_time')->first()?->value; @endphp
+                                @php
+
+                                    $temporaryLoginBlockTime=\App\Model\BusinessSetting::where('key','temporary_login_block_time')->first()?->value;
+
+                                @endphp
                                 <div class="col-md-4 col-sm-6">
                                     <div class="form-group">
                                         <label class="input-label text-capitalize">{{translate('temporary_login_block_time')}}

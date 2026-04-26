@@ -64,7 +64,11 @@
                                         <input name="gateway" value="{{$gateway->key_name}}" class="d-none">
                                         <input name="mode" value="live" class="d-none">
 
-                                        @php $skip=['gateway','mode','status']; @endphp
+                                        @php
+
+                                            $skip=['gateway','mode','status'];
+
+                                        @endphp
                                         @foreach($dataValues->where('key_name',$gateway->key_name)->first()->live_values as $key=>$value)
                                             @if(!in_array($key,$skip))
                                                 <div class="form-floating mb-30 mt-30">

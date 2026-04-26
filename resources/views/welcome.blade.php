@@ -22,7 +22,9 @@
                 <div class="card">
                     <div class="card-body" style="padding: 20px">
                         <h5 class="text-center">Payment Method</h5>
-                        @php $config=\App\CentralLogics\Helpers::get_business_settings('cash_on_delivery'); @endphp
+                        @php
+                            $config=\App\CentralLogics\Helpers::get_business_settings('cash_on_delivery');
+                        @endphp
                         <form action="{{route('admin.business-settings.payment-method-update',['cash_on_delivery'])}}"
                               method="post">
                             @csrf
@@ -53,7 +55,9 @@
                 <div class="card">
                     <div class="card-body" style="padding: 20px">
                         <h5 class="text-center">Payment Method</h5>
-                        @php $config=\App\CentralLogics\Helpers::get_business_settings('digital_payment'); @endphp
+                        @php
+                            $config=\App\CentralLogics\Helpers::get_business_settings('digital_payment');
+                        @endphp
                         <form action="{{route('admin.business-settings.payment-method-update',['digital_payment'])}}"
                               method="post">
                             @csrf
@@ -87,7 +91,9 @@
                 <div class="card">
                     <div class="card-body" style="padding: 20px">
                         <h5 class="text-center">SSLCOMMERZ</h5>
-                        @php $config=\App\CentralLogics\Helpers::get_business_settings('ssl_commerz_payment'); @endphp
+                        @php
+                            $config=\App\CentralLogics\Helpers::get_business_settings('ssl_commerz_payment');
+                        @endphp
                         <form
                             action="{{route('admin.business-settings.payment-method-update',['ssl_commerz_payment'])}}"
                             method="post">
@@ -127,7 +133,9 @@
                 <div class="card">
                     <div class="card-body" style="padding: 20px">
                         <h5 class="text-center">Razor Pay</h5>
-                        @php $config=\App\CentralLogics\Helpers::get_business_settings('razor_pay'); @endphp
+                        @php
+                            $config=\App\CentralLogics\Helpers::get_business_settings('razor_pay');
+                        @endphp
                         <form action="{{route('admin.business-settings.payment-method-update',['razor_pay'])}}"
                               method="post">
                             @csrf
@@ -166,7 +174,9 @@
                 <div class="card">
                     <div class="card-body" style="padding: 20px">
                         <h5 class="text-center">Paypal</h5>
-                        @php $config=\App\CentralLogics\Helpers::get_business_settings('paypal'); @endphp
+                        @php
+                            $config=\App\CentralLogics\Helpers::get_business_settings('paypal');
+                        @endphp
                         <form action="{{route('admin.business-settings.payment-method-update',['paypal'])}}"
                               method="post">
                             @csrf
@@ -204,7 +214,9 @@
                 <div class="card">
                     <div class="card-body" style="padding: 20px">
                         <h5 class="text-center">Stripe</h5>
-                        @php $config=\App\CentralLogics\Helpers::get_business_settings('stripe'); @endphp
+                        @php
+                            $config=\App\CentralLogics\Helpers::get_business_settings('stripe');
+                        @endphp
                         <form action="{{route('admin.business-settings.payment-method-update',['stripe'])}}"
                               method="post">
                             @csrf

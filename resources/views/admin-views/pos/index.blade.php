@@ -734,9 +734,17 @@
         </div>
 
 
-        @php $order=\App\Model\Order::find(session('last_order')); @endphp
+        @php
+
+
+            $order=\App\Model\Order::find(session('last_order'));
+
+
+        @endphp
         @if($order)
-            @php session(['last_order'=> false]); @endphp
+            @php
+                session(['last_order'=> false]);
+            @endphp
             <div class="modal fade" id="print-invoice" tabindex="-1">
                 <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content">
@@ -847,7 +855,11 @@
                                         }
                                     ?>
 
-                                    @php $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
+                                    @php
+
+                                        $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status');
+
+                                    @endphp
                                     @if($googleMapStatus)
                                         @if($deliveryType == 'distance')
                                             <div class="col-12">

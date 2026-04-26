@@ -8,7 +8,11 @@
     <title>@yield('title')</title>
     <!-- Favicon -->
 
-    @php $icon = \App\Model\BusinessSetting::where(['key' => 'fav_icon'])->first()->value??''; @endphp
+    @php
+
+        $icon = \App\Model\BusinessSetting::where(['key' => 'fav_icon'])->first()->value??'';
+
+    @endphp
     <link rel="shortcut icon" href="">
     <link rel="icon" type="image/x-icon" href="{{ asset('storage/app/public/restaurant/' . $icon ?? '') }}">
     <!-- Font -->
@@ -1100,9 +1104,12 @@
     </script>
 
     <script>
-        @php $admin_order_notification = \App\CentralLogics\Helpers::get_business_settings('admin_order_notification'); @endphp
-        @php $admin_order_notification_type = \App\CentralLogics\Helpers::get_business_settings('admin_order_notification_type'); @endphp
-
+        @php
+            $admin_order_notification = \App\CentralLogics\Helpers::get_business_settings('admin_order_notification');
+        @endphp
+        @php
+            $admin_order_notification_type = \App\CentralLogics\Helpers::get_business_settings('admin_order_notification_type');
+        @endphp
         @if(\App\CentralLogics\Helpers::module_permission_check('order_management') && $admin_order_notification)
 
             @if($admin_order_notification_type == 'manual')
@@ -1125,7 +1132,9 @@
             @endif
 
             @if($admin_order_notification_type == 'firebase')
-                @php $fcm_credentials = \App\CentralLogics\Helpers::get_business_settings('fcm_credentials'); @endphp
+                @php
+                    $fcm_credentials = \App\CentralLogics\Helpers::get_business_settings('fcm_credentials');
+                @endphp
                 var firebaseConfig = {
                     apiKey: "{{isset($fcm_credentials['apiKey']) ? $fcm_credentials['apiKey'] : ''}}",
                     authDomain: "{{isset($fcm_credentials['authDomain']) ? $fcm_credentials['authDomain'] : ''}}",

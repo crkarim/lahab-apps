@@ -25,7 +25,9 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        @php $mov=\App\Model\BusinessSetting::where('key','minimum_order_value')->first()->value; @endphp
+                        @php
+                            $mov=\App\Model\BusinessSetting::where('key','minimum_order_value')->first()->value;
+                        @endphp
                         <div class="col-md-4 col-sm-6">
                             <div class="form-group">
                                 <label class="input-label">
@@ -49,14 +51,18 @@
 {{--                            </div>--}}
 {{--                        </div>--}}
                         <div class="col-md-4 col-sm-6">
-                            @php $scheduleOrderSlotDuration=\App\CentralLogics\Helpers::get_business_settings('schedule_order_slot_duration'); @endphp
+                            @php
+                                $scheduleOrderSlotDuration=\App\CentralLogics\Helpers::get_business_settings('schedule_order_slot_duration');
+                            @endphp
                             <div class="form-group">
                                 <label class="input-label text-capitalize" for="schedule_order_slot_duration">{{ translate('Schedule_Order_Slot_Duration_Minute') }}</label>
                                 <input type="number" name="schedule_order_slot_duration" class="form-control" id="schedule_order_slot_duration" value="{{$scheduleOrderSlotDuration?$scheduleOrderSlotDuration:0}}" min="1" placeholder="{{translate('Ex: 30')}}" required tabindex="2">
                             </div>
                         </div>
                         <div class="col-lg-4 col-sm-6 mb-4 mt-5">
-                            @php $cutleryStatus=\App\CentralLogics\Helpers::get_business_settings('cutlery_status'); @endphp
+                            @php
+                                $cutleryStatus=\App\CentralLogics\Helpers::get_business_settings('cutlery_status');
+                            @endphp
                             <div class="form-control d-flex justify-content-between align-items-center gap-3 cmn_focus">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('cutlery status')}}

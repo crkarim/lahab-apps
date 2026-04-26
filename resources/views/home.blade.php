@@ -6,7 +6,9 @@
             <div class="col-md-8 mt-3">
                 <div class="card mt-3">
                     <div class="card-body text-center">
-                        @php $restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()->value; @endphp
+                        @php
+                            $restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()->value;
+                        @endphp
                         <img class="" style="width: 200px!important"
                              onerror="this.src='{{asset('public/assets/admin/img/160x160/img2.jpg')}}'"
                              src="{{asset('storage/app/public/restaurant/'.$restaurantLogo)}}"

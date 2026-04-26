@@ -101,7 +101,9 @@
                                         <td class="text-center">
                                             <div class="d-flex gap-2" data-toggle="" data-placement="top" title="{{translate('click for bigger view')}}">
                                                 @foreach(json_decode($dm['identity_image'], true) as $identification_image)
-                                                    @php $image_full_path = asset('storage/app/public/delivery-man'). '/' .$identification_image; @endphp
+                                                    @php
+                                                        $image_full_path = asset('storage/app/public/delivery-man'). '/' .$identification_image;
+                                                    @endphp
                                                     <div class="overflow-hidden">
                                                         <img class="cursor-pointer rounded img-fit custom-img-fit image-preview"
                                                              onerror="this.src='{{asset('public/assets/admin/img/160x160/img1.jpg')}}'"

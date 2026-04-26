@@ -39,17 +39,35 @@
         </thead>
 
         <tbody>
-        @php $itemPrice=0; @endphp
-        @php $totalTax=0; @endphp
-        @php $totalDisOnPro=0; @endphp
-        @php $addOnsCost=0; @endphp
-        @php $addOnTax=0; @endphp
-        @php $addOnsTaxCost=0; @endphp
+        @php
+            $itemPrice=0;
+        @endphp
+        @php
+            $totalTax=0;
+        @endphp
+        @php
+            $totalDisOnPro=0;
+        @endphp
+        @php
+            $addOnsCost=0;
+        @endphp
+        @php
+            $addOnTax=0;
+        @endphp
+        @php
+            $addOnsTaxCost=0;
+        @endphp
         @foreach($order->details as $detail)
             @if($detail->product)
-                @php $addOnQtys=json_decode($detail['add_on_qtys'],true); @endphp
-                @php $addOnPrices=json_decode($detail['add_on_prices'],true); @endphp
-                @php $addOnTaxes=json_decode($detail['add_on_taxes'],true); @endphp
+                @php
+                    $addOnQtys=json_decode($detail['add_on_qtys'],true);
+                @endphp
+                @php
+                    $addOnPrices=json_decode($detail['add_on_prices'],true);
+                @endphp
+                @php
+                    $addOnTaxes=json_decode($detail['add_on_taxes'],true);
+                @endphp
                 <tr>
                     <td>
                         {{$detail['quantity']}}
@@ -90,13 +108,19 @@
                         @endif
 
                         @foreach(json_decode($detail['add_on_ids'],true) as $key2 =>$id)
-                            @php $addon=\App\Model\AddOn::find($id); @endphp
+                            @php
+                                $addon=\App\Model\AddOn::find($id);
+                            @endphp
                             @if($key2==0)<strong><u>{{translate('Addons')}} : </u></strong>@endif
 
                             @if($addOnQtys==null)
-                                @php $addOnQty=1; @endphp
+                                @php
+                                    $addOnQty=1;
+                                @endphp
                             @else
-                                @php $addOnQty=$addOnQtys[$key2]; @endphp
+                                @php
+                                    $addOnQty=$addOnQtys[$key2];
+                                @endphp
                             @endif
 
                             <div class="font-size-sm text-body">
@@ -105,19 +129,29 @@
                                     {{$addOnQty}} x {{ Helpers::set_symbol($addOnPrices[$key2]) }} <br>
                                 </span>
                             </div>
-                            @php $addOnsCost+=$addOnPrices[$key2] * $addOnQty; @endphp
-                            @php $addOnsTaxCost +=  $addOnTaxes[$key2] * $addOnQty; @endphp
+                            @php
+                                $addOnsCost+=$addOnPrices[$key2] * $addOnQty;
+                            @endphp
+                            @php
+                                $addOnsTaxCost +=  $addOnTaxes[$key2] * $addOnQty;
+                            @endphp
                         @endforeach
 
                         {{translate('Discount')}} : {{ Helpers::set_symbol($detail['discount_on_product']*$detail['quantity']) }}
                     </td>
                     <td class="custom-td">
-                        @php $amount=($detail['price']-$detail['discount_on_product'])*$detail['quantity']; @endphp
+                        @php
+                            $amount=($detail['price']-$detail['discount_on_product'])*$detail['quantity'];
+                        @endphp
                         {{ Helpers::set_symbol($amount) }}
                     </td>
                 </tr>
-                @php $itemPrice+=$amount; @endphp
-                @php $totalTax+=$detail['tax_amount']*$detail['quantity']; @endphp
+                @php
+                    $itemPrice+=$amount;
+                @endphp
+                @php
+                    $totalTax+=$detail['tax_amount']*$detail['quantity'];
+                @endphp
             @endif
         @endforeach
         </tbody>
@@ -146,15 +180,21 @@
                 </dd>
 
                 <dt class="col-8">{{translate('Subtotal')}}:</dt>
-                @php $subtotal = $addOnsCost + $itemPrice + $totalTax + $addOnsTaxCost - $order['coupon_discount_amount'] - $order['extra_discount']; @endphp
+                @php
+                    $subtotal = $addOnsCost + $itemPrice + $totalTax + $addOnsTaxCost - $order['coupon_discount_amount'] - $order['extra_discount'];
+                @endphp
                 <dd class="col-4">{{ Helpers::set_symbol($subtotal) }}</dd>
 
                 <dt class="col-8">{{translate('Delivery Fee:')}}</dt>
                 <dd class="col-4">
                     @if($order['order_type']=='take_away')
-                        @php $deliveryCharge=0; @endphp
+                        @php
+                            $deliveryCharge=0;
+                        @endphp
                     @else
-                        @php $deliveryCharge=$order['delivery_charge']; @endphp
+                        @php
+                            $deliveryCharge=$order['delivery_charge'];
+                        @endphp
                     @endif
                     {{ Helpers::set_symbol($deliveryCharge) }}
                     <hr>
@@ -166,8 +206,9 @@
                 @if($order->order_change_amount()->exists())
                     <dt class="col-6">{{translate('paid_amount')}}:</dt>
                     <dd class="col-6">{{ Helpers::set_symbol($order->order_change_amount?->paid_amount) }}</dd>
-                    @php $changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount; @endphp
-
+                    @php
+                        $changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount;
+                    @endphp
                     <dt class="col-6">{{$changeOrDueAmount < 0 ? translate('due_amount') : translate('change_amount') }}:</dt>
                     <dd class="col-6">{{ Helpers::set_symbol($changeOrDueAmount) }}</dd>
                 @endif

@@ -3,7 +3,9 @@
         <div class="navbar-nav-wrap">
             <div class="navbar-brand-wrapper">
                 <!-- Logo -->
-                @php $restaurant_logo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()->value; @endphp
+                @php
+                    $restaurant_logo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()->value;
+                @endphp
                 <a class="navbar-brand" href="{{route('admin.dashboard')}}" aria-label="">
                     <img class="navbar-brand-logo" style="object-fit: contain;"
                          onerror="this.src='{{asset('public/assets/admin/img/160x160/img1.jpg')}}'"
@@ -91,7 +93,9 @@
                     <li class="nav-item d-none d-sm-inline-block">
                         <div class="hs-unfold">
                             <div class="bg-white p-1 rounded">
-                                @php  $local = session()->has('local')?session('local'):'en'; @endphp
+                                @php
+                                    $local = session()->has('local')?session('local'):'en';
+                                @endphp
 {{--                                @php($lang = \App\CentralLogics\Helpers::get_business_settings('language')??null)--}}
                                 <?php
                                 $languages = \App\Model\BusinessSetting::where('key', 'language')->first();
@@ -131,7 +135,9 @@
                             <a class="js-hs-unfold-invoker btn btn-icon btn-ghost-secondary rounded-circle"
                                href="{{route('admin.message.list')}}">
                                 <i class="tio-messages-outlined"></i>
-                                @php $message=\App\Model\Conversation::where('checked',0)->distinct('user_id')->count(); @endphp
+                                @php
+                                    $message=\App\Model\Conversation::where('checked',0)->distinct('user_id')->count();
+                                @endphp
 {{--                                @if($message!=0)--}}
                                     <span class="btn-status btn-status-c1">{{$message}}</span>
 {{--                                @endif--}}

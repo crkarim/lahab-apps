@@ -13,11 +13,15 @@
 </style>
 
 @if(!isset($width))
-    @php $width=516; @endphp
+    @php
+        $width=516;
+    @endphp
 @endif
 
 @if(!isset($margin_left))
-    @php $margin_left='0%'; @endphp
+    @php
+        $margin_left='0%';
+    @endphp
 @endif
 
 <div class="modal fade" id="{{$modal_id}}" tabindex="-1" role="dialog" aria-labelledby=""

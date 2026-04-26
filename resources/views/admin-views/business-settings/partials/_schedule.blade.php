@@ -1,5 +1,7 @@
 <div class="card-body" id="schedule">
-    @php $data=[]; @endphp
+    @php
+        $data=[];
+    @endphp
     <?php
     foreach ($schedules as $schedule)
     {

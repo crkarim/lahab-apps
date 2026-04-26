@@ -16,7 +16,9 @@
         @include('admin-views.business-settings.partials._system-settings-inline-menu')
 
         <div class="row gx-2 gx-lg-3">
-            @php $data=\App\CentralLogics\Helpers::get_business_settings('firebase_message_config'); @endphp
+            @php
+                $data=\App\CentralLogics\Helpers::get_business_settings('firebase_message_config');
+            @endphp
             <div class="col-sm-12 col-lg-12 mb-3 mb-lg-2">
                 <form action="{{env('APP_MODE')!='demo'?route('admin.business-settings.web-app.system-setup.firebase_message_config'):'javascript:'}}" method="post"
                       enctype="multipart/form-data">

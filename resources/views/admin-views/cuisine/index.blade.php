@@ -18,9 +18,12 @@
                 <form action="{{route('admin.cuisine.store')}}" method="post" enctype="multipart/form-data">
                     @csrf
                     <div class="">
-                        @php $data = Helpers::get_business_settings('language'); @endphp
-                        @php $defaultLang = Helpers::get_default_language(); @endphp
-
+                        @php
+                            $data = Helpers::get_business_settings('language');
+                        @endphp
+                        @php
+                            $defaultLang = Helpers::get_default_language();
+                        @endphp
                         @if ($data && array_key_exists('code', $data[0]))
                         <div class="card-body p-0">
                             <div class="row g-3">

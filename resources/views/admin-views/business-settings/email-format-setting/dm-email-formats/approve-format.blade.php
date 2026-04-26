@@ -23,8 +23,12 @@
         <div class="tab-content">
             <div class="tab-pane fade show active">
                 <div class="card mb-3">
-                    @php $mail_status=\App\Model\BusinessSetting::where('key','approve_mail_status_dm')->first(); @endphp
-                    @php $mail_status = $mail_status ? $mail_status->value : '0'; @endphp
+                    @php
+                        $mail_status=\App\Model\BusinessSetting::where('key','approve_mail_status_dm')->first();
+                    @endphp
+                    @php
+                        $mail_status = $mail_status ? $mail_status->value : '0';
+                    @endphp
                     <div class="card-body">
                         <div class="maintainance-mode-toggle-bar d-flex flex-wrap justify-content-between border rounded align-items-center p-2">
                             <h5 class="text-capitalize m-0 text--primary pl-2">
@@ -44,8 +48,12 @@
                         </form>
                     </div>
                 </div>
-                @php $data=\App\Models\EmailTemplate::where('type','dm')->where('email_type', 'approve')->first(); @endphp
-                @php $template=$template??($data?$data->email_template:5); @endphp
+                @php
+                    $data=\App\Models\EmailTemplate::where('type','dm')->where('email_type', 'approve')->first();
+                @endphp
+                @php
+                    $template=$template??($data?$data->email_template:5);
+                @endphp
                 <form action="{{ route('admin.business-settings.email-setup.update', ['dm','approve']) }}" method="POST" enctype="multipart/form-data" id="order-form">
                     @csrf
                     <div class="card border-0">
@@ -63,11 +71,20 @@
                                 </div>
                                 <div class="right-content">
                                     <div class="d-flex flex-wrap justify-content-between __gap-15px mt-2 mb-5">
-                                        @php $data=\App\Models\EmailTemplate::withoutGlobalScope('translate')->with('translations')->where('type','dm')->where('email_type', 'approve')->first(); @endphp
+                                        @php
+                                            $data=\App\Models\EmailTemplate::withoutGlobalScope('translate')->with('translations')->where('type','dm')->where('email_type', 'approve')->first();
+                                        @endphp
+                                        @php
 
-                                        @php $language=\App\Model\BusinessSetting::where('key','language')->first(); @endphp
-                                        @php $language = $language->value ?? null; @endphp
-                                        @php $default_lang = str_replace('_', '-', app()->getLocale()); @endphp
+                                            $language=\App\Model\BusinessSetting::where('key','language')->first();
+
+                                        @endphp
+                                        @php
+                                            $language = $language->value ?? null;
+                                        @endphp
+                                        @php
+                                            $default_lang = str_replace('_', '-', app()->getLocale());
+                                        @endphp
                                         @if($language)
                                             <ul class="nav nav-tabs m-0 border-0">
                                                 <li class="nav-item">

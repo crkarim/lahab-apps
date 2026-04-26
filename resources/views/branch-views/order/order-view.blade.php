@@ -86,12 +86,20 @@
                                     <div class="d-flex flex-wrap gap-2 justify-content-sm-end">
                                         @if($order['order_type']!='take_away' && $order['order_type'] != 'pos' && $order['order_type'] != 'dine_in')
 
-                                            @php $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
+                                            @php
+
+                                                $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status');
+
+                                            @endphp
                                             @if($googleMapStatus)
                                                 <div class="hs-unfold ml-1">
                                                     @if($order['order_status']=='out_for_delivery')
-                                                        @php $origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first(); @endphp
-                                                        @php $current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first(); @endphp
+                                                        @php
+                                                            $origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first();
+                                                        @endphp
+                                                        @php
+                                                            $current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first();
+                                                        @endphp
                                                         @if(isset($origin))
                                                             <a class="btn btn-outline-primary" target="_blank"
                                                                title="{{translate('Delivery Man Last Location')}}" data-toggle="tooltip" data-placement="top"
@@ -197,18 +205,37 @@
                             <tbody>
                             <tr>
                             </tr>
-                            @php $sub_total=0; @endphp
-                            @php $total_tax=0; @endphp
-                            @php $total_dis_on_pro=0; @endphp
-                            @php $add_ons_cost=0; @endphp
-                            @php $add_on_tax=0; @endphp
-                            @php $add_ons_tax_cost=0; @endphp
+                            @php
+                                $sub_total=0;
+                            @endphp
+                            @php
+                                $total_tax=0;
+                            @endphp
+                            @php
+                                $total_dis_on_pro=0;
+                            @endphp
+                            @php
+                                $add_ons_cost=0;
+                            @endphp
+                            @php
+                                $add_on_tax=0;
+                            @endphp
+                            @php
+                                $add_ons_tax_cost=0;
+                            @endphp
                             @foreach($order->details as $detail)
-                                @php $product_details = json_decode($detail['product_details'], true); @endphp
-                                @php $add_on_qtys=json_decode($detail['add_on_qtys'],true); @endphp
-                                @php $add_on_prices=json_decode($detail['add_on_prices'],true); @endphp
-                                @php $add_on_taxes=json_decode($detail['add_on_taxes'],true); @endphp
-
+                                @php
+                                    $product_details = json_decode($detail['product_details'], true);
+                                @endphp
+                                @php
+                                    $add_on_qtys=json_decode($detail['add_on_qtys'],true);
+                                @endphp
+                                @php
+                                    $add_on_prices=json_decode($detail['add_on_prices'],true);
+                                @endphp
+                                @php
+                                    $add_on_taxes=json_decode($detail['add_on_taxes'],true);
+                                @endphp
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
                                     <td>
@@ -257,21 +284,31 @@
                                                     </div>
 
                                                     <br>
-                                                    @php $addon_ids = json_decode($detail['add_on_ids'],true); @endphp
+                                                    @php
+                                                        $addon_ids = json_decode($detail['add_on_ids'],true);
+                                                    @endphp
                                                     @if ($addon_ids)
                                                         <span>
                                                         <u><strong>{{translate('addons')}}</strong></u>
                                                         @foreach($addon_ids as $key2 =>$id)
-                                                                @php $addon=\App\Model\AddOn::find($id); @endphp
-                                                                @php $add_on_qtys==null? $add_on_qty=1 : $add_on_qty=$add_on_qtys[$key2]; @endphp
+                                                                @php
+                                                                    $addon=\App\Model\AddOn::find($id);
+                                                                @endphp
+                                                                @php
+                                                                    $add_on_qtys==null? $add_on_qty=1 : $add_on_qty=$add_on_qtys[$key2];
+                                                                @endphp
                                                                 <div class="font-size-sm text-body">
                                                                     <span>{{$addon ? $addon['name'] : translate('addon deleted')}} :  </span>
                                                                     <span class="font-weight-semibold">
                                                                         {{$add_on_qty}} x {{ \App\CentralLogics\Helpers::set_symbol($add_on_prices[$key2]) }}
                                                                     </span>
                                                                 </div>
-                                                                @php $add_ons_cost+=$add_on_prices[$key2] * $add_on_qty; @endphp
-                                                                @php $add_ons_tax_cost +=  $add_on_taxes[$key2] * $add_on_qty; @endphp
+                                                                @php
+                                                                    $add_ons_cost+=$add_on_prices[$key2] * $add_on_qty;
+                                                                @endphp
+                                                                @php
+                                                                    $add_ons_tax_cost +=  $add_on_taxes[$key2] * $add_on_qty;
+                                                                @endphp
                                                             @endforeach
                                                     </span>
                                                     @endif
@@ -282,23 +319,34 @@
                                         </div>
                                     </td>
                                     <td>
-                                        @php $amount=$detail['price']*$detail['quantity']; @endphp
+                                        @php
+                                            $amount=$detail['price']*$detail['quantity'];
+                                        @endphp
                                         {{\App\CentralLogics\Helpers::set_symbol($amount)}}
                                     </td>
                                     <td>
-                                        @php $tot_discount = $detail['discount_on_product']*$detail['quantity']; @endphp
+                                        @php
+                                            $tot_discount = $detail['discount_on_product']*$detail['quantity'];
+                                        @endphp
                                         {{\App\CentralLogics\Helpers::set_symbol($tot_discount)}}
                                     </td>
                                     <td>
-                                        @php $product_tax = $detail['tax_amount']*$detail['quantity']; @endphp
+                                        @php
+                                            $product_tax = $detail['tax_amount']*$detail['quantity'];
+                                        @endphp
                                         {{\App\CentralLogics\Helpers::set_symbol($product_tax+ $detail['add_on_tax_amount'])}}
                                     </td>
                                     <td class="text-right">{{\App\CentralLogics\Helpers::set_symbol($amount-$tot_discount + $product_tax)}}</td>
                                 </tr>
-                                @php $total_dis_on_pro += $tot_discount; @endphp
-                                @php $sub_total += $amount; @endphp
-                                @php $total_tax += $product_tax; @endphp
-
+                                @php
+                                    $total_dis_on_pro += $tot_discount;
+                                @endphp
+                                @php
+                                    $sub_total += $amount;
+                                @endphp
+                                @php
+                                    $total_tax += $product_tax;
+                                @endphp
                             @endforeach
                             </tbody>
                         </table>
@@ -371,9 +419,13 @@
                                     </dt>
                                     <dd class="col-6 text-dark text-right">
                                         @if($order['order_type']=='take_away')
-                                            @php $del_c=0; @endphp
+                                            @php
+                                                $del_c=0;
+                                            @endphp
                                         @else
-                                            @php $del_c=$order['delivery_charge']; @endphp
+                                            @php
+                                                $del_c=$order['delivery_charge'];
+                                            @endphp
                                         @endif
                                         {{ \App\CentralLogics\Helpers::set_symbol($del_c) }}
                                     </dd>
@@ -421,7 +473,11 @@
                                         </dt>
                                         <dd class="col-6 text-dark text-right">{{ Helpers::set_symbol($order->order_change_amount?->paid_amount) }}</dd>
 
-                                        @php $changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount; @endphp
+                                        @php
+
+                                            $changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount;
+
+                                        @endphp
                                         <dt class="col-6">
                                             <div class="d-flex max-w220 ml-auto">
                                                 <span>{{$changeOrDueAmount < 0 ? translate('due_amount') : translate('change_amount') }}</span><span>:</span>
@@ -643,8 +699,12 @@
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <h5>{{translate('Last_location')}}</h5>
                                             </div>
-                                            @php $origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first(); @endphp
-                                            @php $current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first(); @endphp
+                                            @php
+                                                $origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first();
+                                            @endphp
+                                            @php
+                                                $current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first();
+                                            @endphp
                                             @if(isset($origin))
                                                 <a target="_blank" class="text-dark"
                                                    title="Delivery Boy Last Location" data-toggle="tooltip" data-placement="top"
@@ -682,7 +742,9 @@
                                             </div>
                                         </div>
                                         <div class="delivery--information-single flex-column">
-                                            @php $address = $order->address; @endphp
+                                            @php
+                                                $address = $order->address;
+                                            @endphp
                                             <div class="d-flex">
                                                 <div class="name">{{ translate('Name') }}</div>
                                                 <div class="info">{{ $address? $address['contact_person_name']: '' }}</div>
@@ -718,7 +780,9 @@
                                                     </div>
                                                 </div>
                                             @endif
-                                            @php $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
+                                            @php
+                                                $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status');
+                                            @endphp
                                             @if($googleMapStatus)
                                                 @if(isset($address['address']) && isset($address['latitude']) && isset($address['longitude']))
                                                     <hr class="w-100">
@@ -746,7 +810,9 @@
                                             </h4>
                                         </div>
                                         <div class="delivery--information-single flex-column">
-                                            @php $address = $order->address; @endphp
+                                            @php
+                                                $address = $order->address;
+                                            @endphp
                                             <div class="d-flex">
                                                 <div class="name">{{ translate('Name') }}</div>
                                                 <div class="info">{{ $address? $address['contact_person_name']: '' }}</div>
@@ -766,8 +832,9 @@
                 @endif
 
                     @if($order->offline_payment)
-                        @php $payment = json_decode($order->offline_payment?->payment_info, true); @endphp
-
+                        @php
+                            $payment = json_decode($order->offline_payment?->payment_info, true);
+                        @endphp
                         <div class="card mt-2">
                             <div class="card-body">
                                 <h5 class="form-label mb-3">
@@ -1012,7 +1079,9 @@
                             <input type="text" class="form-control" name="address"
                                    placeholder="{{translate('EX : Dhaka,_Bangladesh')}}" value="{{ $address['address'] ?? '' }}" required>
                         </div>
-                        @php $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
+                        @php
+                            $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status');
+                        @endphp
                         @if($googleMapStatus)
                             @if($order?->branch?->delivery_charge_setup?->delivery_charge_type == 'distance')
                                 <div class="form-group">
@@ -1095,7 +1164,9 @@
                             </div>
 
                             <h5>{{translate('Payment_Information')}}</h5>
-                            @php $payment = json_decode($order->offline_payment?->payment_info, true); @endphp
+                            @php
+                                $payment = json_decode($order->offline_payment?->payment_info, true);
+                            @endphp
                             <div class="row card-body">
                                 <div class="col-md-6">
                                     <p>{{ translate('Payment_Method') }} : {{ $payment['payment_name'] }}</p>

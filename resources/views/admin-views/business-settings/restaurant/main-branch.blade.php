@@ -158,7 +158,9 @@
                             </div>
                         </div>
                     </div>
-                    @php $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
+                    @php
+                        $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status');
+                    @endphp
                     @if($googleMapStatus)
                         <div class="card mt-3">
                             <div class="card-header">

@@ -33,7 +33,9 @@
                    style="font-family:Arial; color: #333333;">
 
                 <!-- Logo -->
-                @php $logo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()->value; @endphp
+                @php
+                    $logo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()->value;
+                @endphp
                 <tr>
 
                     <td align="left" valign="top" colspan="2"

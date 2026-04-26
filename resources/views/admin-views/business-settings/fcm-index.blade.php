@@ -47,9 +47,12 @@
                 <div class="tab-content">
 
                     <div class="tab-pane fade show active"id="push-notify">
-                        @php $language = Helpers::get_business_settings('language'); @endphp
-                        @php $default_lang = Helpers::get_default_language(); @endphp
-
+                        @php
+                            $language = Helpers::get_business_settings('language');
+                        @endphp
+                        @php
+                            $default_lang = Helpers::get_default_language();
+                        @endphp
                         <form action="{{route('admin.business-settings.update-fcm-messages')}}" method="post" enctype="multipart/form-data">
                             @csrf
                             <div class="row">
@@ -73,8 +76,12 @@
                                 <input type="hidden" name="lang[]" value="default">
 
                                 <div class="row">
-                                    @php $order_pending= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_pending_message'])->first(); @endphp
-                                    @php $order_pending_data= json_decode($order_pending->value, true); @endphp
+                                    @php
+                                        $order_pending= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_pending_message'])->first();
+                                    @endphp
+                                    @php
+                                        $order_pending_data= json_decode($order_pending->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -89,8 +96,14 @@
                                         </div>
                                     </div>
 
-                                    @php $order_confirm= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_confirmation_msg'])->first(); @endphp
-                                    @php $order_confirm_data= json_decode($order_confirm->value, true); @endphp
+                                    @php
+
+                                        $order_confirm= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_confirmation_msg'])->first();
+
+                                    @endphp
+                                    @php
+                                        $order_confirm_data= json_decode($order_confirm->value, true);
+                                    @endphp
                                     <div class="col-md-6 col-12">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -107,8 +120,14 @@
                                         </div>
                                     </div>
 
-                                    @php $order_processing= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_processing_message'])->first(); @endphp
-                                    @php $order_processing_data= json_decode($order_processing->value, true); @endphp
+                                    @php
+
+                                        $order_processing= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_processing_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $order_processing_data= json_decode($order_processing->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -125,8 +144,14 @@
                                         </div>
                                     </div>
 
-                                    @php $order_out= \App\Model\BusinessSetting::with('translations')->where(['key' => 'out_for_delivery_message'])->first(); @endphp
-                                    @php $order_out_data= json_decode($order_out->value, true); @endphp
+                                    @php
+
+                                        $order_out= \App\Model\BusinessSetting::with('translations')->where(['key' => 'out_for_delivery_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $order_out_data= json_decode($order_out->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -143,8 +168,14 @@
                                         </div>
                                     </div>
 
-                                    @php $order_delivered= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_delivered_message'])->first(); @endphp
-                                    @php $order_delivered_data= json_decode($order_delivered->value, true); @endphp
+                                    @php
+
+                                        $order_delivered= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_delivered_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $order_delivered_data= json_decode($order_delivered->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -161,8 +192,14 @@
                                         </div>
                                     </div>
 
-                                    @php $assign_deliveryman= \App\Model\BusinessSetting::with('translations')->where(['key' => 'delivery_boy_assign_message'])->first(); @endphp
-                                    @php $assign_deliveryman_data= json_decode($assign_deliveryman->value, true); @endphp
+                                    @php
+
+                                        $assign_deliveryman= \App\Model\BusinessSetting::with('translations')->where(['key' => 'delivery_boy_assign_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $assign_deliveryman_data= json_decode($assign_deliveryman->value, true);
+                                    @endphp
                                     <div class="col-md-6 col-12">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -178,8 +215,12 @@
                                                       class="form-control">{{$assign_deliveryman_data['message']}}</textarea>
                                         </div>
                                     </div>
-                                    @php $customer_notify= \App\Model\BusinessSetting::with('translations')->where(['key' => 'customer_notify_message'])->first(); @endphp
-                                    @php $customer_notify_data= json_decode($customer_notify->value, true); @endphp
+                                    @php
+                                        $customer_notify= \App\Model\BusinessSetting::with('translations')->where(['key' => 'customer_notify_message'])->first();
+                                    @endphp
+                                    @php
+                                        $customer_notify_data= json_decode($customer_notify->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -196,8 +237,14 @@
                                         </div>
                                     </div>
 
-                                    @php $notify_for_time_change= \App\Model\BusinessSetting::with('translations')->where(['key' => 'customer_notify_message_for_time_change'])->first(); @endphp
-                                    @php $notify_for_time_change_data= json_decode($notify_for_time_change->value, true); @endphp
+                                    @php
+
+                                        $notify_for_time_change= \App\Model\BusinessSetting::with('translations')->where(['key' => 'customer_notify_message_for_time_change'])->first();
+
+                                    @endphp
+                                    @php
+                                        $notify_for_time_change_data= json_decode($notify_for_time_change->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -214,8 +261,14 @@
                                         </div>
                                     </div>
 
-                                    @php $dm_start= \App\Model\BusinessSetting::with('translations')->where(['key' => 'delivery_boy_start_message'])->first(); @endphp
-                                    @php $dm_start_data= json_decode($dm_start->value, true); @endphp
+                                    @php
+
+                                        $dm_start= \App\Model\BusinessSetting::with('translations')->where(['key' => 'delivery_boy_start_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $dm_start_data= json_decode($dm_start->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -232,8 +285,14 @@
                                         </div>
                                     </div>
 
-                                    @php $dm_delivered= \App\Model\BusinessSetting::with('translations')->where(['key' => 'delivery_boy_delivered_message'])->first(); @endphp
-                                    @php $dm_delivered_data= json_decode($dm_delivered->value, true); @endphp
+                                    @php
+
+                                        $dm_delivered= \App\Model\BusinessSetting::with('translations')->where(['key' => 'delivery_boy_delivered_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $dm_delivered_data= json_decode($dm_delivered->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -250,8 +309,14 @@
                                         </div>
                                     </div>
 
-                                    @php $return_order= \App\Model\BusinessSetting::with('translations')->where(['key' => 'returned_message'])->first(); @endphp
-                                    @php $return_order_data= json_decode($return_order->value, true); @endphp
+                                    @php
+
+                                        $return_order= \App\Model\BusinessSetting::with('translations')->where(['key' => 'returned_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $return_order_data= json_decode($return_order->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -268,8 +333,14 @@
                                         </div>
                                     </div>
 
-                                    @php $failed_order= \App\Model\BusinessSetting::with('translations')->where(['key' => 'failed_message'])->first(); @endphp
-                                    @php $failed_order_data= json_decode($failed_order->value, true); @endphp
+                                    @php
+
+                                        $failed_order= \App\Model\BusinessSetting::with('translations')->where(['key' => 'failed_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $failed_order_data= json_decode($failed_order->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -286,8 +357,14 @@
                                         </div>
                                     </div>
 
-                                    @php $canceled_order= \App\Model\BusinessSetting::with('translations')->where(['key' => 'canceled_message'])->first(); @endphp
-                                    @php $canceled_order_data= json_decode($canceled_order->value, true); @endphp
+                                    @php
+
+                                        $canceled_order= \App\Model\BusinessSetting::with('translations')->where(['key' => 'canceled_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $canceled_order_data= json_decode($canceled_order->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -303,8 +380,12 @@
                                                       class="form-control">{{$canceled_order_data['message']??''}}</textarea>
                                         </div>
                                     </div>
-                                    @php $add_wallet= \App\Model\BusinessSetting::with('translations')->where(['key' => ADD_WALLET_MESSAGE])->first(); @endphp
-                                    @php $add_wallet_data= json_decode($add_wallet->value, true); @endphp
+                                    @php
+                                        $add_wallet= \App\Model\BusinessSetting::with('translations')->where(['key' => ADD_WALLET_MESSAGE])->first();
+                                    @endphp
+                                    @php
+                                        $add_wallet_data= json_decode($add_wallet->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -319,8 +400,12 @@
                                             <textarea name="add_wallet_message" class="form-control">{{$add_wallet_data['message']??''}}</textarea>
                                         </div>
                                     </div>
-                                    @php $add_wallet_bonus= \App\Model\BusinessSetting::with('translations')->where(['key' => ADD_WALLET_BONUS_MESSAGE])->first(); @endphp
-                                    @php $add_wallet_bonus_data= json_decode($add_wallet_bonus->value, true); @endphp
+                                    @php
+                                        $add_wallet_bonus= \App\Model\BusinessSetting::with('translations')->where(['key' => ADD_WALLET_BONUS_MESSAGE])->first();
+                                    @endphp
+                                    @php
+                                        $add_wallet_bonus_data= json_decode($add_wallet_bonus->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -336,8 +421,14 @@
                                         </div>
                                     </div>
 
-                                    @php $register_with_referral_code= \App\Model\BusinessSetting::with('translations')->where(['key' => 'register_with_referral_code_message'])->first(); @endphp
-                                    @php $register_with_referral_code_data= json_decode($register_with_referral_code->value, true); @endphp
+                                    @php
+
+                                        $register_with_referral_code= \App\Model\BusinessSetting::with('translations')->where(['key' => 'register_with_referral_code_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $register_with_referral_code_data= json_decode($register_with_referral_code->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -353,8 +444,14 @@
                                         </div>
                                     </div>
 
-                                    @php $referral_code_user_first_order_place= \App\Model\BusinessSetting::with('translations')->where(['key' => 'referral_code_user_first_order_place_message'])->first(); @endphp
-                                    @php $referral_code_user_first_order_place_data= json_decode($referral_code_user_first_order_place->value, true); @endphp
+                                    @php
+
+                                        $referral_code_user_first_order_place= \App\Model\BusinessSetting::with('translations')->where(['key' => 'referral_code_user_first_order_place_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $referral_code_user_first_order_place_data= json_decode($referral_code_user_first_order_place->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -370,8 +467,14 @@
                                         </div>
                                     </div>
 
-                                    @php $referral_code_user_first_order_delivered= \App\Model\BusinessSetting::with('translations')->where(['key' => 'referral_code_user_first_order_delivered_message'])->first(); @endphp
-                                    @php $referral_code_user_first_order_delivered_data= json_decode($referral_code_user_first_order_delivered->value, true); @endphp
+                                    @php
+
+                                        $referral_code_user_first_order_delivered= \App\Model\BusinessSetting::with('translations')->where(['key' => 'referral_code_user_first_order_delivered_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $referral_code_user_first_order_delivered_data= json_decode($referral_code_user_first_order_delivered->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">
@@ -387,8 +490,14 @@
                                         </div>
                                     </div>
 
-                                    @php $editOrderMessage= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_edit_message'])->first(); @endphp
-                                    @php $editOrderMessageData= json_decode($editOrderMessage?->value, true); @endphp
+                                    @php
+
+                                        $editOrderMessage= \App\Model\BusinessSetting::with('translations')->where(['key' => 'order_edit_message'])->first();
+
+                                    @endphp
+                                    @php
+                                        $editOrderMessageData= json_decode($editOrderMessage?->value, true);
+                                    @endphp
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <div class="d-flex align-items-center gap-3 mb-3">

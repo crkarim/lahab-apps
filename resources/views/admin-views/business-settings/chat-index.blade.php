@@ -18,7 +18,9 @@
         <div class="row g-2">
             <div class="col-md-6">
                 <div class="card">
-                    @php $config=\App\CentralLogics\Helpers::get_business_settings('whatsapp'); @endphp
+                    @php
+                        $config=\App\CentralLogics\Helpers::get_business_settings('whatsapp');
+                    @endphp
                     @if($config)
                         <form action="{{env('APP_MODE')!='demo'?route('admin.business-settings.web-app.third-party.chat-update',['whatsapp']):'javascript:'}}"
                             method="post">

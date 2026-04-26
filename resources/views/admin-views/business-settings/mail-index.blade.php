@@ -53,7 +53,11 @@
                 </div>
             </div>
 
-            @php $data= \App\CentralLogics\Helpers::get_business_settings('mail_config'); @endphp
+            @php
+
+                $data= \App\CentralLogics\Helpers::get_business_settings('mail_config');
+
+            @endphp
             <div class="col-12">
                 <form action="{{env('APP_MODE')!='demo'?route('admin.business-settings.web-app.mail-config'):'javascript:'}}" method="post"
                       enctype="multipart/form-data">

@@ -53,15 +53,23 @@
                                     <h5 class="text-hover-primary mb-0">{{Str::limit($cartItem['name'], 10)}}</h5>
                                     <small>{{Str::limit($cartItem['variant'], 20)}}</small>
                                     <small class="d-block">
-                                        @php $addOnQtys = $cartItem['add_on_qtys']; @endphp
+                                        @php
+                                            $addOnQtys = $cartItem['add_on_qtys'];
+                                        @endphp
                                         @foreach($cartItem['add_ons'] as $key2 => $id)
-                                            @php $addon = \App\Model\AddOn::find($id); @endphp
+                                            @php
+                                                $addon = \App\Model\AddOn::find($id);
+                                            @endphp
                                             @if($key2 == 0)<strong><u>Addons : </u></strong>@endif
 
                                             @if($addOnQtys == null)
-                                                @php $addOnQty = 1; @endphp
+                                                @php
+                                                    $addOnQty = 1;
+                                                @endphp
                                             @else
-                                                @php $addOnQty = $addOnQtys[$key2]; @endphp
+                                                @php
+                                                    $addOnQty = $addOnQtys[$key2];
+                                                @endphp
                                             @endif
 
                                             <div class="font-size-sm text-body">

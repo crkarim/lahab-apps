@@ -22,7 +22,9 @@
 
                         @if($con->image != null && $con->image != "null")
                                 <div class="d-flex flex-wrap gap-2 w-fit-content mt-2">
-                                @php $image_array = json_decode($con->image, true); @endphp
+                                @php
+                                    $image_array = json_decode($con->image, true);
+                                @endphp
                                 @foreach($image_array as $image)
                                     <a href="{{$image}}" data-lightbox="{{$con->id . $image}}">
                                         <img class="rounded img-fit w-60px ratio-1" src="{{$image}}" onerror="this.src='{{asset('public/assets/admin/img/900x400/img1.jpg')}}'" />
@@ -44,9 +46,13 @@
                         <?php try {?>
                             @if($con->image != null && $con->image != "null")
                                 <div class="d-flex flex-wrap gap-2 justify-content-end ml-auto w-fit-content mt-2">
-                                @php $image_array = json_decode($con->image, true); @endphp
+                                @php
+                                    $image_array = json_decode($con->image, true);
+                                @endphp
                                 @foreach($image_array as $key=>$image)
-                                    @php $image_url = $image; @endphp
+                                    @php
+                                        $image_url = $image;
+                                    @endphp
                                     <a href="{{asset('storage/app/public/conversation').'/'.$image_url}}" data-lightbox="{{$con->id . $image_url }}" >
                                         <img class="rounded img-fit w-60px ratio-1" src="{{asset('storage/app/public/conversation').'/'.$image_url}}" onerror="this.src='{{asset('public/assets/admin/img/900x400/img1.jpg')}}'" />
                                     </a>

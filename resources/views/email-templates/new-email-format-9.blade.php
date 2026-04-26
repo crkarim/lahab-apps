@@ -217,7 +217,9 @@
                             <tr>
                                 <td class="p-10">
                                     <span class="d-block text-center">
-                                        @php $restaurant_logo = \App\Model\BusinessSetting::where(['key' => 'logo'])->first()->value; @endphp
+                                        @php
+                                            $restaurant_logo = \App\Model\BusinessSetting::where(['key' => 'logo'])->first()->value;
+                                        @endphp
                                         <img class="mb-2 mail-img-2" onerror="this.src='{{ asset('storage/app/public/business/' . $restaurant_logo) }}'"
                                         src="{{ asset('storage/app/public/email_template/') }}/{{ $data['logo']??'' }}" alt="">
                                         <h3 class="mb-3 mt-0">{{ translate('Order_Info') }}</h3>
@@ -237,7 +239,9 @@
                                                 <td style="max-width:130px">
                                                     <h3 class="subtitle">{{ translate('Delivery_Address') }}</h3>
                                                     @if ($order->delivery_address)
-                                                    @php $address = json_decode($order->delivery_address, true); @endphp
+                                                    @php
+                                                        $address = json_decode($order->delivery_address, true);
+                                                    @endphp
                                                     <span class="d-block">{{ $address['contact_person_name']  ?? $order->customer['f_name'] . ' ' . $order->customer['l_name'] }}</span>
                                                     <span  class="d-block">
                                                     {{ $address['contact_person_number'] ?? null }}
@@ -318,7 +322,9 @@
                                                                                 {{ \App\CentralLogics\Helpers::format_currency($addon['price']) }}
                                                                             </span>
                                                                         </div>
-                                                                        @php $total_addon_price += $addon['price'] * $addon['quantity']; @endphp
+                                                                        @php
+                                                                            $total_addon_price += $addon['price'] * $addon['quantity'];
+                                                                        @endphp
                                                                     @endforeach
                                                                     <span>x {{ $details->quantity }}</span>
                                                                 </td>
@@ -417,7 +423,9 @@
             <tr>
                 <td>
                     <span class="privacy">
-                        @php $landing_data =\App\Models\DataSetting::where('type', 'admin_landing_page')->whereIn('key', ['shipping_policy_status','refund_policy_status','cancellation_policy_status'])->pluck('value','key')->toArray(); @endphp
+                        @php
+                            $landing_data =\App\Models\DataSetting::where('type', 'admin_landing_page')->whereIn('key', ['shipping_policy_status','refund_policy_status','cancellation_policy_status'])->pluck('value','key')->toArray();
+                        @endphp
                         <a href="{{ route('privacy-policy') }}" id="privacy-check" style="{{ (isset($data['privacy']) && $data['privacy'] == 1)?'':'display:none;' }}">{{ translate('Privacy_Policy')}}</a>
                         @if (isset($landing_data['refund_policy_status']) && $landing_data['refund_policy_status']  == 1)
                         <a href="{{ route('refund-policy') }}" id="refund-check" style="{{ (isset($data['refund']) && $data['refund'] == 1)?'':'display:none;' }}"><span class="dot"></span>{{ translate('Refund_Policy') }}</a>
@@ -428,7 +436,9 @@
                         <a href="{{ route('contact-us') }}" id="contact-check" style="{{ (isset($data['contact']) && $data['contact'] == 1)?'':'display:none;' }}"><span class="dot"></span>{{ translate('Contact_us') }}</a>
                     </span>
                     <span class="social" style="text-align:center">
-                        @php $social_media = \App\Models\SocialMedia::active()->get(); @endphp
+                        @php
+                            $social_media = \App\Models\SocialMedia::active()->get();
+                        @endphp
                         @if (isset($social_media))
                             @foreach ($social_media as $social)
                                 <a href="{{ $social->link }}" target=”_blank” id="{{ $social->name  }}-check" style="margin: 0 5px;text-decoration:none;{{ (isset($data[$social->name]) && $data[$social->name] == 1)?'':'display:none;' }}">

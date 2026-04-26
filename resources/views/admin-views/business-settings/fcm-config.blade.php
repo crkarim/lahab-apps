@@ -46,7 +46,11 @@
                           enctype="multipart/form-data">
                         @csrf
 
-                        @php $serviceFileContent = Helpers::get_business_settings('push_notification_service_file_content'); @endphp
+                        @php
+
+                            $serviceFileContent = Helpers::get_business_settings('push_notification_service_file_content');
+
+                        @endphp
                         <div class="form-group">
                             <label class="input-label">{{translate('service_file_content')}}
                                 <i class="tio-info cursor-pointer" data-toggle="tooltip" data-placement="top"
@@ -65,7 +69,9 @@
 
                         <div class="row">
                             <div class="col-lg-4 col-sm-6">
-                                @php $project_id=\App\Model\BusinessSetting::where('key','fcm_project_id')->first(); @endphp
+                                @php
+                                    $project_id=\App\Model\BusinessSetting::where('key','fcm_project_id')->first();
+                                @endphp
                                 <div class="form-group">
                                     <label class="input-label" for="exampleFormControlInput1">{{translate('FCM Project ID')}}</label>
                                     <div class="d-flex">

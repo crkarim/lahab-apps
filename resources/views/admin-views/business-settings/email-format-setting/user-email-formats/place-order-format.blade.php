@@ -23,8 +23,12 @@
         <div class="tab-content">
             <div class="tab-pane fade show active">
                 <div class="card mb-3">
-                    @php $mail_status=\App\Model\BusinessSetting::where('key','place_order_mail_status_user')->first(); @endphp
-                    @php $mail_status = $mail_status ? $mail_status->value : '0'; @endphp
+                    @php
+                        $mail_status=\App\Model\BusinessSetting::where('key','place_order_mail_status_user')->first();
+                    @endphp
+                    @php
+                        $mail_status = $mail_status ? $mail_status->value : '0';
+                    @endphp
                     <div class="card-body">
                         <div class="maintainance-mode-toggle-bar d-flex flex-wrap justify-content-between border rounded align-items-center p-2">
                             <h5 class="text-capitalize m-0 text--primary pl-2">
@@ -43,8 +47,12 @@
                         <form action="{{route('admin.business-settings.email-status',['user','place-order',$mail_status == '1'?0:1])}}" method="get" id="mail-status_form"></form>
                     </div>
                 </div>
-                @php $data=\App\Models\EmailTemplate::where('type','user')->where('email_type', 'new_order')->first(); @endphp
-                @php $template=$template??($data?$data->email_template:3); @endphp
+                @php
+                    $data=\App\Models\EmailTemplate::where('type','user')->where('email_type', 'new_order')->first();
+                @endphp
+                @php
+                    $template=$template??($data?$data->email_template:3);
+                @endphp
                 <form action="{{ route('admin.business-settings.email-setup.update', ['user','new-order']) }}" method="POST" enctype="multipart/form-data" id="order-form">
                     @csrf
                     <div class="card border-0">
@@ -62,11 +70,20 @@
                                 </div>
                                 <div class="right-content">
                                     <div class="d-flex flex-wrap justify-content-between __gap-15px mt-2 mb-5">
-                                        @php $data=\App\Models\EmailTemplate::withoutGlobalScope('translate')->with('translations')->where('type','user')->where('email_type', 'new_order')->first(); @endphp
+                                        @php
+                                            $data=\App\Models\EmailTemplate::withoutGlobalScope('translate')->with('translations')->where('type','user')->where('email_type', 'new_order')->first();
+                                        @endphp
+                                        @php
 
-                                        @php $language=\App\Model\BusinessSetting::where('key','language')->first(); @endphp
-                                        @php $language = $language->value ?? null; @endphp
-                                        @php $default_lang = str_replace('_', '-', app()->getLocale()); @endphp
+                                            $language=\App\Model\BusinessSetting::where('key','language')->first();
+
+                                        @endphp
+                                        @php
+                                            $language = $language->value ?? null;
+                                        @endphp
+                                        @php
+                                            $default_lang = str_replace('_', '-', app()->getLocale());
+                                        @endphp
                                         @if($language)
                                             <ul class="nav nav-tabs m-0 border-0">
                                                 <li class="nav-item">

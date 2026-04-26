@@ -57,9 +57,12 @@
                                 </div>
                             </div>
                         </div>
-                        @php $condition_one=str_replace('MB','',ini_get('upload_max_filesize'))>=20 && str_replace('MB','',ini_get('upload_max_filesize'))>=20; @endphp
-                        @php $condition_two=str_replace('MB','',ini_get('post_max_size'))>=20 && str_replace('MB','',ini_get('post_max_size'))>=20; @endphp
-
+                        @php
+                            $condition_one=str_replace('MB','',ini_get('upload_max_filesize'))>=20 && str_replace('MB','',ini_get('upload_max_filesize'))>=20;
+                        @endphp
+                        @php
+                            $condition_two=str_replace('MB','',ini_get('post_max_size'))>=20 && str_replace('MB','',ini_get('post_max_size'))>=20;
+                        @endphp
                         <div class="col-sm-6 col-lg-5 col-xl-4 col-xxl-9">
                             <div class="pl-sm-5">
                                 <h5 class="mb-3 d-flex">{{ translate('instructions') }}</h5>
@@ -93,7 +96,9 @@
 
         <div class="row g-1 g-sm-2">
             @foreach($addons as $key => $addon)
-                @php $data= include $addon.'/Addon/info.php'; @endphp
+                @php
+                    $data= include $addon.'/Addon/info.php';
+                @endphp
                 <div class="col-6 col-md-4 col-xxl-3">
                     <div class="card theme-card">
                         <div class="card-header">

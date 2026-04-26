@@ -15,9 +15,14 @@
 
         @include('admin-views.business-settings.partials._3rdparty-inline-menu')
 
-        @php $partial_payment=\App\CentralLogics\Helpers::get_business_settings('partial_payment'); @endphp
-        @php $combine_with=\App\CentralLogics\Helpers::get_business_settings('partial_payment_combine_with'); @endphp
+        @php
 
+            $partial_payment=\App\CentralLogics\Helpers::get_business_settings('partial_payment');
+
+        @endphp
+        @php
+            $combine_with=\App\CentralLogics\Helpers::get_business_settings('partial_payment_combine_with');
+        @endphp
         <div class="g-2">
             <form action="{{route('admin.business-settings.web-app.payment-method-status')}}" method="post">
                 @csrf
@@ -25,7 +30,9 @@
                     <div class="card-body">
                         <div class="row mb-3">
                             <div class="col-md-4">
-                                @php $cod=\App\CentralLogics\Helpers::get_business_settings('cash_on_delivery'); @endphp
+                                @php
+                                    $cod=\App\CentralLogics\Helpers::get_business_settings('cash_on_delivery');
+                                @endphp
                                 <div class="form-control cmn_focus d-flex justify-content-between align-items-center gap-3">
                                     <label class="text-dark mb-0">{{translate('Cash On Delivery')}}</label>
                                     <label class="switcher">
@@ -35,7 +42,9 @@
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                @php $dp=\App\CentralLogics\Helpers::get_business_settings('digital_payment'); @endphp
+                                @php
+                                    $dp=\App\CentralLogics\Helpers::get_business_settings('digital_payment');
+                                @endphp
                                 <div class="form-control cmn_focus d-flex justify-content-between align-items-center gap-3">
                                     <label class="text-dark mb-0">{{translate('Digital Payment')}}</label>
                                     <label class="switcher">
@@ -46,7 +55,9 @@
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                @php $op=\App\CentralLogics\Helpers::get_business_settings('offline_payment'); @endphp
+                                @php
+                                    $op=\App\CentralLogics\Helpers::get_business_settings('offline_payment');
+                                @endphp
                                 <div class="form-control cmn_focus d-flex justify-content-between align-items-center gap-3">
                                     <label class="text-dark mb-0">{{translate('Offline Payment')}}</label>
                                     <label class="switcher">
@@ -111,7 +122,11 @@
                                     </label>
                                 </div>
 
-                                @php $additional_data = $payment['additional_data'] != null ? json_decode($payment['additional_data']) : []; @endphp
+                                @php
+
+                                    $additional_data = $payment['additional_data'] != null ? json_decode($payment['additional_data']) : [];
+
+                                @endphp
                                 <div class="card-body">
                                     <div class="payment--gateway-img">
                                         <img style="height: 80px"
@@ -122,7 +137,11 @@
 
                                     <input name="gateway" value="{{$payment->key_name}}" class="d-none">
 
-                                    @php $mode=$data_values->where('key_name',$payment->key_name)->first()->live_values['mode']; @endphp
+                                    @php
+
+                                        $mode=$data_values->where('key_name',$payment->key_name)->first()->live_values['mode'];
+
+                                    @endphp
                                     <div class="form-floating" style="margin-bottom: 10px">
                                         <select class="js-select form-control theme-input-style w-100" name="mode" >
                                             <option value="live" {{$mode=='live'?'selected':''}}>{{ translate('live') }}</option>
@@ -130,9 +149,15 @@
                                         </select>
                                     </div>
 
-                                    @php $supportedCountry = $data_values->where('key_name',$payment->key_name)->first()->live_values; @endphp
+                                    @php
+
+                                        $supportedCountry = $data_values->where('key_name',$payment->key_name)->first()->live_values;
+
+                                    @endphp
                                     @if (isset($supportedCountry['supported_country']))
-                                        @php $supportedCountry = $supportedCountry['supported_country']; @endphp
+                                        @php
+                                            $supportedCountry = $supportedCountry['supported_country'];
+                                        @endphp
                                         <label for="{{ $payment->key_name }}-title" class="form-label">{{translate('supported_country')}} *</label>
                                         <div class="mb-2" >
                                             <select class="js-select form-control w-100" name="supported_country" >
@@ -146,9 +171,13 @@
                                     @endif
 
                                     @if($payment->key_name === 'paystack')
-                                        @php $skip=['gateway', 'mode', 'status', 'supported_country', 'callback_url']; @endphp
+                                        @php
+                                            $skip=['gateway', 'mode', 'status', 'supported_country', 'callback_url'];
+                                        @endphp
                                     @else
-                                        @php $skip=['gateway','mode','status', 'supported_country']; @endphp
+                                        @php
+                                            $skip=['gateway','mode','status', 'supported_country'];
+                                        @endphp
                                     @endif
 
                                     @foreach($data_values->where('key_name',$payment->key_name)->first()->live_values as $key=>$value)

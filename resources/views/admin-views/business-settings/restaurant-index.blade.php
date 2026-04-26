@@ -90,7 +90,9 @@
                     <div class="row g-3">
                         <div class="col-lg-12">
                             <div class="row gx-3 gy-md-0 gy-2">
-                                @php $restaurant_name=\App\CentralLogics\Helpers::get_business_settings('restaurant_name'); @endphp
+                                @php
+                                    $restaurant_name=\App\CentralLogics\Helpers::get_business_settings('restaurant_name');
+                                @endphp
                                 <div class="col-md-4 col-sm-6">
                                     <div class="form-group">
                                         <label class="input-label text-capitalize">{{translate('Company Name')}}</label>
@@ -99,7 +101,11 @@
                                     </div>
                                 </div>
 
-                                @php $phone=\App\CentralLogics\Helpers::get_business_settings('phone'); @endphp
+                                @php
+
+                                    $phone=\App\CentralLogics\Helpers::get_business_settings('phone');
+
+                                @endphp
                                 <div class="col-md-4 col-sm-6">
                                     <div class="form-group">
                                         <label class="input-label text-capitalize">{{translate('phone')}}</label>
@@ -108,7 +114,11 @@
                                     </div>
                                 </div>
 
-                                @php $email=\App\CentralLogics\Helpers::get_business_settings('email_address'); @endphp
+                                @php
+
+                                    $email=\App\CentralLogics\Helpers::get_business_settings('email_address');
+
+                                @endphp
                                 <div class="col-md-4 col-sm-6">
                                     <div class="form-group">
                                         <label class="input-label text-capitalize">{{translate('email')}}</label>
@@ -117,7 +127,11 @@
                                     </div>
                                 </div>
 
-                                @php $address=\App\CentralLogics\Helpers::get_business_settings('address'); @endphp
+                                @php
+
+                                    $address=\App\CentralLogics\Helpers::get_business_settings('address');
+
+                                @endphp
                                 <div class="col-md-12">
                                     <div class="form-group">
                                         <label class="input-label text-capitalize">{{translate('address')}}</label>
@@ -126,7 +140,9 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="card p-4">
-                                        @php $logo=\App\Model\BusinessSetting::where('key','logo')->first()->value; @endphp
+                                        @php
+                                            $logo=\App\Model\BusinessSetting::where('key','logo')->first()->value;
+                                        @endphp
                                         <div class="">
                                             <div class="mb-4">
                                                 <h4 class="mb-0 text-center">{{ translate('Logo') }} <span class="text-danger">*</span> </h4>
@@ -176,7 +192,9 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="card p-4">
-                                        @php $fav_icon=\App\Model\BusinessSetting::where('key','fav_icon')->first()->value; @endphp
+                                        @php
+                                            $fav_icon=\App\Model\BusinessSetting::where('key','fav_icon')->first()->value;
+                                        @endphp
                                         <div class="">
                                             <div class="mb-4">
                                                 <h4 class="mb-0 text-center">{{ translate('fav_icon') }} <span class="text-danger">*</span> </h4>
@@ -230,7 +248,9 @@
                             <div class="card p-4">
                                 <div class="row">
                                     <div class="col-md-4 col-sm-6">
-                                        @php $logo=\App\Model\BusinessSetting::where('key','logo')->first()->value; @endphp
+                                        @php
+                                            $logo=\App\Model\BusinessSetting::where('key','logo')->first()->value;
+                                        @endphp
                                         <div class="form-group">
                                             <label class="text-dark">{{translate('logo')}}</label><small style="color: red">*
                                                 ( {{translate('ratio')}} 3:1 )</small>
@@ -250,7 +270,9 @@
                                         </div>
                                     </div>
                                     <div class="col-md-4 col-sm-6">
-                                        @php $fav_icon=\App\Model\BusinessSetting::where('key','fav_icon')->first()->value; @endphp
+                                        @php
+                                            $fav_icon=\App\Model\BusinessSetting::where('key','fav_icon')->first()->value;
+                                        @endphp
                                         <div class="form-group">
                                             <label class="text-dark">{{translate('Fav Icon')}}</label><small style="color: red">*
                                                 ( {{translate('ratio')}} 1:1 )</small>
@@ -690,7 +712,9 @@
                                 </select>
                             </div>
                         </div>
-                        @php $time_format=\App\CentralLogics\Helpers::get_business_settings('time_format') ?? '24'; @endphp
+                        @php
+                            $time_format=\App\CentralLogics\Helpers::get_business_settings('time_format') ?? '24';
+                        @endphp
                         <div class="col-lg-4 col-sm-6">
                             <div class="form-group">
                                 <label class="input-label text-capitalize">{{translate('time_format')}}</label>
@@ -701,7 +725,11 @@
                             </div>
                         </div>
 
-                        @php $currency_code=\App\Model\BusinessSetting::where('key','currency')->first()->value; @endphp
+                        @php
+
+                            $currency_code=\App\Model\BusinessSetting::where('key','currency')->first()->value;
+
+                        @endphp
                         <div class="col-lg-4 col-sm-6">
                             <div class="form-group">
                                 <label class="input-label">{{translate('currency')}}</label>
@@ -718,7 +746,9 @@
                             <div class="form-group">
                                 <label class="input-label">{{translate('Currency_Position')}}</label>
                                 <div class="">
-                                    @php $config=\App\CentralLogics\Helpers::get_business_settings('currency_symbol_position'); @endphp
+                                    @php
+                                        $config=\App\CentralLogics\Helpers::get_business_settings('currency_symbol_position');
+                                    @endphp
                                     <!-- Custom Radio -->
                                     <div class="form-control d-flex flex-column-2 cmn_focus rounded">
                                         <div class="custom-radio d-flex gap-2 align-items-center"
@@ -751,7 +781,9 @@
                                 </div>
                             </div>
                         </div>
-                        @php $decimal_point_settings=\App\CentralLogics\Helpers::get_business_settings('decimal_point_settings'); @endphp
+                        @php
+                            $decimal_point_settings=\App\CentralLogics\Helpers::get_business_settings('decimal_point_settings');
+                        @endphp
                         <div class="col-lg-4 col-sm-6">
                             <div class="form-group">
                                 <label class="input-label text-capitalize">{{translate('digit_After_Decimal_Point ')}}({{translate(' ex: 0.00')}})</label>
@@ -760,7 +792,9 @@
                                        required tabindex="14">
                             </div>
                         </div>
-                        @php $footer_text=\App\Model\BusinessSetting::where('key','footer_text')->first()->value; @endphp
+                        @php
+                            $footer_text=\App\Model\BusinessSetting::where('key','footer_text')->first()->value;
+                        @endphp
                         <div class="col-sm-8">
                             <div class="form-group">
                                 <label class="input-label">{{translate('Company_Copyright_Text')}}</label>
@@ -768,7 +802,9 @@
                                        placeholder="{{translate('Ex: copyright@lahab.app')}}" required tabindex="15">
                             </div>
                         </div>
-                        @php $pagination_limit=\App\Model\BusinessSetting::where('key','pagination_limit')->first()->value; @endphp
+                        @php
+                            $pagination_limit=\App\Model\BusinessSetting::where('key','pagination_limit')->first()->value;
+                        @endphp
                         <div class="col-sm-4">
                             <div class="form-group">
                                 <label class="input-label">{{translate('pagination')}}</label>
@@ -778,7 +814,9 @@
                         </div>
 
                         <div class="col-lg-4 col-sm-6 mb-4">
-                            @php $sp=\App\CentralLogics\Helpers::get_business_settings('self_pickup'); @endphp
+                            @php
+                                $sp=\App\CentralLogics\Helpers::get_business_settings('self_pickup');
+                            @endphp
                             <div class="form-control cmn_focus rounded d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('self_pickup')}}
@@ -797,7 +835,9 @@
                         </div>
 
                         <div class="col-lg-4 col-sm-6 mb-4">
-                            @php $del=\App\CentralLogics\Helpers::get_business_settings('delivery'); @endphp
+                            @php
+                                $del=\App\CentralLogics\Helpers::get_business_settings('delivery');
+                            @endphp
                             <div class="form-control cmn_focus rounded d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('delivery')}}
@@ -815,7 +855,9 @@
                             </div>
                         </div>
                         <div class="col-lg-4 col-sm-6 mb-4">
-                            @php $vnv_status=\App\CentralLogics\Helpers::get_business_settings('toggle_veg_non_veg'); @endphp
+                            @php
+                                $vnv_status=\App\CentralLogics\Helpers::get_business_settings('toggle_veg_non_veg');
+                            @endphp
                             <div class="form-control cmn_focus rounded d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('Veg / Non Veg Option')}}
@@ -834,7 +876,9 @@
                         </div>
 
                         <div class="col-lg-4 col-sm-6 mb-4">
-                            @php $dm_status=\App\CentralLogics\Helpers::get_business_settings('dm_self_registration'); @endphp
+                            @php
+                                $dm_status=\App\CentralLogics\Helpers::get_business_settings('dm_self_registration');
+                            @endphp
                             <div class="form-control cmn_focus rounded d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('Deliveryman Self Registration')}}
@@ -853,7 +897,9 @@
                         </div>
 
                         <div class="col-lg-4 col-sm-6 mb-4">
-                            @php $guest_checkout=\App\CentralLogics\Helpers::get_business_settings('guest_checkout'); @endphp
+                            @php
+                                $guest_checkout=\App\CentralLogics\Helpers::get_business_settings('guest_checkout');
+                            @endphp
                             <div class="form-control cmn_focus rounded d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('Guest Checkout')}}
@@ -871,7 +917,9 @@
                             </div>
                         </div>
                         <div class="col-lg-4 col-sm-6 mb-4">
-                            @php $google_map_status=\App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
+                            @php
+                                $google_map_status=\App\CentralLogics\Helpers::get_business_settings('google_map_status');
+                            @endphp
                             <div class="form-control cmn_focus rounded d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('Google Map Status')}}
@@ -889,7 +937,9 @@
                             </div>
                         </div>
                         <div class="col-lg-4 col-sm-6 mb-4">
-                            @php $partial_payment=\App\CentralLogics\Helpers::get_business_settings('partial_payment'); @endphp
+                            @php
+                                $partial_payment=\App\CentralLogics\Helpers::get_business_settings('partial_payment');
+                            @endphp
                             <div class="form-control cmn_focus rounded d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('Partial Payment')}}
@@ -908,10 +958,18 @@
                         </div>
 
                         <div class="col-lg-4 col-sm-6">
-                            @php $combine_with=\App\CentralLogics\Helpers::get_business_settings('partial_payment_combine_with'); @endphp
-                            @php $cod=\App\CentralLogics\Helpers::get_business_settings('cash_on_delivery'); @endphp
-                            @php $digital=\App\CentralLogics\Helpers::get_business_settings('digital_payment'); @endphp
-                            @php $offline=\App\CentralLogics\Helpers::get_business_settings('offline_payment'); @endphp
+                            @php
+                                $combine_with=\App\CentralLogics\Helpers::get_business_settings('partial_payment_combine_with');
+                            @endphp
+                            @php
+                                $cod=\App\CentralLogics\Helpers::get_business_settings('cash_on_delivery');
+                            @endphp
+                            @php
+                                $digital=\App\CentralLogics\Helpers::get_business_settings('digital_payment');
+                            @endphp
+                            @php
+                                $offline=\App\CentralLogics\Helpers::get_business_settings('offline_payment');
+                            @endphp
                             <div class="form-group">
                                 <label class="input-label">{{translate('Combine Payment With')}}
                                     <i class="tio-info-outined"
@@ -940,8 +998,9 @@
                         </div>
 
                         <div class="col-lg-4 col-sm-6 mb-4">
-                            @php $halalTagStatus=\App\CentralLogics\Helpers::get_business_settings('halal_tag_status'); @endphp
-
+                            @php
+                                $halalTagStatus=\App\CentralLogics\Helpers::get_business_settings('halal_tag_status');
+                            @endphp
                             <div class="form-control cmn_focus rounded d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('Halal tag status')}}
@@ -964,7 +1023,9 @@
                         </div>
 
                         <div class="col-lg-4 col-sm-6 mb-4">
-                            @php $admin_order_notification=\App\CentralLogics\Helpers::get_business_settings('admin_order_notification'); @endphp
+                            @php
+                                $admin_order_notification=\App\CentralLogics\Helpers::get_business_settings('admin_order_notification');
+                            @endphp
                             <div class="form-control cmn_focus rounded d-flex justify-content-between align-items-center gap-3">
                                 <div>
                                     <label class="text-dark mb-0">{{translate('Order Notification')}}
@@ -994,7 +1055,9 @@
                                     <a class="pr-1 text-decoration-underline" href="{{ route('admin.business-settings.web-app.third-party.fcm-config') }}" target="_blank">{{ translate('Configure from here') }}</a>
                                 </div>
                                 <div class="">
-                                    @php $admin_order_notification_type=\App\CentralLogics\Helpers::get_business_settings('admin_order_notification_type'); @endphp
+                                    @php
+                                        $admin_order_notification_type=\App\CentralLogics\Helpers::get_business_settings('admin_order_notification_type');
+                                    @endphp
                                     <div class="form-control cmn_focus rounded d-flex flex-column-2">
                                         <div class="custom-radio d-flex gap-2 align-items-center">
                                             <input type="radio" class=""
@@ -1026,7 +1089,11 @@
                             </div>
                         </div>
 
-                        @php $footer_text=\App\Model\BusinessSetting::where('key','footer_description_text')->first()->value; @endphp
+                        @php
+
+                            $footer_text=\App\Model\BusinessSetting::where('key','footer_description_text')->first()->value;
+
+                        @endphp
                         <div class="col-lg-8 col-sm-12">
                             <div class="form-group">
                                 <label class="input-label">{{translate('footer_description_text')}}</label>
@@ -1379,12 +1446,22 @@
     </script>
 
     <script>
-        @php $time_zone=\App\Model\BusinessSetting::where('key','time_zone')->first(); @endphp
-        @php $time_zone = $time_zone->value ?? null; @endphp
+        @php
+            $time_zone=\App\Model\BusinessSetting::where('key','time_zone')->first();
+        @endphp
+        @php
+            $time_zone = $time_zone->value ?? null;
+        @endphp
         $('[name=time_zone]').val("{{$time_zone}}");
 
-        @php $language=\App\Model\BusinessSetting::where('key','language')->first(); @endphp
-        @php $language = $language->value ?? null; @endphp
+        @php
+
+            $language=\App\Model\BusinessSetting::where('key','language')->first();
+
+        @endphp
+        @php
+            $language = $language->value ?? null;
+        @endphp
         let language = <?php echo($language); ?>;
         $('[id=language]').val(language);
 
@@ -1471,7 +1548,9 @@
         }
 
         $(document).on('ready', function () {
-            @php $country=\App\CentralLogics\Helpers::get_business_settings('country')??'BD'; @endphp
+            @php
+                $country=\App\CentralLogics\Helpers::get_business_settings('country')??'BD';
+            @endphp
             $("#country option[value='{{$country}}']").attr('selected', 'selected').change();
         })
     </script>

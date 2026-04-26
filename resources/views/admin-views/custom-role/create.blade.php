@@ -115,10 +115,14 @@
                                 <td class="text-capitalize">
                                     <div class="max-w300 min-w200 line-limit-2 text-wrap">
                                         @if($role['module_access']!=null)
-                                            @php $comma = ''; @endphp
+                                            @php
+                                                $comma = '';
+                                            @endphp
                                             @foreach((array)json_decode($role['module_access']) as $module)
                                                 {{$comma}}{{str_replace('_',' ',$module)}}
-                                                @php $comma = ', '; @endphp
+                                                @php
+                                                    $comma = ', ';
+                                                @endphp
                                             @endforeach
                                         @endif
                                     </div>

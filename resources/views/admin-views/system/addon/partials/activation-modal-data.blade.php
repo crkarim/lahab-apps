@@ -8,7 +8,9 @@
 </div>
 <div class="modal-body px-4 px-sm-5">
     <div class="mb-4 text-center">
-        @php $logo=\App\Model\BusinessSetting::where('key','logo')->first()->value; @endphp
+        @php
+            $logo=\App\Model\BusinessSetting::where('key','logo')->first()->value;
+        @endphp
         <img
             width="200"
             src="{{asset('storage/app/public/restaurant/'.$logo)}}"
