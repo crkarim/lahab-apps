@@ -64,9 +64,13 @@
                                         <a class="nav-link" href="{{ route('admin.table.order.running') }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span class="text-truncate sidebar--badge-container">
-                                                {{ translate('Running Tables') }}
+                                                {{ translate('Active Orders') }}
+                                                {{-- Count of every order still needing the operator's
+                                                     attention — across dine-in, delivery, and
+                                                     take-away. Mirrors the All-tab count on the
+                                                     Active Orders page. --}}
                                                 <span class="badge badge-soft-success badge-pill ml-1">
-                                                    {{ \App\Model\Order::with('table_order')->whereHas('table_order', function($q){$q->where('branch_table_token_is_expired', 0);})->count() }}
+                                                    {{ \App\Model\Order::whereNotIn('order_status', ['completed', 'delivered', 'canceled', 'failed', 'refunded', 'refund_requested'])->count() }}
                                                 </span>
                                             </span>
                                         </a>

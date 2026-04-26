@@ -45,8 +45,15 @@
             </div>
 
             {{-- Context-aware "next step" button for in-restaurant orders.
-                 Clean state machine: confirmed → cooking → done → completed (checkout). --}}
-            @if(in_array($order->order_type, ['pos', 'dine_in']))
+                 State machine differs by order_type:
+                   dine-in:   confirmed → cooking → done (Ready to serve) → completed (via Checkout)
+                   take-away: confirmed → cooking → done (Ready for Handover) → completed (Handed Over)
+                 Take-away gets a one-click "Mark Handed Over" action so the
+                 order leaves Active Orders without going through the dropdown. --}}
+            @php
+                $isQuickActionTakeAway = in_array($order->order_type, ['pos', 'take_away'], true);
+            @endphp
+            @if(in_array($order->order_type, ['pos', 'take_away', 'dine_in']))
                 @switch($order->order_status)
                     @case('confirmed')
                         <a class="btn btn-outline-warning route-alert"
@@ -60,14 +67,29 @@
                         <a class="btn btn-outline-success route-alert"
                            href="javascript:"
                            data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'done']) }}"
-                           data-message="{{ translate('Mark food as ready to serve?') }}">
-                            <i class="tio-done"></i> {{ translate('Mark Ready') }}
+                           data-message="{{ $isQuickActionTakeAway ? translate('Mark food as ready for handover?') : translate('Mark food as ready to serve?') }}">
+                            <i class="tio-done"></i>
+                            {{ $isQuickActionTakeAway ? translate('Mark Ready for Handover') : translate('Mark Ready') }}
                         </a>
                         @break
                     @case('done')
-                        <span class="badge badge-soft-success px-3 py-2 fz-14">
-                            <i class="tio-done"></i> {{ translate('Ready to serve') }}
-                        </span>
+                        @if($isQuickActionTakeAway)
+                            {{-- Take-away: kitchen is done, customer is at the
+                                 counter. One click ends the order lifecycle. --}}
+                            <a class="btn btn-success route-alert"
+                               href="javascript:"
+                               data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'completed']) }}"
+                               data-message="{{ translate('Mark this order as handed over to the customer?') }}">
+                                <i class="tio-checkmark-circle"></i> {{ translate('Mark Handed Over') }}
+                            </a>
+                        @else
+                            {{-- Dine-in: still waiting for the table to settle
+                                 the bill (handled by the Checkout button below),
+                                 so this stays a passive status badge. --}}
+                            <span class="badge badge-soft-success px-3 py-2 fz-14">
+                                <i class="tio-done"></i> {{ translate('Ready to serve') }}
+                            </span>
+                        @endif
                         @break
                 @endswitch
             @endif
@@ -154,12 +176,12 @@
                                         </h5>
                                         @if($order['order_type']!='take_away' && $order['order_type'] != 'pos' && $order['order_type'] != 'dine_in')
 
-                                            @php($googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'))
+                                            @php $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
                                             @if($googleMapStatus)
                                                 <div class="hs-unfold ml-1">
                                                     @if($order['order_status']=='out_for_delivery')
-                                                        @php($origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first())
-                                                        @php($current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first())
+                                                        @php $origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first(); @endphp
+                                                        @php $current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first(); @endphp
                                                         @if(isset($origin))
                                                             <a class="btn btn-outline-primary px-2 py-1 btn-sm"
                                                                target="_blank"
@@ -234,12 +256,12 @@
                                     {{-- <div class="d-flex flex-wrap gap-2 justify-content-sm-end">
                                         @if($order['order_type']!='take_away' && $order['order_type'] != 'pos' && $order['order_type'] != 'dine_in')
 
-                                            @php($googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'))
+                                            @php $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
                                             @if($googleMapStatus)
                                                 <div class="hs-unfold ml-1">
                                                     @if($order['order_status']=='out_for_delivery')
-                                                        @php($origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first())
-                                                        @php($current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first())
+                                                        @php $origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first(); @endphp
+                                                        @php $current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first(); @endphp
                                                         @if(isset($origin))
                                                             <a class="btn btn-outline-primary" target="_blank"
                                                                title="{{translate('Delivery Man Last Location')}}" data-toggle="tooltip" data-placement="top"
@@ -377,17 +399,17 @@
                             <tbody>
                             <tr>
                             </tr>
-                            @php($subTotal=0)
-                            @php($totalTax=0)
-                            @php($totalDisOnPro=0)
-                            @php($addOnsCost=0)
-                            @php($addOnTax=0)
-                            @php($addOnsTaxCost=0)
+                            @php $subTotal=0; @endphp
+                            @php $totalTax=0; @endphp
+                            @php $totalDisOnPro=0; @endphp
+                            @php $addOnsCost=0; @endphp
+                            @php $addOnTax=0; @endphp
+                            @php $addOnsTaxCost=0; @endphp
                             @foreach($order->details as $detail)
-                                @php($productDetails = json_decode($detail['product_details'], true))
-                                @php($addOnQtys=json_decode($detail['add_on_qtys'],true))
-                                @php($addOnPrices=json_decode($detail['add_on_prices'],true))
-                                @php($addOnTaxes=json_decode($detail['add_on_taxes'],true))
+                                @php $productDetails = json_decode($detail['product_details'], true); @endphp
+                                @php $addOnQtys=json_decode($detail['add_on_qtys'],true); @endphp
+                                @php $addOnPrices=json_decode($detail['add_on_prices'],true); @endphp
+                                @php $addOnTaxes=json_decode($detail['add_on_taxes'],true); @endphp
 
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
@@ -441,13 +463,13 @@
                                                     </div>
 
                                                     <br>
-                                                    @php($addon_ids = json_decode($detail['add_on_ids'],true))
+                                                    @php $addon_ids = json_decode($detail['add_on_ids'],true); @endphp
                                                     @if ($addon_ids)
                                                         <span>
                                                         <u><strong>{{translate('addons')}}</strong></u>
                                                         @foreach($addon_ids as $key2 =>$id)
-                                                                @php($addon=\App\Model\AddOn::find($id))
-                                                                @php($addOnQtys==null? $add_on_qty=1 : $add_on_qty=$addOnQtys[$key2])
+                                                                @php $addon=\App\Model\AddOn::find($id); @endphp
+                                                                @php $addOnQtys==null? $add_on_qty=1 : $add_on_qty=$addOnQtys[$key2]; @endphp
 
                                                                 <div class="font-size-sm text-body">
                                                                     <span>{{$addon ? $addon['name'] : translate('addon deleted')}} :  </span>
@@ -455,8 +477,8 @@
                                                                         {{$add_on_qty}} x {{ Helpers::set_symbol($addOnPrices[$key2]) }} <br>
                                                                     </span>
                                                                 </div>
-                                                                @php($addOnsCost+=$addOnPrices[$key2] * $add_on_qty)
-                                                                @php($addOnsTaxCost +=  $addOnTaxes[$key2] * $add_on_qty)
+                                                                @php $addOnsCost+=$addOnPrices[$key2] * $add_on_qty; @endphp
+                                                                @php $addOnsTaxCost +=  $addOnTaxes[$key2] * $add_on_qty; @endphp
                                                             @endforeach
                                                     </span>
                                                     @endif
@@ -465,22 +487,22 @@
                                         </div>
                                     </td>
                                     <td>
-                                        @php($amount=$detail['price']*$detail['quantity'])
+                                        @php $amount=$detail['price']*$detail['quantity']; @endphp
                                         {{Helpers::set_symbol($amount)}}
                                     </td>
                                     <td>
-                                        @php($totDiscount = $detail['discount_on_product']*$detail['quantity'])
+                                        @php $totDiscount = $detail['discount_on_product']*$detail['quantity']; @endphp
                                         {{Helpers::set_symbol($totDiscount)}}
                                     </td>
                                     <td>
-                                        @php($productTax = $detail['tax_amount']*$detail['quantity'])
+                                        @php $productTax = $detail['tax_amount']*$detail['quantity']; @endphp
                                         {{Helpers::set_symbol($productTax + $detail['add_on_tax_amount'])}}
                                     </td>
                                     <td class="text-right">{{Helpers::set_symbol($amount-$totDiscount + $productTax)}}</td>
                                 </tr>
-                                @php($totalDisOnPro += $totDiscount)
-                                @php($subTotal += $amount)
-                                @php($totalTax += $productTax)
+                                @php $totalDisOnPro += $totDiscount; @endphp
+                                @php $subTotal += $amount; @endphp
+                                @php $totalTax += $productTax; @endphp
 
                             @endforeach
                             </tbody>
@@ -573,9 +595,9 @@
                                     </dt>
                                     <dd class="col-6 text-dark text-right">
                                         @if($order['order_type']=='take_away')
-                                            @php($del_c=0)
+                                            @php $del_c=0; @endphp
                                         @else
-                                            @php($del_c=$order['delivery_charge'])
+                                            @php $del_c=$order['delivery_charge']; @endphp
                                         @endif
                                         {{ Helpers::set_symbol($del_c) }}
                                     </dd>
@@ -625,7 +647,7 @@
                                         </dt>
                                         <dd class="col-6 text-dark text-right">{{ Helpers::set_symbol($order->order_change_amount?->paid_amount) }}</dd>
 
-                                        @php($changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount)
+                                        @php $changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount; @endphp
                                         <dt class="col-6">
                                             <div class="d-flex max-w220 ml-auto">
                                                 <span>{{$changeOrDueAmount < 0 ? translate('due_amount') : translate('change_amount') }}</span><span>:</span>
@@ -667,8 +689,11 @@
                                 </div>
                             @endif
 
-                            @if($order['order_type'] != 'pos')
-                                <div class="hs-unfold w-100">
+                            {{-- Status dropdown is shown for all order types — including
+                                 take-away (legacy 'pos' or new 'take_away') so the operator
+                                 can mark the food handover. The branches below keep the
+                                 status options sensible for each order kind. --}}
+                            <div class="hs-unfold w-100">
                                     <label
                                         class="font-weight-bold text-dark fz-14">{{translate('Change_Order_Status')}}</label>
                                     <div class="dropdown">
@@ -677,100 +702,73 @@
                                             type="button"
                                             id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true"
                                             aria-expanded="false">
-                                            {{ translate($order['order_status'])}}
+                                            {{ \App\CentralLogics\Helpers::order_status_label($order['order_type'], $order['order_status']) }}
                                         </button>
                                         <div class="dropdown-menu text-capitalize" aria-labelledby="dropdownMenuButton">
-                                            @if($order['payment_method'] == 'offline_payment' && $order->offline_payment?->status != 1)
-                                                @if($order['order_type'] != 'dine_in')
-                                                    <a class="dropdown-item offline-payment-order-alert"
-                                                       href="javascript:">{{translate('pending')}}</a>
-                                                @endif
+                                            @php
+                                                // Group order types so the dropdown only offers
+                                                // statuses that actually apply.
+                                                $isDelivery = $order['order_type'] === 'delivery';
+                                                $isDineIn   = $order['order_type'] === 'dine_in';
+                                                $isTakeAway = in_array($order['order_type'], ['pos', 'take_away'], true);
+                                                // Helper closure so each item is a one-liner.
+                                                $statusLink = function (string $status, string $label, bool $disabled = false) use ($order) {
+                                                    if ($disabled) {
+                                                        return '<a class="dropdown-item offline-payment-order-alert" href="javascript:">' . $label . '</a>';
+                                                    }
+                                                    $route = route('admin.orders.status', ['id' => $order['id'], 'order_status' => $status]);
+                                                    $msg = translate('Change status to') . ' ' . $label . ' ?';
+                                                    return '<a class="dropdown-item route-alert" '
+                                                        . 'data-route="' . $route . '" '
+                                                        . 'data-message="' . e($msg) . '" '
+                                                        . 'href="javascript:">' . $label . '</a>';
+                                                };
+                                                // When offline payment is unverified, status changes
+                                                // are blocked until verification — render disabled
+                                                // items that pop the alert modal on click.
+                                                $offlineLocked = $order['payment_method'] === 'offline_payment'
+                                                    && $order->offline_payment?->status != 1;
+                                            @endphp
 
-                                                <a class="dropdown-item offline-payment-order-alert"
-                                                   href="javascript:">{{translate('confirmed')}}</a>
-
-                                                @if($order['order_type'] != 'dine_in')
-                                                    <a class="dropdown-item offline-payment-order-alert"
-                                                       href="javascript:">{{translate('processing')}}</a>
-                                                    <a class="dropdown-item offline-payment-order-alert"
-                                                       href="javascript:">{{translate('out_for_delivery')}}</a>
-                                                    <a class="dropdown-item offline-payment-order-alert"
-                                                       href="javascript:">{{translate('delivered')}}</a>
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'returned'])}}"
-                                                       data-message="{{ translate("Change status to returned ?") }}"
-                                                       href="javascript:">{{translate('returned')}}</a>
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'failed'])}}"
-                                                       data-message="{{ translate("Change status to failed ?") }}"
-                                                       href="javascript:">{{translate('failed')}}</a>
-                                                @endif
-
-                                                @if($order['order_type'] == 'dine_in')
-                                                    <a class="dropdown-item offline-payment-order-alert"
-                                                       href="javascript:">{{translate('cooking')}}</a>
-                                                    <a class="dropdown-item offline-payment-order-alert"
-                                                       href="javascript:">{{translate('completed')}}</a>
-                                                @endif
-                                                <a class="dropdown-item route-alert"
-                                                   data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'canceled'])}}"
-                                                   data-message="{{ translate("Change status to canceled ?") }}"
-                                                   href="javascript:">{{translate('canceled')}}</a>
-                                            @else
-
-                                                @if($order['order_type'] != 'dine_in')
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'pending'])}}"
-                                                       data-message="{{ translate("Change status to pending ?") }}"
-                                                       href="javascript:">{{translate('pending')}}</a>
-                                                @endif
-
-                                                <a class="dropdown-item route-alert"
-                                                   data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'confirmed'])}}"
-                                                   data-message="{{ translate("Change status to confirmed ?") }}"
-                                                   href="javascript:">{{translate('confirmed')}}</a>
-
-                                                @if($order['order_type'] != 'dine_in')
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'processing'])}}"
-                                                       data-message="{{ translate("Change status to processing ?") }}"
-                                                       href="javascript:">{{translate('processing')}}</a>
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'out_for_delivery'])}}"
-                                                       data-message="{{ translate("Change status to out for delivery ?") }}"
-                                                       href="javascript:">{{translate('out_for_delivery')}}</a>
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'delivered'])}}"
-                                                       data-message="{{ translate("Change status to delivered ?") }}"
-                                                       href="javascript:">{{translate('delivered')}}</a>
-
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'returned'])}}"
-                                                       data-message="{{ translate("Change status to returned ?") }}"
-                                                       href="javascript:">{{translate('returned')}}</a>
-
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'failed'])}}"
-                                                       data-message="{{ translate("Change status to failed ?") }}"
-                                                       href="javascript:">{{translate('failed')}}</a>
-                                                @endif
-                                                @if($order['order_type'] == 'dine_in')
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'cooking'])}}"
-                                                       data-message="{{ translate("Change status to cooking ?") }}"
-                                                       href="javascript:">{{translate('cooking')}}</a>
-
-                                                    <a class="dropdown-item route-alert"
-                                                       data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'completed'])}}"
-                                                       data-message="{{ translate("Change status to completed ?") }}"
-                                                       href="javascript:">{{translate('completed')}}</a>
-                                                @endif
-
-                                                <a class="dropdown-item route-alert"
-                                                   data-route="{{route('admin.orders.status',['id'=>$order['id'],'order_status'=>'canceled'])}}"
-                                                   data-message="{{ translate("Change status to canceled ?") }}"
-                                                   href="javascript:">{{translate('canceled')}}</a>
+                                            {{-- Pending — only for orders that have a pre-confirm
+                                                 step (delivery + take-away). Dine-in skips it. --}}
+                                            @if(!$isDineIn)
+                                                {!! $statusLink('pending', translate('Pending'), $offlineLocked) !!}
                                             @endif
+
+                                            {{-- Confirmed — common to every order type. --}}
+                                            {!! $statusLink('confirmed', translate('Confirmed'), $offlineLocked) !!}
+
+                                            {{-- Delivery flow: processing, out for delivery,
+                                                 delivered, returned, failed. --}}
+                                            @if($isDelivery)
+                                                {!! $statusLink('processing', translate('Processing'), $offlineLocked) !!}
+                                                {!! $statusLink('out_for_delivery', translate('Out For Delivery'), $offlineLocked) !!}
+                                                {!! $statusLink('delivered', translate('Delivered'), $offlineLocked) !!}
+                                                {!! $statusLink('returned', translate('Returned')) !!}
+                                                {!! $statusLink('failed', translate('Failed')) !!}
+                                            @endif
+
+                                            {{-- Take-away flow: cooking → ready for handover
+                                                 (stored as 'done') → handed over (stored as
+                                                 'completed'). Reuses existing statuses so the
+                                                 kitchen, KOT, and reporting pipelines need no
+                                                 schema change. --}}
+                                            @if($isTakeAway)
+                                                {!! $statusLink('cooking', translate('Cooking'), $offlineLocked) !!}
+                                                {!! $statusLink('done', translate('Ready for Handover'), $offlineLocked) !!}
+                                                {!! $statusLink('completed', translate('Handed Over'), $offlineLocked) !!}
+                                                {!! $statusLink('failed', translate('Failed')) !!}
+                                            @endif
+
+                                            {{-- Dine-in flow: cooking → completed. --}}
+                                            @if($isDineIn)
+                                                {!! $statusLink('cooking', translate('Cooking'), $offlineLocked) !!}
+                                                {!! $statusLink('completed', translate('Completed'), $offlineLocked) !!}
+                                            @endif
+
+                                            {{-- Cancel — always available regardless of type. --}}
+                                            {!! $statusLink('canceled', translate('Canceled')) !!}
                                         </div>
                                     </div>
                                 </div>
@@ -821,7 +819,6 @@
                                         {{translate('Assign_Delivery_Man')}}
                                     </a>
                                 @endif
-                            @endif
                             <div>
                                 @if($order['order_type'] != 'pos' && $order['order_type'] != 'take_away' && ($order['order_status'] != DELIVERED && $order['order_status'] != RETURNED && $order['order_status'] != CANCELED && $order['order_status'] != FAILED && $order['order_status'] != COMPLETED))
                                     <label
@@ -878,8 +875,8 @@
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <h5>{{translate('Last_location')}}</h5>
                                             </div>
-                                            @php($origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first())
-                                            @php($current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first())
+                                            @php $origin=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->first(); @endphp
+                                            @php $current=\App\Model\DeliveryHistory::where(['deliveryman_id'=>$order['delivery_man_id'],'order_id'=>$order['id']])->latest()->first(); @endphp
                                             @if(isset($origin))
                                                 <a target="_blank" class="text-dark"
                                                    title="Delivery Boy Last Location" data-toggle="tooltip"
@@ -926,7 +923,7 @@
                                             </div>
                                         </div>
                                         <div class="delivery--information-single flex-column">
-                                            @php($address = $order->address)
+                                            @php $address = $order->address; @endphp
                                             <div class="d-flex">
                                                 <div class="name">{{ translate('Name') }}</div>
                                                 <div
@@ -965,7 +962,7 @@
                                                     </div>
                                                 </div>
                                             @endif
-                                            @php($googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'))
+                                            @php $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
                                             @if($googleMapStatus)
                                                 @if(isset($address['address']) && isset($address['latitude']) && isset($address['longitude']))
                                                     <hr class="w-100">
@@ -995,7 +992,7 @@
                                             </h4>
                                         </div>
                                         <div class="delivery--information-single flex-column">
-                                            @php($address = $order->address)
+                                            @php $address = $order->address; @endphp
                                             <div class="d-flex">
                                                 <div class="name">{{ translate('Name') }}</div>
                                                 <div
@@ -1016,7 +1013,7 @@
                 @endif
 
                 @if($order->offline_payment)
-                    @php($payment = json_decode($order->offline_payment?->payment_info, true))
+                    @php $payment = json_decode($order->offline_payment?->payment_info, true); @endphp
 
                     <div class="card mt-2">
                         <div class="card-body">
@@ -1292,7 +1289,7 @@
                                 </div>
                             </div>
 
-                            @php($googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'))
+                            @php $googleMapStatus = \App\CentralLogics\Helpers::get_business_settings('google_map_status'); @endphp
                             @if($googleMapStatus)
                                 @if($order?->branch?->delivery_charge_setup?->delivery_charge_type == 'distance')
                                     <div class="col-md-6">
@@ -1408,7 +1405,7 @@
                             </div>
 
                             <h5>{{translate('Payment_Information')}}</h5>
-                            @php($payment = json_decode($order->offline_payment?->payment_info, true))
+                            @php $payment = json_decode($order->offline_payment?->payment_info, true); @endphp
                             <div class="row card-body">
                                 <div class="col-md-6">
                                     <p>{{ translate('Payment_Method') }} : {{ $payment['payment_name'] }}</p>

@@ -65,6 +65,33 @@ class Helpers
         return ucwords(str_replace('_', ' ', (string) $type));
     }
 
+    /**
+     * Type-aware label for `order_status`. The DB stores generic statuses
+     * like `done` and `completed`; the operator-facing label needs to make
+     * sense for the order kind:
+     *   take-away `done`      → "Ready for Handover"
+     *   take-away `completed` → "Handed Over"
+     *   delivery  `delivered` → "Delivered"   (unchanged)
+     *   dine-in   `done`      → "Done"        (unchanged)
+     *   dine-in   `completed` → "Completed"   (unchanged)
+     * Falls back to a humanised version of the raw status for unknown
+     * combinations.
+     */
+    public static function order_status_label(?string $type, ?string $status): string
+    {
+        $isTakeAway = in_array($type, ['pos', 'take_away'], true);
+        if ($isTakeAway) {
+            $takeAwayMap = [
+                'done'      => 'Ready for Handover',
+                'completed' => 'Handed Over',
+            ];
+            if (isset($takeAwayMap[$status])) {
+                return translate($takeAwayMap[$status]);
+            }
+        }
+        return translate(ucwords(str_replace('_', ' ', (string) $status)));
+    }
+
     public static function combinations($arrays): array
     {
         $result = [[]];

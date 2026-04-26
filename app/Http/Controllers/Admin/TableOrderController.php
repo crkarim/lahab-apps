@@ -166,42 +166,90 @@ class TableOrderController extends Controller
     {
         $table_id = $request->table_id;
         $branchId = $request->branch ?? 1;
+        // Tab filter — supports `dine_in`, `delivery`, `take_away`, or `all`
+        // (default). Same operator manages both floor and online orders, so
+        // this view consolidates everything that needs action right now.
+        $type = $request->type ?? 'all';
+        $allowedTypes = ['all', 'dine_in', 'delivery', 'take_away'];
+        if (!in_array($type, $allowedTypes, true)) {
+            $type = 'all';
+        }
 
-        // A table is "running" if it has an unpaid dine-in order
-        // OR an active QR-scan session (legacy table_order row).
-        $runningOrderQuery = function ($q) {
-            $q->where('order_type', 'dine_in')
-              ->where('payment_status', '!=', 'paid')
-              ->whereNotIn('order_status', ['completed', 'delivered', 'canceled', 'failed', 'refunded', 'refund_requested'])
-              ->orWhereHas('table_order', function ($t) {
-                  $t->where('branch_table_token_is_expired', 0);
-              });
+        // Statuses that mean the order no longer needs the operator's
+        // attention. `completed` covers dine-in served-and-paid, `delivered`
+        // covers home delivery, the rest are abandoned/refunded outcomes.
+        $terminalStatuses = ['completed', 'delivered', 'canceled', 'failed', 'refunded', 'refund_requested'];
+
+        // Builders for the three "active by type" definitions. Dine-in also
+        // counts active QR-scan sessions (table_order rows with an unexpired
+        // token) so a fresh scan shows up before any cart is submitted.
+        $dineInActive = function ($q) use ($terminalStatuses) {
+            $q->where(function ($sub) use ($terminalStatuses) {
+                $sub->where('order_type', 'dine_in')
+                    ->where('payment_status', '!=', 'paid')
+                    ->whereNotIn('order_status', $terminalStatuses);
+            })->orWhereHas('table_order', function ($t) {
+                $t->where('branch_table_token_is_expired', 0);
+            });
+        };
+        $deliveryActive = function ($q) use ($terminalStatuses) {
+            $q->where('order_type', 'delivery')
+              ->whereNotIn('order_status', $terminalStatuses);
+        };
+        // Take-away is stored as 'pos' on legacy rows and 'take_away' on new
+        // ones; treat both as the same bucket so the operator sees the full
+        // picture.
+        $takeAwayActive = function ($q) use ($terminalStatuses) {
+            $q->whereIn('order_type', ['pos', 'take_away'])
+              ->whereNotIn('order_status', $terminalStatuses);
         };
 
-        $tables = $this->table->with(['order' => $runningOrderQuery])
-            ->whereHas('order', $runningOrderQuery)
-            ->where(['branch_id' => $branchId])
-            ->get();
-
+        // Build the main list query based on the selected tab.
         $orders = $this->order
-            ->with('table_order', 'table')
+            ->with('table_order', 'table', 'customer', 'branch')
             ->where('branch_id', $branchId)
-            ->where(function ($q) {
-                $q->where(function ($sub) {
-                    $sub->where('order_type', 'dine_in')
-                        ->where('payment_status', '!=', 'paid')
-                        ->whereNotIn('order_status', ['completed', 'delivered', 'canceled', 'failed', 'refunded', 'refund_requested']);
-                })->orWhereHas('table_order', function ($t) {
-                    $t->where('branch_table_token_is_expired', 0);
-                });
+            ->where(function ($q) use ($type, $dineInActive, $deliveryActive, $takeAwayActive) {
+                if ($type === 'dine_in') {
+                    $dineInActive($q);
+                } elseif ($type === 'delivery') {
+                    $deliveryActive($q);
+                } elseif ($type === 'take_away') {
+                    $takeAwayActive($q);
+                } else {
+                    $q->where($dineInActive)
+                      ->orWhere($deliveryActive)
+                      ->orWhere($takeAwayActive);
+                }
             })
-            ->when(!is_null($table_id), function ($query) use ($table_id) {
+            ->when($type === 'dine_in' && !is_null($table_id), function ($query) use ($table_id) {
                 return $query->where('table_id', $table_id);
             })
             ->latest()
-            ->paginate(Helpers::getPagination());
+            ->paginate(Helpers::getPagination())
+            ->appends($request->only(['type', 'branch']));
 
-        return view('admin-views.table.order.table_running_order', compact('tables', 'orders', 'table_id', 'branchId'));
+        // Tables list — only used by the dine-in table filter dropdown.
+        $tables = $type === 'dine_in'
+            ? $this->table->with(['order' => $dineInActive])
+                ->whereHas('order', $dineInActive)
+                ->where(['branch_id' => $branchId])
+                ->get()
+            : collect();
+
+        // Per-tab counts for the sidebar tabs' badges.
+        $countFor = fn(callable $builder) => $this->order
+            ->where('branch_id', $branchId)
+            ->where($builder)
+            ->count();
+        $counts = [
+            'dine_in'   => $countFor($dineInActive),
+            'delivery'  => $countFor($deliveryActive),
+            'take_away' => $countFor($takeAwayActive),
+        ];
+        $counts['all'] = $counts['dine_in'] + $counts['delivery'] + $counts['take_away'];
+
+        return view('admin-views.table.order.table_running_order',
+            compact('tables', 'orders', 'table_id', 'branchId', 'type', 'counts'));
     }
 
     /**
