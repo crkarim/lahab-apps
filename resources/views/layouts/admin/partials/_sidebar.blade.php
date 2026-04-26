@@ -106,13 +106,13 @@
                         {{-- 4. Menu --}}
                         @if(Helpers::module_permission_check(MANAGEMENT_SECTION['product_management']))
                             <li class="navbar-vertical-aside-has-menu
-                                {{ Request::is('admin/product*') || Request::is('admin/category*') || Request::is('admin/cuisine*') || Request::is('admin/addon*') || Request::is('admin/table/*') || Request::is('admin/banner*') || Request::is('admin/coupon*') || Request::is('admin/reviews*') ? 'active' : '' }}">
+                                {{ Request::is('admin/product*') || Request::is('admin/category*') || Request::is('admin/cuisine*') || Request::is('admin/addon*') || Request::is('admin/table/*') || Request::is('admin/promotion*') || Request::is('admin/banner*') || Request::is('admin/coupon*') || Request::is('admin/reviews*') ? 'active' : '' }}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('Menu') }}">
                                     <i class="tio-restaurant-menu nav-icon"></i>
                                     <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Menu') }}</span>
                                 </a>
                                 <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                    style="display: {{ Request::is('admin/product*') || Request::is('admin/category*') || Request::is('admin/cuisine*') || Request::is('admin/addon*') || Request::is('admin/table/*') || Request::is('admin/banner*') || Request::is('admin/coupon*') || Request::is('admin/reviews*') ? 'block' : 'none' }};">
+                                    style="display: {{ Request::is('admin/product*') || Request::is('admin/category*') || Request::is('admin/cuisine*') || Request::is('admin/addon*') || Request::is('admin/table/*') || Request::is('admin/promotion*') || Request::is('admin/banner*') || Request::is('admin/coupon*') || Request::is('admin/reviews*') ? 'block' : 'none' }};">
                                     <li class="nav-item {{ Request::is('admin/product*') && !Request::is('admin/product/bulk*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('admin.product.list') }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
@@ -143,10 +143,22 @@
                                             <span class="text-truncate">{{ translate('Addons') }}</span>
                                         </a>
                                     </li>
-                                    <li class="nav-item {{ Request::is('admin/table/list') || Request::is('admin/table/update*') || Request::is('admin/table/index') ? 'active' : '' }}">
+                                    <li class="nav-item {{ Request::is('admin/table/list') || Request::is('admin/table/update*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('admin.table.list') }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span class="text-truncate">{{ translate('Tables') }}</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item {{ Request::is('admin/table/index') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.table.index') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('Table Availability') }}</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item {{ Request::is('admin/promotion*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.promotion.create') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('Promotion Setup') }}</span>
                                         </a>
                                     </li>
                                     <li class="nav-item {{ Request::is('admin/banner*') ? 'active' : '' }}">
@@ -299,11 +311,11 @@
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.email-setup', ['user']) }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Email Templates') }}</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.page-setup.about-us') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Pages & Policies') }}</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.web-app.third-party.social-media') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Social Media') }}</span></a></li>
-                                    <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.web-app.payment-method') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Payment Gateways') }}</span></a></li>
+                                    <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.web-app.payment-method') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Third Party') }}</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.web-app.third-party.offline-payment.list') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Offline Payment Methods') }}</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.web-app.third-party.fcm-index') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Firebase / FCM') }}</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.ai-settings.configuration') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('AI Configuration') }}</span></a></li>
-                                    <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.web-app.system-setup.language.index') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Languages') }}</span></a></li>
+                                    <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.web-app.system-setup.language.index') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('System Setup') }}</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.system-addon.index') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('System Addons') }}</span></a></li>
                                 </ul>
                             </li>

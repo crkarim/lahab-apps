@@ -3223,4 +3223,5 @@
   'Dine In' => 'Dine In',
   'Online' => 'Online',
   'cart_is_empty' => 'Cart is empty',
+  'Sub Categories' => 'Sub Categories',
 );
