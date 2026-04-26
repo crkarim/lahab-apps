@@ -2,7 +2,7 @@
     <header id="header" class="navbar navbar-expand-lg navbar-fixed navbar-height navbar-flush navbar-container navbar-bordered">
         <div class="navbar-nav-wrap">
             <div class="navbar-brand-wrapper">
-                @php($restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()->value)
+                @php $restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()->value; @endphp
                 <a class="navbar-brand" href="{{route('branch.dashboard')}}" aria-label="">
                     <img class="navbar-brand-logo" style="object-fit: contain;"
                          onerror="this.src='{{asset('public/assets/admin/img/160x160/img1.jpg')}}'"
@@ -28,8 +28,8 @@
                     <li class="nav-item d-none d-sm-inline-block">
                         <div class="hs-unfold">
                             <div class="bg-white p-1 rounded">
-                                @php( $local = session()->has('local')?session('local'):'en')
-                                @php($lang = \App\CentralLogics\Helpers::get_business_settings('language')??null)
+                                @php  $local = session()->has('local')?session('local'):'en'; @endphp
+                                @php $lang = \App\CentralLogics\Helpers::get_business_settings('language')??null; @endphp
                                 <div class="topbar-text dropdown disable-autohide text-capitalize">
                                     @if(isset($lang) && array_key_exists('code', $lang[0]))
                                         <a class="topbar-link dropdown-toggle d-flex gap-2 align-items-center font-weight-bold dropdown-toggle-empty lang-country-flag" href="#" data-toggle="dropdown">

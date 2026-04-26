@@ -31,7 +31,7 @@
                 </div>
 
                 <div class="mt-4">
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('recaptcha'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('recaptcha'); @endphp
                     <form
                         action="{{env('APP_MODE')!='demo'?route('admin.business-settings.web-app.third-party.recaptcha_update',['recaptcha']):'javascript:'}}"
                         method="post">

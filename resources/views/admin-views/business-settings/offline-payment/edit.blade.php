@@ -38,7 +38,7 @@
                     </div>
 
                     @if($method['method_fields'][0])
-                        @php($field = $method['method_fields'][0])
+                        @php $field = $method['method_fields'][0]; @endphp
                         <div class="d-flex align-items-end gap-3 mb-4 flex-wrap">
                             <div class="flex-grow-1">
                                 <div>

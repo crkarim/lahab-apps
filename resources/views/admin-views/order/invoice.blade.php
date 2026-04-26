@@ -115,17 +115,17 @@
                     </thead>
 
                     <tbody>
-                    @php($subTotal=0)
-                    @php($totalTax=0)
-                    @php($totalDisOnPro=0)
-                    @php($addOnsCost=0)
-                    @php($addOnTax=0)
-                    @php($add_ons_tax_cost=0)
+                    @php $subTotal=0; @endphp
+                    @php $totalTax=0; @endphp
+                    @php $totalDisOnPro=0; @endphp
+                    @php $addOnsCost=0; @endphp
+                    @php $addOnTax=0; @endphp
+                    @php $add_ons_tax_cost=0; @endphp
                     @foreach($order->details as $detail)
                         @if($detail->product)
-                            @php($addOnQtys=json_decode($detail['add_on_qtys'],true))
-                            @php($addOnPrices=json_decode($detail['add_on_prices'],true))
-                            @php($addOnTaxes=json_decode($detail['add_on_taxes'],true))
+                            @php $addOnQtys=json_decode($detail['add_on_qtys'],true); @endphp
+                            @php $addOnPrices=json_decode($detail['add_on_prices'],true); @endphp
+                            @php $addOnTaxes=json_decode($detail['add_on_taxes'],true); @endphp
 
                             <tr>
                                 <td class="">
@@ -168,13 +168,13 @@
 
 
                                     @foreach(json_decode($detail['add_on_ids'],true) as $key2 =>$id)
-                                        @php($addon=\App\Model\AddOn::find($id))
+                                        @php $addon=\App\Model\AddOn::find($id); @endphp
                                         @if($key2==0)<strong><u>{{translate('Addons : ')}}</u></strong>@endif
 
                                         @if($addOnQtys==null)
-                                            @php($add_on_qty=1)
+                                            @php $add_on_qty=1; @endphp
                                         @else
-                                            @php($add_on_qty=$addOnQtys[$key2])
+                                            @php $add_on_qty=$addOnQtys[$key2]; @endphp
                                         @endif
 
                                         <div class="font-size-sm text-body">
@@ -183,19 +183,19 @@
                                                 {{$add_on_qty}} x {{ \App\CentralLogics\Helpers::set_symbol($addOnPrices[$key2]) }}
                                             </span>
                                         </div>
-                                        @php($addOnsCost+=$addOnPrices[$key2] * $add_on_qty)
-                                        @php($add_ons_tax_cost +=  $addOnTaxes[$key2] * $add_on_qty)
+                                        @php $addOnsCost+=$addOnPrices[$key2] * $add_on_qty; @endphp
+                                        @php $add_ons_tax_cost +=  $addOnTaxes[$key2] * $add_on_qty; @endphp
                                     @endforeach
 
                                     {{translate('Discount : ')}}{{ \App\CentralLogics\Helpers::set_symbol($detail['discount_on_product']) }}
                                 </td>
                                 <td style="width: 28%;padding-right:4px; text-align:right">
-                                    @php($amount=($detail['price']-$detail['discount_on_product'])*$detail['quantity'])
+                                    @php $amount=($detail['price']-$detail['discount_on_product'])*$detail['quantity']; @endphp
                                     {{ \App\CentralLogics\Helpers::set_symbol($amount) }}
                                 </td>
                             </tr>
-                            @php($subTotal+=$amount)
-                            @php($totalTax+=($detail['tax_amount']*$detail['quantity']) )
+                            @php $subTotal+=$amount; @endphp
+                            @php $totalTax+=($detail['tax_amount']*$detail['quantity']) ; @endphp
                         @endif
                     @endforeach
                     </tbody>
@@ -234,9 +234,9 @@
                             <dt class="col-6">{{translate('Delivery Fee:')}}</dt>
                             <dd class="col-6">
                                 @if($order['order_type']=='take_away')
-                                    @php($del_c=0)
+                                    @php $del_c=0; @endphp
                                 @else
-                                    @php($del_c=$order['delivery_charge'])
+                                    @php $del_c=$order['delivery_charge']; @endphp
                                 @endif
                                 {{ \App\CentralLogics\Helpers::set_symbol($del_c) }}
                                 <hr>
@@ -278,7 +278,7 @@
                                 <dt class="col-6">{{translate('paid_amount')}}<span>:</span></dt>
                                 <dd class="col-6">{{ \App\CentralLogics\Helpers::set_symbol($order->order_change_amount?->paid_amount) }}</dd>
 
-                                @php($changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount)
+                                @php $changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount; @endphp
                                 <dt class="col-6">{{$changeOrDueAmount < 0 ? translate('due_amount') : translate('change_amount') }}<span>:</span></dt>
                                 <dd class="col-6">{{ \App\CentralLogics\Helpers::set_symbol($changeOrDueAmount) }}</dd>
                             @endif

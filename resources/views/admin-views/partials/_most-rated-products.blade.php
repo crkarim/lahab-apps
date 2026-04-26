@@ -6,7 +6,7 @@
 <div class="card-body">
     <div class="grid-item-wrap">
         @foreach($most_rated_products as $key=>$item)
-            @php($product=\App\Model\Product::find($item['product_id']))
+            @php $product=\App\Model\Product::find($item['product_id']); @endphp
             @if(isset($product))
                 <a class="grid-item text-dark" href='{{route('admin.product.view',[$item['product_id']])}}'>
                     <div class="d-flex align-items-center gap-2">

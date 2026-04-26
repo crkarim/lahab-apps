@@ -1,10 +1,10 @@
 <div class="border-bottom"></div>
-@php($array=[])
+@php $array=[]; @endphp
 @foreach($conversations as $conv)
     @if(in_array($conv->user_id,$array)==false)
-        @php(array_push($array,$conv->user_id))
-        @php($user=\App\User::find($conv->user_id))
-        @php($unchecked=\App\Model\Conversation::where(['user_id'=>$conv->user_id,'checked'=>0])->count())
+        @php array_push($array,$conv->user_id); @endphp
+        @php $user=\App\User::find($conv->user_id); @endphp
+        @php $unchecked=\App\Model\Conversation::where(['user_id'=>$conv->user_id,'checked'=>0])->count(); @endphp
         <div class="sidebar_primary_div d-flex border-bottom pb-2 pt-2 pl-md-1 pl-0 justify-content-between align-items-center customer-list view-convs {{$unchecked!=0?'conv-active':''}}"
             data-url="{{route('admin.message.view',[$conv->user_id])}}" data-id="customer-{{$conv->user_id}}')"
             id="customer-{{$conv->user_id}}">

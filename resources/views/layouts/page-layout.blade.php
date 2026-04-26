@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title')</title>
 
-    @php($icon = \App\Model\BusinessSetting::where(['key' => 'fav_icon'])->first()->value??'')
+    @php $icon = \App\Model\BusinessSetting::where(['key' => 'fav_icon'])->first()->value??''; @endphp
 
     <link rel="shortcut icon" href="{{ asset('storage/app/public/restaurant/' . $icon ?? '') }}">
 

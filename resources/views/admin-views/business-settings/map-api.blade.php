@@ -23,12 +23,12 @@
                               enctype="multipart/form-data">
                             @csrf
                             <div class="row">
-                                @php($serverKey=\App\Model\BusinessSetting::where('key','map_api_server_key')->first()?->value )
+                                @php $serverKey=\App\Model\BusinessSetting::where('key','map_api_server_key')->first()?->value ; @endphp
                                 <div class="form-group col-md-6">
                                     <label class="form-label">{{translate('map_api_server')}} {{translate('key')}}</label>
                                     <textarea name="map_api_server_key" class="form-control" tabindex="1">{{env('APP_MODE')!='demo'?$serverKey:''}}</textarea>
                                 </div>
-                                @php($clientKey=\App\Model\BusinessSetting::where('key','map_api_client_key')->first()?->value)
+                                @php $clientKey=\App\Model\BusinessSetting::where('key','map_api_client_key')->first()?->value; @endphp
                                 <div class="form-group col-md-6">
                                     <label class="form-label">{{translate('map_api_client')}} {{translate('key')}}</label>
                                     <textarea name="map_api_client_key" class="form-control" tabindex="2">{{env('APP_MODE')!='demo'?$clientKey:''}}</textarea>

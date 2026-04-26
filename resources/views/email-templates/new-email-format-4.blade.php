@@ -198,7 +198,7 @@ $lang = \App\CentralLogics\Helpers::get_default_language();
                     </span>
 
                     <span class="social" style="text-align:center">
-                        @php($social_media = \App\Model\SocialMedia::active()->get())
+                        @php $social_media = \App\Model\SocialMedia::active()->get(); @endphp
                         @if (isset($social_media))
                             @foreach ($social_media as $social)
                                 <a href="{{ $social->link }}" target=”_blank” id="{{ $social->name  }}-check" style="margin: 0 5px;text-decoration:none;{{ (isset($data[$social->name]) && $data[$social->name] == 1)?'':'display:none;' }}">

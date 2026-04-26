@@ -24,7 +24,7 @@
                     </div>
 
                     <h5>{{translate('Payment_Information')}}</h5>
-                    @php($payment = json_decode($order->offline_payment?->payment_info, true))
+                    @php $payment = json_decode($order->offline_payment?->payment_info, true); @endphp
                     <div class="row card-body">
                         <div class="col-md-6">
                             <p>{{ translate('Payment_Method') }} : {{ $payment['payment_name'] }}</p>

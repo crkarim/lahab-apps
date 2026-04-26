@@ -9,7 +9,7 @@
                 <div class="card-body">
                     <div class="qr-area">
                         <div class="left-side pr-xl-4">
-                            @php($restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()?->value)
+                            @php $restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()?->value; @endphp
                             <div class="qr-wrapper" tyle="background: url({{asset('public/assets/admin/img/qr-bg.png')}}) no-repeat scroll 0% 0% / 100% 100% !important; -webkit-print-color-adjust: exact !important; color-adjust: exact !important; print-color-adjust: exact !important;">
 
                                 <div class="d-flex justify-content-center">

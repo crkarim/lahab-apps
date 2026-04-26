@@ -20,7 +20,7 @@
         <form action="javascript:" method="post" id="set_price_form" enctype="multipart/form-data">
             @csrf
 
-            @php($productByBranch = json_decode($product->product_by_branch, true))
+            @php $productByBranch = json_decode($product->product_by_branch, true); @endphp
             <?php
             if(isset($productByBranch[0])){
                 $price = $productByBranch[0]['price'];
@@ -95,7 +95,7 @@
                     </div>
                 </div>
 
-                @php($halalStatus = \App\CentralLogics\Helpers::get_business_settings('halal_tag_status') ?? 0)
+                @php $halalStatus = \App\CentralLogics\Helpers::get_business_settings('halal_tag_status') ?? 0; @endphp
                 @if($halalStatus)
                     <div class="col-12 mt-3">
                         <div class="card">
@@ -262,9 +262,9 @@
         });
 
         @if($product->sub_branch_product)
-            @php($stock = $product->sub_branch_product?->stock_type ?? null)
+            @php $stock = $product->sub_branch_product?->stock_type ?? null; @endphp
         @else
-            @php($stock = $mainBranchProduct?->stock_type ?? null)
+            @php $stock = $mainBranchProduct?->stock_type ?? null; @endphp
         @endif
 
         @if($stock == 'daily' || $stock == 'fixed')

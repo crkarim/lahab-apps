@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="content container-fluid">
-    @php($branch_count=\App\Model\Branch::count())
+    @php $branch_count=\App\Model\Branch::count(); @endphp
         <div class="d-flex flex-wrap gap-2 align-items-center mb-4">
             <h2 class="h1 mb-0 d-flex align-items-center gap-2">
                 <img width="20" class="avatar-img" src="{{asset('public/assets/admin/img/icons/location.png')}}" alt="">
@@ -21,7 +21,7 @@
                     @csrf
                     <div class="card">
                         <div class="card-body">
-                            @php($data=\App\Model\Branch::find(1))
+                            @php $data=\App\Model\Branch::find(1); @endphp
                             <div class="row">
                                 <div class="col-12 mb-4">
                                     <span class="badge-soft-danger px-2">

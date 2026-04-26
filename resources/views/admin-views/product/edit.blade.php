@@ -29,8 +29,8 @@
                         <div class="col-lg-8">
                             <div class="card">
                                 <div class="card-body">
-                                    @php($data = Helpers::get_business_settings('language'))
-                                    @php($defaultLang = Helpers::get_default_language())
+                                    @php $data = Helpers::get_business_settings('language'); @endphp
+                                    @php $defaultLang = Helpers::get_default_language(); @endphp
 
                                     @if($data && array_key_exists('code', $data[0]))
                                         <ul class="nav nav-tabs w-fit-content mb-4">
@@ -305,7 +305,7 @@
                                     </div>
                                 </div>
 
-                                @php($halalStatus = \App\CentralLogics\Helpers::get_business_settings('halal_tag_status') ?? 0)
+                                @php $halalStatus = \App\CentralLogics\Helpers::get_business_settings('halal_tag_status') ?? 0; @endphp
                                 @if($halalStatus)
                                     <div class="col-12">
                                         <div class="card">

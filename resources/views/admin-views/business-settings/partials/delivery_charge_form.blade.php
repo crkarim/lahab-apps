@@ -141,7 +141,7 @@
         </form>
     </div>
 </div>
-@php($areaCount = $branch->delivery_charge_by_area->count())
+@php $areaCount = $branch->delivery_charge_by_area->count(); @endphp
 <div class="card my-4">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center border rounded mb-2 px-3 py-3">

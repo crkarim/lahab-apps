@@ -16,8 +16,8 @@
                 <form action="{{route('admin.cuisine.update', [$cuisine['id']])}}" method="post" enctype="multipart/form-data">
                     @csrf
                     <div class="">
-                        @php($data = Helpers::get_business_settings('language'))
-                        @php($defaultLang = Helpers::get_default_language())
+                        @php $data = Helpers::get_business_settings('language'); @endphp
+                        @php $defaultLang = Helpers::get_default_language(); @endphp
 
 
                         <div class="card-body p-0">

@@ -26,7 +26,7 @@
                                     <a type="button" href="{{ route('admin.business-settings.restaurant.qrcode.print') }}" class="btn cmn_focus btn-primary pt-1" tabindex="1"><i class="tio-print"></i> {{translate('Print')}}</a>
                                 </div>
                             </div>
-                            @php($restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()?->value)
+                            @php $restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()?->value; @endphp
                             <div class="qr-wrapper" style="background: url({{asset('public/assets/admin/img/qr-bg.png')}}) no-repeat center center / 100% 100%">
                                 <a href="javascript:" class="qr-logo ratio-3-1" style="max-width: 300px; min-width: 100px;">
                                     <img src="{{asset('storage/app/public/qrcode/'.$data['logo'])}}"

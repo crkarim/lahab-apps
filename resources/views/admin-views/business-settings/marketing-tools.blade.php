@@ -24,7 +24,7 @@
         <div class="row gy-3">
             <div class="col-lg-6">
                 <div class="card">
-                    @php($meta = \App\CentralLogics\Helpers::get_business_settings('meta_pixel'))
+                    @php $meta = \App\CentralLogics\Helpers::get_business_settings('meta_pixel'); @endphp
                     <div class="card-body">
                         <form action="{{env('APP_MODE')!='demo'?route('admin.business-settings.web-app.third-party.update-marketing-tools', ['meta']):'javascript:'}}" method="post">
                             @csrf

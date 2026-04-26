@@ -49,7 +49,7 @@
                                     class="d-flex align-items-center gap-2 justify-content-between flex-grow-1">
                                     {{ translate('PHP Version 8.2 +') }}
 
-                                    @php($phpVersion = number_format((float)phpversion(), 2, '.', ''))
+                                    @php $phpVersion = number_format((float)phpversion(), 2, '.', ''); @endphp
                                     @if ($phpVersion >= 8.2)
                                         <img width="20"
                                              src="{{asset('public/assets/installation')}}/assets/img/svg-icons/check.png"

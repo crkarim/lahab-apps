@@ -37,9 +37,9 @@
                     <div class="col-md-7">
                         <ul class="list-unstyled list-unstyled-py-2 mb-0">
 
-                        @php($total=$deliveryman->reviews->count())
+                        @php $total=$deliveryman->reviews->count(); @endphp
                             <li class="d-flex align-items-center font-size-sm">
-                                @php($five=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],5))
+                                @php $five=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],5); @endphp
                                 <span class="progress-name">{{translate('Excellent')}}</span>
                                 <div class="progress flex-grow-1">
                                     <div class="progress-bar" role="progressbar"
@@ -50,7 +50,7 @@
                                 <span class="ml-3">{{$five}}</span>
                             </li>
                             <li class="d-flex align-items-center font-size-sm">
-                                @php($four=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],4))
+                                @php $four=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],4); @endphp
                                 <span class="progress-name">{{translate('Good')}}</span>
                                 <div class="progress flex-grow-1">
                                     <div class="progress-bar" role="progressbar"
@@ -61,7 +61,7 @@
                                 <span class="ml-3">{{$four}}</span>
                             </li>
                             <li class="d-flex align-items-center font-size-sm">
-                                @php($three=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],3))
+                                @php $three=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],3); @endphp
                                 <span class="progress-name">{{translate('Average')}}</span>
                                 <div class="progress flex-grow-1">
                                     <div class="progress-bar" role="progressbar"
@@ -72,7 +72,7 @@
                                 <span class="ml-3">{{$three}}</span>
                             </li>
                             <li class="d-flex align-items-center font-size-sm">
-                                @php($two=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],2))
+                                @php $two=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],2); @endphp
                                 <span class="progress-name">{{translate('Below_Average')}}</span>
                                 <div class="progress flex-grow-1">
                                     <div class="progress-bar" role="progressbar"
@@ -83,7 +83,7 @@
                                 <span class="ml-3">{{$two}}</span>
                             </li>
                             <li class="d-flex align-items-center font-size-sm">
-                                @php($one=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],1))
+                                @php $one=\App\CentralLogics\Helpers::dm_rating_count($deliveryman['id'],1); @endphp
                                 <span class="progress-name">{{translate('Poor')}}</span>
                                 <div class="progress flex-grow-1">
                                     <div class="progress-bar" role="progressbar"

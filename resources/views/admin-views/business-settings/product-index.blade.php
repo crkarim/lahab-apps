@@ -69,7 +69,7 @@
                                 </tr>
                                 </thead>
                                 <tbody>
-                                @php($data = isset($searchPlaceholder->value)?json_decode($searchPlaceholder->value, true):null)
+                                @php $data = isset($searchPlaceholder->value)?json_decode($searchPlaceholder->value, true):null; @endphp
 
                                 @foreach($data ?? [] as $key=>$placeholder)
                                     <tr>

@@ -80,7 +80,7 @@
                                 <h5>
                                     {{translate('Phone : ')}}<span class="font-weight-normal">{{$order->customer['phone']}}</span>
                                 </h5>
-                                @php($address=\App\Model\CustomerAddress::find($order['delivery_address_id']))
+                                @php $address=\App\Model\CustomerAddress::find($order['delivery_address_id']); @endphp
                                 <h5>
                                     {{translate('Address : ')}}<span class="font-weight-normal">{{isset($order->address)?$order->address['address']:''}}</span>
                                 </h5>
@@ -114,17 +114,17 @@
                     </thead>
 
                     <tbody>
-                    @php($subTotal=0)
-                    @php($totalTax=0)
-                    @php($totalDiscountOnProduct=0)
-                    @php($addonCost=0)
-                    @php($add_on_tax=0)
-                    @php($addonTaxCost=0)
+                    @php $subTotal=0; @endphp
+                    @php $totalTax=0; @endphp
+                    @php $totalDiscountOnProduct=0; @endphp
+                    @php $addonCost=0; @endphp
+                    @php $add_on_tax=0; @endphp
+                    @php $addonTaxCost=0; @endphp
                     @foreach($order->details as $detail)
                         @if($detail->product)
-                            @php($addonQtys=json_decode($detail['add_on_qtys'],true))
-                            @php($addonPrices=json_decode($detail['add_on_prices'],true))
-                            @php($addonTaxes=json_decode($detail['add_on_taxes'],true))
+                            @php $addonQtys=json_decode($detail['add_on_qtys'],true); @endphp
+                            @php $addonPrices=json_decode($detail['add_on_prices'],true); @endphp
+                            @php $addonTaxes=json_decode($detail['add_on_taxes'],true); @endphp
 
                             <tr>
                                 <td class="">
@@ -166,13 +166,13 @@
                                     @endif
 
                                     @foreach(json_decode($detail['add_on_ids'],true) as $key2 =>$id)
-                                        @php($addon=\App\Model\AddOn::find($id))
+                                        @php $addon=\App\Model\AddOn::find($id); @endphp
                                         @if($key2==0)<strong><u>Addons : </u></strong>@endif
 
                                         @if($addonQtys==null)
-                                            @php($addonQuantity=1)
+                                            @php $addonQuantity=1; @endphp
                                         @else
-                                            @php($addonQuantity=$addonQtys[$key2])
+                                            @php $addonQuantity=$addonQtys[$key2]; @endphp
                                         @endif
 
                                         <div class="font-size-sm text-body">
@@ -181,20 +181,20 @@
                                                 {{$addonQuantity}} x {{ \App\CentralLogics\Helpers::set_symbol($addonPrices[$key2]) }}
                                             </span>
                                         </div>
-                                        @php($addonCost+=$addonPrices[$key2] * $addonQuantity)
-                                        @php($addonTaxCost +=  $addonTaxes[$key2] * $addonQuantity)
+                                        @php $addonCost+=$addonPrices[$key2] * $addonQuantity; @endphp
+                                        @php $addonTaxCost +=  $addonTaxes[$key2] * $addonQuantity; @endphp
                                     @endforeach
 
                                     {{translate('Discount')}}
                                     : {{ \App\CentralLogics\Helpers::set_symbol($detail['discount_on_product']) }}
                                 </td>
                                 <td style="width: 28%;padding-right:4px; text-align:right">
-                                    @php($amount=($detail['price']-$detail['discount_on_product'])*$detail['quantity'])
+                                    @php $amount=($detail['price']-$detail['discount_on_product'])*$detail['quantity']; @endphp
                                     {{ \App\CentralLogics\Helpers::set_symbol($amount) }}
                                 </td>
                             </tr>
-                            @php($subTotal+=$amount)
-                            @php($totalTax+=$detail['tax_amount']*$detail['quantity'])
+                            @php $subTotal+=$amount; @endphp
+                            @php $totalTax+=$detail['tax_amount']*$detail['quantity']; @endphp
                         @endif
                     @endforeach
                     </tbody>
@@ -235,9 +235,9 @@
                             <dt class="col-6">{{translate('Delivery Fee')}}:</dt>
                             <dd class="col-6">
                                 @if($order['order_type']=='take_away')
-                                    @php($deliveryCharge=0)
+                                    @php $deliveryCharge=0; @endphp
                                 @else
-                                    @php($deliveryCharge=$order['delivery_charge'])
+                                    @php $deliveryCharge=$order['delivery_charge']; @endphp
                                 @endif
                                 {{ \App\CentralLogics\Helpers::set_symbol($deliveryCharge) }}
                                 <hr>
@@ -280,7 +280,7 @@
                                 <dt class="col-6">{{translate('paid_amount')}}<span>:</span></dt>
                                 <dd class="col-6">{{ \App\CentralLogics\Helpers::set_symbol($order->order_change_amount?->paid_amount) }}</dd>
 
-                                @php($changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount)
+                                @php $changeOrDueAmount = $order->order_change_amount?->paid_amount - $order->order_change_amount?->order_amount; @endphp
                                 <dt class="col-6">{{$changeOrDueAmount < 0 ? translate('due_amount') : translate('change_amount') }}<span>:</span></dt>
                                 <dd class="col-6">{{ \App\CentralLogics\Helpers::set_symbol($changeOrDueAmount) }}</dd>
                             @endif

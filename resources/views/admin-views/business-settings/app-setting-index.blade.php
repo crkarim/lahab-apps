@@ -22,7 +22,7 @@
                         <h4 class="mb-0">{{translate('Android')}}</h4>
                     </div>
                     <div class="card-body">
-                        @php($config=\App\CentralLogics\Helpers::get_business_settings('play_store_config'))
+                        @php $config=\App\CentralLogics\Helpers::get_business_settings('play_store_config'); @endphp
                         <form
                             action="{{env('APP_MODE')!='demo'?route('admin.business-settings.web-app.system-setup.app_setting',['platform' => 'android']):'javascript:'}}"
                             method="post">
@@ -71,7 +71,7 @@
                         <h4 class="mb-0">{{translate('IOS')}}</h4>
                     </div>
                     <div class="card-body">
-                        @php($config=\App\CentralLogics\Helpers::get_business_settings('app_store_config'))
+                        @php $config=\App\CentralLogics\Helpers::get_business_settings('app_store_config'); @endphp
                         <form action="{{env('APP_MODE')!='demo'?route('admin.business-settings.web-app.system-setup.app_setting',['platform' => 'ios']):'javascript:'}}"
                             method="post">
                             @csrf

@@ -8,7 +8,7 @@
 <div class="card-body">
     <div class="row">
         @foreach($topStoreByOrderReceived as $key=>$item)
-            @php($shop=\App\Model\Shop::where('seller_id',$item['seller_id'])->first())
+            @php $shop=\App\Model\Shop::where('seller_id',$item['seller_id'])->first(); @endphp
             @if(isset($shop))
                 <div class="col-6 col-md-4 mt-2 custom-div-design redirect-url"
                      data-url="{{route('admin.sellers.view',$item['seller_id'])}}">

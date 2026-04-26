@@ -19,8 +19,8 @@
                     <form action="{{route('admin.addon.update',[$addon['id']])}}" method="post">
                         @csrf
 
-                        @php($data = Helpers::get_business_settings('language'))
-                        @php($defaultLang = Helpers::get_default_language())
+                        @php $data = Helpers::get_business_settings('language'); @endphp
+                        @php $defaultLang = Helpers::get_default_language(); @endphp
 
                         @if($data && array_key_exists('code', $data[0]))
                             <ul class="nav nav-tabs w-fit-content mb-4">

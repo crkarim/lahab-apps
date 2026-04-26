@@ -23,7 +23,7 @@
                             <div class="card-body">
                                 <form action="{{route('admin.business-settings.restaurant.cookies-setup-update')}}" method="post" enctype="multipart/form-data">
                                     @csrf
-                                    @php($cookies=\App\CentralLogics\Helpers::get_business_settings('cookies'))
+                                    @php $cookies=\App\CentralLogics\Helpers::get_business_settings('cookies'); @endphp
                                     <div class="d-flex flex-wrap justify-content-between">
                                         <span class="text-dark">{{translate('Cookie Text')}}</span>
                                         <label class="switch--custom-label toggle-switch toggle-switch-sm d-inline-flex cmn_focus rounded-pill">

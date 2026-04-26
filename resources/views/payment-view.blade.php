@@ -1,4 +1,4 @@
-@php($currency=\App\Model\BusinessSetting::where(['key'=>'currency'])->first()->value)
+@php $currency=\App\Model\BusinessSetting::where(['key'=>'currency'])->first()->value; @endphp
 
     <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -60,11 +60,11 @@
         <section class="col-lg-12">
             <div class="mt-3">
                 <div class="row">
-                    @php($order_amount = session('order_amount'))
-                    @php($customer = \App\User::find(session('customer_id')))
-                    @php($callback = session('callback'))
+                    @php $order_amount = session('order_amount'); @endphp
+                    @php $customer = \App\User::find(session('customer_id')); @endphp
+                    @php $callback = session('callback'); @endphp
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('ssl_commerz_payment'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('ssl_commerz_payment'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card" onclick="$('#ssl-form').submit()">
@@ -82,7 +82,7 @@
                         </div>
                     @endif
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('razor_pay'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('razor_pay'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card">
@@ -114,7 +114,7 @@
                         </div>
                     @endif
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('paypal'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('paypal'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card">
@@ -134,12 +134,12 @@
                     @endif
 
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('stripe'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('stripe'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card">
                                 <div class="card-body" style="height: 70px">
-                                    @php($config=\App\CentralLogics\Helpers::get_business_settings('stripe'))
+                                    @php $config=\App\CentralLogics\Helpers::get_business_settings('stripe'); @endphp
                                     <button class="btn btn-block click-if-alone" type="button" id="checkout-button">
                                         <img width="100" src="{{asset('public/assets/admin/img/stripe.png')}}"/>
                                     </button>
@@ -171,7 +171,7 @@
                     @endif
 
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('paystack'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('paystack'); @endphp
                     @if(isset($config) && $config['status'])
                         <?php
                             $Paystack = new App\Http\Controllers\PaystackController();
@@ -216,21 +216,21 @@
                         </div>
                     @endif
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('senang_pay'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('senang_pay'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card">
                                 <div class="card-body" style="height: 70px">
-                                    @php($secretkey = $config['secret_key'])
-                                    @php($data = new \stdClass())
-                                    @php($data->merchantId = $config['merchant_id'])
-                                    @php($data->detail = 'payment')
-                                    @php($data->order_id = null)
-                                    @php($data->amount = $order_amount)
-                                    @php($data->name = $customer->f_name.' '.$customer->l_name)
-                                    @php($data->email = $customer->email)
-                                    @php($data->phone = $customer->phone)
-                                    @php($data->hashed_string = md5($secretkey . urldecode($data->detail) . urldecode($data->amount) . urldecode($data->order_id)))
+                                    @php $secretkey = $config['secret_key']; @endphp
+                                    @php $data = new \stdClass(); @endphp
+                                    @php $data->merchantId = $config['merchant_id']; @endphp
+                                    @php $data->detail = 'payment'; @endphp
+                                    @php $data->order_id = null; @endphp
+                                    @php $data->amount = $order_amount; @endphp
+                                    @php $data->name = $customer->f_name.' '.$customer->l_name; @endphp
+                                    @php $data->email = $customer->email; @endphp
+                                    @php $data->phone = $customer->phone; @endphp
+                                    @php $data->hashed_string = md5($secretkey . urldecode($data->detail) . urldecode($data->amount) . urldecode($data->order_id)); @endphp
 
                                     <form name="order" method="post"
                                           action="https://{{env('APP_MODE')=='live'?'app.senangpay.my':'sandbox.senangpay.my'}}/payment/{{$config['merchant_id']}}">
@@ -254,7 +254,7 @@
                         </div>
                     @endif
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('bkash'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('bkash'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card">
@@ -267,7 +267,7 @@
                         </div>
                     @endif
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('paymob'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('paymob'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card">
@@ -286,7 +286,7 @@
                         </div>
                     @endif
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('mercadopago'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('mercadopago'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card">
@@ -302,7 +302,7 @@
                         </div>
                     @endif
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('flutterwave'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('flutterwave'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card">
@@ -321,7 +321,7 @@
                         </div>
                     @endif
 
-                    @php($config=\App\CentralLogics\Helpers::get_business_settings('internal_point'))
+                    @php $config=\App\CentralLogics\Helpers::get_business_settings('internal_point'); @endphp
                     @if(isset($config) && $config['status'])
                         <div class="col-md-6 mb-4" style="cursor: pointer">
                             <div class="card">
@@ -347,10 +347,10 @@
                                     </div>
                                     <div class="modal-body">
                                         <hr>
-                                        @php($value=\App\Model\BusinessSetting::where(['key'=>'point_per_currency'])->first()->value)
+                                        @php $value=\App\Model\BusinessSetting::where(['key'=>'point_per_currency'])->first()->value; @endphp
 
                                         {{--                                        @php($order=\App\Model\Order::find(session('order_id')))--}}
-                                        @php($point = $customer['point'])
+                                        @php $point = $customer['point']; @endphp
                                         <span>{{ translate('Order Amount') }} : {{ \App\CentralLogics\Helpers::set_symbol($order_amount) }}</span><br>
                                         <span>{{ translate('Order Amount in Wallet Point') }} : {{$value*$order_amount}} {{ translate('Points') }}</span><br>
                                         <span>{{ translate('Your Available Points') }} : {{$point}} {{ translate('Points') }}</span><br>
@@ -430,7 +430,7 @@
     }, 10)
 </script>
 
-@php($config=\App\CentralLogics\Helpers::get_business_settings('bkash'))
+@php $config=\App\CentralLogics\Helpers::get_business_settings('bkash'); @endphp
 @if(isset($config) && $config['status'])
     <script type="text/javascript">
         function BkashPayment() {
@@ -441,7 +441,7 @@
 @endif
 
 
-{{--@php($config=\App\CentralLogics\Helpers::get_business_settings('bkash'))
+{{--@php $config=\App\CentralLogics\Helpers::get_business_settings('bkash'); @endphp
 @if(isset($config) && $config['status'])
     --}}{{-- BKash Starts --}}{{--
     @if(env('APP_MODE')=='live')
@@ -587,7 +587,7 @@
 @endif--}}
 
 {{-- Mercadopago Starts --}}
-@php($config=\App\CentralLogics\Helpers::get_business_settings('mercadopago'))
+@php $config=\App\CentralLogics\Helpers::get_business_settings('mercadopago'); @endphp
 @if(isset($config) && $config['status'])
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <script>

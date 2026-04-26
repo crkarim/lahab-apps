@@ -43,15 +43,15 @@
                         </div>
 
                         <div class="customer-list-wrap">
-                        @php($array=[])
+                        @php $array=[]; @endphp
                         @foreach($conversations as $conv)
                             @if(in_array($conv->user_id,$array)==false)
-                                @php(array_push($array,$conv->user_id))
-                                @php($user=\App\User::find($conv->user_id))
+                                @php array_push($array,$conv->user_id); @endphp
+                                @php $user=\App\User::find($conv->user_id); @endphp
                                 <?php if (!$user){
                                         \App\Model\Conversation::where('user_id', $conv->user_id)->update(['checked' => 1]);
                                     } ?>
-                                @php($unchecked=\App\Model\Conversation::where(['user_id'=>$conv->user_id,'checked'=>0])->count())
+                                @php $unchecked=\App\Model\Conversation::where(['user_id'=>$conv->user_id,'checked'=>0])->count(); @endphp
 
                                 @if(isset($user))
                                 <div class="sidebar_primary_div d-flex justify-content-between align-items-center cursor-pointer customer-list view-convs {{$unchecked!=0?'conv-active':''}}"
@@ -216,7 +216,7 @@
             });
         }
 
-        @php($config=Helpers::get_business_settings('firebase_message_config'))
+        @php $config=Helpers::get_business_settings('firebase_message_config'); @endphp
         firebase.initializeApp({
             apiKey: "{{ $config['apiKey'] ?? '' }}",
             authDomain: "{{ $config['authDomain'] ?? '' }}",

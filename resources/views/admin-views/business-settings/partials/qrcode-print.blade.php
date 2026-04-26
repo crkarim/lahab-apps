@@ -45,7 +45,7 @@
                                     <a href="{{url()->previous()}}" class="btn btn-danger non-printable">{{translate('Back')}}</a>
                                 </div>
                             </div>
-                            @php($restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()?->value)
+                            @php $restaurantLogo=\App\Model\BusinessSetting::where(['key'=>'logo'])->first()?->value; @endphp
                             <div class="" id="printableArea">
 
                             
