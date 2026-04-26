@@ -124,36 +124,50 @@
                         <table class="table table-hover table-borderless table-thead-bordered table-nowrap table-align-middle card-table width-100-percent">
                             <thead class="thead-light">
                             <tr>
-                                <th>
-                                    {{translate('SL')}}
-                                </th>
+                                <th>{{translate('SL')}}</th>
                                 <th class="table-column-pl-0">{{translate('order')}}</th>
                                 <th>{{translate('type')}}</th>
-                                <th>{{translate('date')}}</th>
+                                <th>{{translate('time')}}</th>
                                 <th>{{translate('branch')}}</th>
                                 <th>{{translate('table')}}</th>
-                                <th>{{translate('payment')}} {{translate('status')}}</th>
+                                <th>{{translate('placed by')}}</th>
+                                <th>{{translate('payment')}}</th>
                                 <th>{{translate('total')}}</th>
                                 <th>{{translate('order')}} {{translate('status')}}</th>
-                                <th>{{translate('number of people')}}</th>
-                                <th>{{translate('actions')}}</th>
+                                <th class="text-center">{{translate('actions')}}</th>
                             </tr>
                             </thead>
 
                             <tbody id="set-rows">
                             @foreach($orders as $key=>$order)
-
-                                <tr class="status-{{$order['order_status']}} class-all">
+                                @php
+                                    // Per-row context flags so each action button
+                                    // is a one-liner instead of nested ternaries.
+                                    $isInRestaurant = in_array($order->order_type, ['pos', 'take_away', 'dine_in'], true);
+                                    $isTakeAwayRow  = in_array($order->order_type, ['pos', 'take_away'], true);
+                                    $isDineInRow    = $order->order_type === 'dine_in';
+                                    $isDeliveryRow  = $order->order_type === 'delivery';
+                                    // "Add Items" appendable when the kitchen is
+                                    // still working on a dine-in/POS order. Mirrors
+                                    // the rule on the order details page.
+                                    $canAppend      = $isInRestaurant
+                                        && $order->payment_status !== 'paid'
+                                        && in_array($order->order_status, ['pending', 'confirmed', 'processing', 'cooking', 'done'], true);
+                                    // KOT can be (re)printed anytime kitchen is
+                                    // still relevant — same gate as the details page.
+                                    $canPrintKot    = in_array($order->order_status, ['pending', 'confirmed', 'cooking', 'processing'], true);
+                                @endphp
+                                <tr class="status-{{$order['order_status']}} class-all lh-row-clickable"
+                                    data-href="{{ route('admin.orders.details', ['id' => $order['id']]) }}"
+                                    title="{{ translate('Click to view order details') }}">
                                     <td>{{$orders->firstitem()+$key}}</td>
                                     <td class="table-column-pl-0">
-                                        <a href="{{route('admin.orders.details',['id'=>$order['id']])}}">{{$order['id']}}</a>
+                                        <strong>#{{$order['id']}}</strong>
                                     </td>
                                     <td>
-                                        {{-- Type badge — keeps operators
-                                             oriented when the All tab mixes
-                                             order kinds. Helpers::order_type_label
-                                             maps the legacy 'pos' value to
-                                             "Take Away" so the UI is honest. --}}
+                                        {{-- Type badge — keeps operators oriented when the All tab mixes
+                                             order kinds. Helpers::order_type_label maps the legacy
+                                             'pos' value to "Take Away" so the UI is honest. --}}
                                         @php
                                             $typeLabel = \App\CentralLogics\Helpers::order_type_label($order->order_type);
                                             $typeClass = match ($order->order_type) {
@@ -165,7 +179,12 @@
                                         @endphp
                                         <label class="badge {{ $typeClass }}">{{ $typeLabel }}</label>
                                     </td>
-                                    <td>{{date('d M Y',strtotime($order['created_at']))}}</td>
+                                    <td title="{{ \Carbon\Carbon::parse($order['created_at'])->format('d M Y, H:i') }}">
+                                        {{-- Compact time + relative on hover so a busy
+                                             operator can scan the queue at a glance. --}}
+                                        <span class="d-block">{{ \Carbon\Carbon::parse($order['created_at'])->format('H:i') }}</span>
+                                        <small class="text-muted">{{ \Carbon\Carbon::parse($order['created_at'])->diffForHumans(null, true) }}</small>
+                                    </td>
                                     <td>
                                         <label class="badge badge-soft-primary">{{$order->branch?$order->branch->name:'Branch deleted!'}}</label>
                                     </td>
@@ -179,49 +198,135 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @if($order->payment_status=='paid')
-                                            <span class="badge badge-soft-success">
-                                        <span class="legend-indicator bg-success"></span>{{translate('paid')}}</span>
+                                        {{-- Placed By — admin/cashier/waiter who created
+                                             the order at the POS. Null for self-service
+                                             web/app orders where the customer placed it. --}}
+                                        @if($order->placedBy)
+                                            <span>{{ $order->placedBy->name }}</span>
                                         @else
-                                            <span class="badge badge-soft-danger">
-                                        <span class="legend-indicator bg-danger"></span>{{translate('unpaid')}}</span>
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($order->payment_status=='paid')
+                                            <span class="badge badge-soft-success"><span class="legend-indicator bg-success"></span>{{translate('paid')}}</span>
+                                        @else
+                                            <span class="badge badge-soft-danger"><span class="legend-indicator bg-danger"></span>{{translate('unpaid')}}</span>
                                         @endif
                                     </td>
                                     <td>{{ \App\CentralLogics\Helpers::set_symbol($order['order_amount']) }}</td>
                                     <td class="text-capitalize">
-                                        @if($order['order_status']=='pending')
-                                            <span class="badge badge-soft-info ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-info"></span>{{translate('pending')}}</span>
-                                        @elseif($order['order_status']=='confirmed')
-                                            <span class="badge badge-soft-info ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-info"></span>{{translate('confirmed')}}</span>
-                                        @elseif($order['order_status']=='cooking')
-                                            <span class="badge badge-soft-info ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-info"></span>{{translate('cooking')}}</span>
-                                        @elseif($order['order_status']=='done')
-                                            <span class="badge badge-soft-info ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-info"></span>{{translate('done')}}</span>
-                                        @elseif($order['order_status']=='completed')
-                                            <span class="badge badge-soft-info ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-info"></span>{{translate('completed')}}</span>
-                                        @elseif($order['order_status']=='processing')
-                                            <span class="badge badge-soft-warning ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-warning"></span>{{translate('processing')}}</span>
-                                        @elseif($order['order_status']=='out_for_delivery')
-                                            <span class="badge badge-soft-warning ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-warning"></span>{{translate('out_for_delivery')}}</span>
-                                        @elseif($order['order_status']=='delivered')
-                                            <span class="badge badge-soft-success ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-success"></span>{{translate('delivered')}}</span>
-                                        @else
-                                            <span class="badge badge-soft-danger ml-2 ml-sm-3">
-                                        <span class="legend-indicator bg-danger"></span>{{str_replace('_',' ',$order['order_status'])}}</span>
-                                        @endif
+                                        @php
+                                            // Status badge colour per state. Type-aware label
+                                            // so take-away "done"/"completed" reads as
+                                            // "Ready for Handover"/"Handed Over".
+                                            $statusBadgeClass = match ($order->order_status) {
+                                                'pending', 'confirmed', 'cooking', 'done' => 'badge-soft-info',
+                                                'processing', 'out_for_delivery'          => 'badge-soft-warning',
+                                                'completed', 'delivered'                  => 'badge-soft-success',
+                                                default                                   => 'badge-soft-danger',
+                                            };
+                                            $indicatorClass = match ($order->order_status) {
+                                                'pending', 'confirmed', 'cooking', 'done' => 'bg-info',
+                                                'processing', 'out_for_delivery'          => 'bg-warning',
+                                                'completed', 'delivered'                  => 'bg-success',
+                                                default                                   => 'bg-danger',
+                                            };
+                                            $statusLabel = \App\CentralLogics\Helpers::order_status_label($order->order_type, $order->order_status);
+                                        @endphp
+                                        <span class="badge {{ $statusBadgeClass }}"><span class="legend-indicator {{ $indicatorClass }}"></span>{{ $statusLabel }}</span>
                                     </td>
-                                    <td>{{$order['number_of_people']}}</td>
                                     <td>
-                                        <div class="dropdown">
-                                            <a class="btn btn-sm btn-outline-primary square-btn" href="{{route('admin.orders.details',['id'=>$order['id']])}}">
+                                        {{-- Inline action toolbar. Buttons are gated by status
+                                             and order type so the operator only sees what's
+                                             actually applicable for the row. The .lh-row-action
+                                             class on each control prevents the row-click
+                                             handler from also navigating to details. --}}
+                                        <div class="d-flex justify-content-center align-items-center gap-1 flex-wrap">
+                                            @switch($order->order_status)
+                                                @case('pending')
+                                                @case('confirmed')
+                                                    <a class="btn btn-sm btn-outline-warning lh-row-action route-alert"
+                                                       href="javascript:"
+                                                       data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'cooking']) }}"
+                                                       data-message="{{ translate('Start cooking this order?') }}"
+                                                       title="{{ translate('Start Cooking') }}">
+                                                        <i class="tio-fire"></i>
+                                                    </a>
+                                                    @break
+                                                @case('cooking')
+                                                    <a class="btn btn-sm btn-outline-success lh-row-action route-alert"
+                                                       href="javascript:"
+                                                       data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'done']) }}"
+                                                       data-message="{{ $isTakeAwayRow ? translate('Mark food as ready for handover?') : translate('Mark food as ready to serve?') }}"
+                                                       title="{{ $isTakeAwayRow ? translate('Mark Ready for Handover') : translate('Mark Ready') }}">
+                                                        <i class="tio-done"></i>
+                                                    </a>
+                                                    @break
+                                                @case('done')
+                                                    @if($isTakeAwayRow)
+                                                        <a class="btn btn-sm btn-success lh-row-action route-alert"
+                                                           href="javascript:"
+                                                           data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'completed']) }}"
+                                                           data-message="{{ translate('Mark this order as handed over to the customer?') }}"
+                                                           title="{{ translate('Mark Handed Over') }}">
+                                                            <i class="tio-checkmark-circle"></i>
+                                                        </a>
+                                                    @elseif($isDineInRow)
+                                                        {{-- Dine-in checkout needs the modal on
+                                                             the details page (split payments etc.). --}}
+                                                        <a class="btn btn-sm btn-success lh-row-action"
+                                                           href="{{ route('admin.orders.details', ['id' => $order['id']]) }}"
+                                                           title="{{ translate('Checkout') }}">
+                                                            <i class="tio-checkmark-circle"></i>
+                                                        </a>
+                                                    @endif
+                                                    @break
+                                                @case('processing')
+                                                    @if($isDeliveryRow)
+                                                        <a class="btn btn-sm btn-outline-warning lh-row-action route-alert"
+                                                           href="javascript:"
+                                                           data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'out_for_delivery']) }}"
+                                                           data-message="{{ translate('Mark order as out for delivery?') }}"
+                                                           title="{{ translate('Out For Delivery') }}">
+                                                            <i class="tio-bike"></i>
+                                                        </a>
+                                                    @endif
+                                                    @break
+                                                @case('out_for_delivery')
+                                                    <a class="btn btn-sm btn-success lh-row-action route-alert"
+                                                       href="javascript:"
+                                                       data-route="{{ route('admin.orders.status', ['id' => $order['id'], 'order_status' => 'delivered']) }}"
+                                                       data-message="{{ translate('Confirm order delivered?') }}"
+                                                       title="{{ translate('Delivered') }}">
+                                                        <i class="tio-checkmark-circle"></i>
+                                                    </a>
+                                                    @break
+                                            @endswitch
+
+                                            @if($canPrintKot)
+                                                <a class="btn btn-sm btn-outline-secondary lh-row-action"
+                                                   href="{{ route('admin.orders.kitchen-ticket', $order['id']) }}"
+                                                   target="_blank"
+                                                   title="{{ $order->kot_number ? translate('Reprint KOT') : translate('Print KOT') }}">
+                                                    <i class="tio-print"></i>
+                                                </a>
+                                            @endif
+
+                                            @if($canAppend)
+                                                {{-- Add Items modal lives on the details page, so
+                                                     we deep-link there — opens with the modal hash
+                                                     that JS on the details page picks up. --}}
+                                                <a class="btn btn-sm btn-outline-info lh-row-action"
+                                                   href="{{ route('admin.orders.details', ['id' => $order['id']]) }}#add-items"
+                                                   title="{{ translate('Add Items') }}">
+                                                    <i class="tio-add-circle-outlined"></i>
+                                                </a>
+                                            @endif
+
+                                            <a class="btn btn-sm btn-outline-primary lh-row-action"
+                                               href="{{ route('admin.orders.details', ['id' => $order['id']]) }}"
+                                               title="{{ translate('View Details') }}">
                                                 <i class="tio-invisible"></i>
                                             </a>
                                         </div>
@@ -312,6 +417,42 @@
                     }
                 });
             }
+
+            // Click anywhere on a row → open order details, EXCEPT on action
+            // controls. .lh-row-action is the opt-out class on every button/link
+            // in the actions column. Cmd/Ctrl-click and middle-click open in
+            // a new tab so the operator can keep multiple orders side-by-side.
+            $(document).on('click', 'tr.lh-row-clickable', function (e) {
+                if ($(e.target).closest('.lh-row-action, a, button, input, select, .dropdown, .modal').length) {
+                    return;
+                }
+                let href = $(this).data('href');
+                if (!href) return;
+                if (e.metaKey || e.ctrlKey || e.which === 2) {
+                    window.open(href, '_blank');
+                } else {
+                    window.location = href;
+                }
+            });
+
+            // Auto-refresh every 30 seconds so the queue reflects new orders +
+            // status changes without the operator hammering F5. Skipped if any
+            // modal is open (e.g. branch picker) so we don't yank the UI.
+            setInterval(function () {
+                if ($('.modal.show').length === 0) {
+                    window.location.reload();
+                }
+            }, 30000);
         });
     </script>
+@endpush
+
+@push('css_or_js')
+    <style>
+        /* Clickable-row UX: hover tint + cursor so operators know rows are
+           live targets. Action buttons inside the row keep default cursor. */
+        tr.lh-row-clickable          { cursor: pointer; }
+        tr.lh-row-clickable:hover    { background-color: rgba(230, 126, 34, 0.05); }
+        tr.lh-row-clickable .lh-row-action { cursor: pointer; }
+    </style>
 @endpush
