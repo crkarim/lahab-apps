@@ -38,7 +38,6 @@
                                        required tabindex="1">
                             </div>
                         </div>
-{{--                        @php($defaultPreparationTime=\App\CentralLogics\Helpers::get_business_settings('default_preparation_time'))--}}
 {{--                        <div class="col-md-4 col-sm-6">--}}
 {{--                            <div class="form-group">--}}
 {{--                                <label class="input-label">{{translate('Food_Preparation_Time')}}--}}

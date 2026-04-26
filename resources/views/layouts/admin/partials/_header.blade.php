@@ -39,8 +39,7 @@
                          "urgent" = pending/confirmed (must be sent to the
                          kitchen — drives the red pulse), "in flight" = food
                          is being cooked or waiting for the next operator
-                         action. Both update on every page load; cheap because
-                         it's one indexed query. --}}
+                         action. One indexed query per page load. --}}
                     @php
                         $activeUrgent  = \App\Model\Order::whereIn('order_status', ['pending', 'confirmed'])->count();
                         $activeInFlight = \App\Model\Order::whereIn('order_status', ['cooking', 'done', 'processing', 'out_for_delivery'])->count();
@@ -96,7 +95,6 @@
                                 @php
                                     $local = session()->has('local')?session('local'):'en';
                                 @endphp
-{{--                                @php($lang = \App\CentralLogics\Helpers::get_business_settings('language')??null)--}}
                                 <?php
                                 $languages = \App\Model\BusinessSetting::where('key', 'language')->first();
                                 $lang = json_decode($languages->value, true);

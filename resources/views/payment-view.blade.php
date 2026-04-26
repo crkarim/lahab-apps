@@ -425,7 +425,6 @@
                                         @php
                                             $value=\App\Model\BusinessSetting::where(['key'=>'point_per_currency'])->first()->value;
                                         @endphp
-                                        {{--                                        @php($order=\App\Model\Order::find(session('order_id')))--}}
                                         @php
                                             $point = $customer['point'];
                                         @endphp
