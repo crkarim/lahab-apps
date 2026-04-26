@@ -6,6 +6,9 @@ use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
 use App\Model\Branch;
 use App\Model\Order;
+use App\Model\OrderDetail;
+use App\Model\ProductByBranch;
+use App\Model\Table;
 use App\Traits\UploadSizeHelperTrait;
 use Brian2694\Toastr\Facades\Toastr;
 use Carbon\CarbonPeriod;
@@ -21,81 +24,238 @@ class DashboardController extends Controller
     use UploadSizeHelperTrait;
 
     public function __construct(
-        private Order  $order,
-        private Branch $branch,
+        private Order        $order,
+        private OrderDetail  $orderDetail,
+        private Branch       $branch,
     )
     {}
 
     /**
+     * Branch-scoped dashboard. Mirrors the admin dashboard layout exactly
+     * but every query is filtered to the authenticated branch — so the
+     * branch manager sees their own snapshot, their own funnel, their
+     * own trend, never the other branches'.
+     *
      * @return Renderable
      */
     public function dashboard(): Renderable
     {
         Helpers::update_daily_product_stock();
 
-        $data = self::orderStatisticsData();
+        $branchId   = auth('branch')->id();
+        $today      = Carbon::today();
+        $yesterday  = Carbon::yesterday();
+        $currency   = Helpers::currency_code();
 
-        $from = Carbon::now()->startOfYear()->format('Y-m-d');
-        $to = Carbon::now()->endOfYear()->format('Y-m-d');
+        $snapshot   = $this->snapshotForRange($today, $yesterday, $branchId);
+        $live       = $this->liveOpsFunnel($branchId);
+        $trend      = $this->revenueTrend($branchId);
+        $topToday   = $this->topDishesToday($today, $branchId);
+        $recent     = $this->recentOrders(5, $branchId);
+        $alerts     = $this->operationalAlerts($today, $branchId);
 
-        $earning = [];
-        $earningData = $this->order->where([
-            'order_status' => 'delivered',
-            'branch_id' => auth('branch')->id()
-        ])->select(
-            DB::raw('IFNULL(sum(order_amount),0) as sums'),
-            DB::raw('YEAR(created_at) year, MONTH(created_at) month')
-        )
-            ->whereBetween('created_at', [Carbon::parse(now())->startOfYear(), Carbon::parse(now())->endOfYear()])
-            ->groupby('year', 'month')->get()->toArray();
+        return view('branch-views.dashboard', compact(
+            'snapshot', 'live', 'trend', 'topToday', 'recent', 'alerts', 'currency'
+        ));
+    }
 
-        for ($inc = 1; $inc <= 12; $inc++) {
-            $earning[$inc] = 0;
-            foreach ($earningData as $match) {
-                if ($match['month'] == $inc) {
-                    $earning[$inc] = Helpers::set_price($match['sums']);
-                }
-            }
+    private function snapshotForRange(Carbon $today, Carbon $yesterday, int $branchId): array
+    {
+        $base = fn () => $this->order->newQuery()->where('branch_id', $branchId);
+
+        $todayAgg = $base()
+            ->whereDate('created_at', $today)
+            ->selectRaw("
+                COUNT(*) as orders_count,
+                COALESCE(SUM(CASE WHEN order_status NOT IN ('canceled','failed') THEN order_amount ELSE 0 END), 0) as revenue
+            ")
+            ->first();
+
+        $yestAgg = $base()
+            ->whereDate('created_at', $yesterday)
+            ->selectRaw("
+                COUNT(*) as orders_count,
+                COALESCE(SUM(CASE WHEN order_status NOT IN ('canceled','failed') THEN order_amount ELSE 0 END), 0) as revenue
+            ")
+            ->first();
+
+        $tablesInUse = $base()
+            ->where('order_type', 'dine_in')
+            ->where('payment_status', '!=', 'paid')
+            ->whereNotIn('order_status', ['completed', 'canceled', 'failed'])
+            ->whereNotNull('table_id')
+            ->distinct('table_id')
+            ->count('table_id');
+
+        $totalTables = Table::query()
+            ->where('is_active', 1)
+            ->where('branch_id', $branchId)
+            ->count();
+
+        $ordersToday = (int) $todayAgg->orders_count;
+        $revToday    = (float) $todayAgg->revenue;
+        $aov         = $ordersToday > 0 ? $revToday / $ordersToday : 0;
+
+        $delta = function ($now, $prev) {
+            if ((float) $prev == 0.0) return $now > 0 ? 100 : 0;
+            return (int) round((($now - $prev) / $prev) * 100);
+        };
+
+        return [
+            'revenue'           => $revToday,
+            'revenue_delta_pct' => $delta($revToday, (float) $yestAgg->revenue),
+            'orders'            => $ordersToday,
+            'orders_delta_pct'  => $delta($ordersToday, (int) $yestAgg->orders_count),
+            'aov'               => $aov,
+            'aov_delta_pct'     => $delta($aov, (int) $yestAgg->orders_count > 0 ? ((float) $yestAgg->revenue / (int) $yestAgg->orders_count) : 0),
+            'tables_in_use'     => $tablesInUse,
+            'tables_total'      => $totalTables,
+        ];
+    }
+
+    private function liveOpsFunnel(int $branchId): array
+    {
+        $base = fn () => $this->order->newQuery()->where('branch_id', $branchId);
+
+        return [
+            'pending_kitchen' => (clone $base())
+                ->whereIn('order_type', ['pos', 'dine_in'])
+                ->where(function ($q) {
+                    $q->whereNull('kot_sent_at')
+                      ->orWhereIn('order_status', ['pending', 'confirmed']);
+                })
+                ->whereNotIn('order_status', ['completed', 'delivered', 'canceled', 'failed'])
+                ->count(),
+            'in_kitchen' => (clone $base())
+                ->whereIn('order_status', ['cooking', 'processing'])
+                ->count(),
+            'on_route' => (clone $base())
+                ->where('order_type', 'delivery')
+                ->where('order_status', 'out_for_delivery')
+                ->count(),
+            'awaiting_payment' => (clone $base())
+                ->where('payment_status', '!=', 'paid')
+                ->whereIn('order_status', ['delivered', 'completed'])
+                ->count(),
+        ];
+    }
+
+    private function revenueTrend(int $branchId): array
+    {
+        return [
+            '7d'  => $this->trendByDay(7, $branchId),
+            '30d' => $this->trendByDay(30, $branchId),
+            '12m' => $this->trendByMonth(12, $branchId),
+        ];
+    }
+
+    private function trendByDay(int $days, int $branchId): array
+    {
+        $start = Carbon::now()->subDays($days - 1)->startOfDay();
+
+        $rows = $this->order->newQuery()
+            ->where('branch_id', $branchId)
+            ->where('order_status', '!=', 'canceled')
+            ->where('created_at', '>=', $start)
+            ->selectRaw('DATE(created_at) as d, COALESCE(SUM(order_amount),0) as revenue, COUNT(*) as orders')
+            ->groupBy('d')
+            ->get()
+            ->keyBy(fn ($r) => (string) $r->d);
+
+        $labels = []; $revenue = []; $orders = [];
+        for ($i = 0; $i < $days; $i++) {
+            $date = $start->copy()->addDays($i)->toDateString();
+            $labels[]  = Carbon::parse($date)->format('M j');
+            $revenue[] = (float) ($rows[$date]->revenue ?? 0);
+            $orders[]  = (int)   ($rows[$date]->orders  ?? 0);
         }
 
+        return ['labels' => $labels, 'revenue' => $revenue, 'orders' => $orders];
+    }
 
-        $orderStatisticsChart = [];
-        $orderStatisticsChartData = $this->order->where([
-            'order_status' => 'delivered',
-            'branch_id' => auth('branch')->id()
-        ])
-            ->select(
-                DB::raw('(count(id)) as total'),
-                DB::raw('YEAR(created_at) year, MONTH(created_at) month')
-            )
-            ->whereBetween('created_at', [Carbon::parse(now())->startOfYear(), Carbon::parse(now())->endOfYear()])
-            ->groupby('year', 'month')->get()->toArray();
+    private function trendByMonth(int $months, int $branchId): array
+    {
+        $start = Carbon::now()->startOfMonth()->subMonths($months - 1);
 
-        for ($inc = 1; $inc <= 12; $inc++) {
-            $orderStatisticsChart[$inc] = 0;
-            foreach ($orderStatisticsChartData as $match) {
-                if ($match['month'] == $inc) {
-                    $orderStatisticsChart[$inc] = $match['total'];
-                }
-            }
+        $rows = $this->order->newQuery()
+            ->where('branch_id', $branchId)
+            ->where('order_status', '!=', 'canceled')
+            ->where('created_at', '>=', $start)
+            ->selectRaw("DATE_FORMAT(created_at,'%Y-%m') as m, COALESCE(SUM(order_amount),0) as revenue, COUNT(*) as orders")
+            ->groupBy('m')
+            ->get()
+            ->keyBy(fn ($r) => (string) $r->m);
+
+        $labels = []; $revenue = []; $orders = [];
+        for ($i = 0; $i < $months; $i++) {
+            $key = $start->copy()->addMonths($i)->format('Y-m');
+            $labels[]  = $start->copy()->addMonths($i)->format('M Y');
+            $revenue[] = (float) ($rows[$key]->revenue ?? 0);
+            $orders[]  = (int)   ($rows[$key]->orders  ?? 0);
         }
 
-        $donut = [];
-        $donutData = $this->order->where('branch_id', auth('branch')->id())->get();
-        $donut['pending'] = $donutData->where('order_status', 'pending')->count();
-        $donut['ongoing'] = $donutData->whereIn('order_status', ['confirmed', 'processing', 'out_for_delivery'])->count();
-        $donut['delivered'] = $donutData->where('order_status', 'delivered')->count();
-        $donut['canceled'] = $donutData->where('order_status', 'canceled')->count();
-        $donut['returned'] = $donutData->where('order_status', 'returned')->count();
-        $donut['failed'] = $donutData->where('order_status', 'failed')->count();
+        return ['labels' => $labels, 'revenue' => $revenue, 'orders' => $orders];
+    }
 
-        $data['recent_orders'] = $this->order->latest()
-            ->where('branch_id', auth('branch')->id())
+    private function topDishesToday(Carbon $today, int $branchId): \Illuminate\Support\Collection
+    {
+        return $this->orderDetail->newQuery()
+            ->whereHas('order', function ($q) use ($today, $branchId) {
+                $q->whereDate('created_at', $today)
+                  ->where('branch_id', $branchId)
+                  ->whereNotIn('order_status', ['canceled', 'failed']);
+            })
+            ->with('product:id,name,image')
+            ->select('product_id', DB::raw('SUM(quantity) as qty'), DB::raw('SUM(quantity * price) as revenue'))
+            ->groupBy('product_id')
+            ->orderByDesc('qty')
             ->take(5)
             ->get();
+    }
 
+    private function recentOrders(int $limit, int $branchId): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->order->newQuery()
+            ->with(['customer:id,f_name,l_name', 'table:id,number'])
+            ->where('branch_id', $branchId)
+            ->latest()
+            ->take($limit)
+            ->get(['id', 'user_id', 'table_id', 'order_type', 'order_status', 'payment_status', 'order_amount', 'created_at']);
+    }
 
-        return view('branch-views.dashboard', compact('data', 'earning', 'orderStatisticsChart', 'donut'));
+    private function operationalAlerts(Carbon $today, int $branchId): array
+    {
+        $lowStockThreshold = 5;
+
+        $lowStock = ProductByBranch::query()
+            ->where('branch_id', $branchId)
+            ->where('stock_type', '!=', 'unlimited')
+            ->where('stock', '<=', $lowStockThreshold)
+            ->count();
+
+        $pendingRefunds = $this->order->newQuery()
+            ->where('branch_id', $branchId)
+            ->where(function ($q) {
+                $q->where('order_status', 'returned')
+                  ->orWhere(function ($qq) {
+                      $qq->whereIn('order_status', ['delivered', 'completed'])
+                         ->where('payment_status', '!=', 'paid');
+                  });
+            })
+            ->count();
+
+        $staffOnShift = $this->order->newQuery()
+            ->where('branch_id', $branchId)
+            ->whereDate('created_at', $today)
+            ->whereNotNull('placed_by_admin_id')
+            ->distinct('placed_by_admin_id')
+            ->count('placed_by_admin_id');
+
+        return [
+            'low_stock'        => $lowStock,
+            'pending_refunds'  => $pendingRefunds,
+            'staff_on_shift'   => $staffOnShift,
+        ];
     }
 
     /**

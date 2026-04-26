@@ -4,575 +4,407 @@
 
 @push('css_or_js')
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="stylesheet" src="{{asset('public/assets/admin')}}/vendor/apex/apexcharts.css"></link>
+    <link rel="stylesheet" href="{{ asset('public/assets/admin') }}/vendor/apex/apexcharts.css">
+    <style>
+        /* Branch dashboard — mirrors the admin dashboard band-for-band but
+           every query (and therefore every number on screen) is scoped to
+           the authenticated branch. Class names share the `lh-d-` prefix
+           with the admin view so future style tweaks stay in sync. */
+        .lh-d-page { background: #f6f7fa; min-height: calc(100vh - 60px); padding: 18px 0 40px; }
+        .lh-d-shell { max-width: 1320px; margin: 0 auto; padding: 0 16px; }
+
+        .lh-d-greet { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+        .lh-d-greet h1 { font-size: 22px; font-weight: 700; color: #1a1a1a; margin: 0; }
+        .lh-d-greet .lh-d-sub { color: #8e8e93; font-size: 13px; margin-top: 2px; }
+        .lh-d-greet .lh-d-today-pill {
+            background: #fff; border: 1px solid #eceef0; border-radius: 999px;
+            padding: 6px 14px; font-size: 12px; color: #555; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .lh-d-greet .lh-d-today-pill i { color: #E67E22; }
+
+        .lh-d-section-label {
+            font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase;
+            color: #8e8e93; font-weight: 700; margin: 22px 0 10px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .lh-d-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+        .lh-d-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        .lh-d-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+        @media (max-width: 991px) { .lh-d-grid-4, .lh-d-grid-3 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 575px) { .lh-d-grid-4, .lh-d-grid-3, .lh-d-grid-2 { grid-template-columns: 1fr; } }
+
+        .lh-d-tile {
+            background: #fff; border: 1px solid #eceef0; border-radius: 14px;
+            padding: 18px 20px; position: relative; overflow: hidden;
+            transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+            text-decoration: none; color: inherit; display: block;
+        }
+        .lh-d-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.05); border-color: #E67E22; text-decoration: none; color: inherit; }
+        .lh-d-tile-label { font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase; color: #8e8e93; margin-bottom: 8px; font-weight: 700; }
+        .lh-d-tile-value { font-size: 28px; font-weight: 800; line-height: 1.05; color: #1a1a1a; }
+        .lh-d-tile-unit  { font-size: 14px; font-weight: 600; color: #8e8e93; margin-left: 4px; }
+        .lh-d-tile-meta  { font-size: 12px; color: #8e8e93; margin-top: 6px; }
+        .lh-d-tile-delta { font-size: 12px; font-weight: 700; margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; }
+        .lh-d-tile-delta.up   { color: #28a745; }
+        .lh-d-tile-delta.down { color: #dc3545; }
+        .lh-d-tile-delta.flat { color: #8e8e93; }
+        .lh-d-tile-ico {
+            position: absolute; top: 16px; right: 16px;
+            width: 36px; height: 36px; border-radius: 11px;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .lh-d-tile.lh-accent-orange { border-top: 3px solid #E67E22; }
+        .lh-d-tile.lh-accent-orange .lh-d-tile-ico { background: rgba(230,126,34,0.12); color: #E67E22; }
+        .lh-d-tile.lh-accent-blue   { border-top: 3px solid #4a90e2; }
+        .lh-d-tile.lh-accent-blue   .lh-d-tile-ico { background: rgba(74,144,226,0.12); color: #4a90e2; }
+        .lh-d-tile.lh-accent-green  { border-top: 3px solid #28a745; }
+        .lh-d-tile.lh-accent-green  .lh-d-tile-ico { background: rgba(40,167,69,0.12); color: #28a745; }
+        .lh-d-tile.lh-accent-purple { border-top: 3px solid #8e44ad; }
+        .lh-d-tile.lh-accent-purple .lh-d-tile-ico { background: rgba(142,68,173,0.12); color: #8e44ad; }
+        .lh-d-tile.lh-accent-amber  { border-top: 3px solid #f0a030; }
+        .lh-d-tile.lh-accent-amber  .lh-d-tile-ico { background: rgba(240,160,48,0.14); color: #f0a030; }
+        .lh-d-tile.lh-accent-red    { border-top: 3px solid #dc3545; }
+        .lh-d-tile.lh-accent-red    .lh-d-tile-ico { background: rgba(220,53,69,0.12); color: #dc3545; }
+
+        .lh-d-funnel-tile {
+            background: #fff; border: 1px solid #eceef0; border-radius: 14px;
+            padding: 16px 18px; text-decoration: none; color: inherit; display: block;
+            transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+        }
+        .lh-d-funnel-tile:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(230,126,34,0.10); border-color: #E67E22; text-decoration: none; color: inherit; }
+        .lh-d-funnel-row { display: flex; align-items: center; gap: 12px; }
+        .lh-d-funnel-num { font-size: 30px; font-weight: 800; line-height: 1; color: #1a1a1a; min-width: 44px; }
+        .lh-d-funnel-meta { flex: 1; min-width: 0; }
+        .lh-d-funnel-label { font-size: 13px; font-weight: 700; color: #1a1a1a; }
+        .lh-d-funnel-hint  { font-size: 11px; color: #8e8e93; margin-top: 1px; }
+        .lh-d-funnel-tile.is-active .lh-d-funnel-num { color: #E67E22; }
+        .lh-d-funnel-tile.is-zero .lh-d-funnel-num   { color: #c0c0c0; }
+
+        .lh-d-card {
+            background: #fff; border: 1px solid #eceef0; border-radius: 14px;
+            padding: 20px 22px;
+        }
+        .lh-d-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+        .lh-d-card-title { font-size: 14px; font-weight: 700; color: #1a1a1a; margin: 0; display: flex; align-items: center; gap: 8px; }
+        .lh-d-card-title i { color: #E67E22; }
+
+        .lh-d-range { display: inline-flex; background: #f6f7fa; border-radius: 999px; padding: 3px; }
+        .lh-d-range button {
+            border: 0; background: transparent; padding: 5px 14px;
+            font-size: 12px; font-weight: 700; color: #8e8e93;
+            border-radius: 999px; cursor: pointer; transition: background 120ms;
+        }
+        .lh-d-range button.is-active { background: #E67E22; color: #fff; }
+
+        .lh-d-list { list-style: none; padding: 0; margin: 0; }
+        .lh-d-list li {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 0; border-bottom: 1px solid #f1f2f4;
+        }
+        .lh-d-list li:last-child { border-bottom: 0; }
+        .lh-d-list .lh-d-rank {
+            width: 24px; height: 24px; border-radius: 8px;
+            background: #f6f7fa; color: #8e8e93;
+            font-size: 12px; font-weight: 700;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .lh-d-list li:nth-child(1) .lh-d-rank { background: rgba(230,126,34,0.14); color: #E67E22; }
+        .lh-d-list .lh-d-thumb {
+            width: 36px; height: 36px; border-radius: 9px; object-fit: cover; background: #f6f7fa;
+        }
+        .lh-d-list .lh-d-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: #1a1a1a;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lh-d-list .lh-d-qty  { font-size: 12px; color: #8e8e93; font-weight: 600; min-width: 36px; text-align: right; }
+        .lh-d-list .lh-d-rev  { font-size: 13px; font-weight: 700; color: #1a1a1a; min-width: 64px; text-align: right; }
+
+        .lh-d-order-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f2f4; }
+        .lh-d-order-row:last-child { border-bottom: 0; }
+        .lh-d-order-id { font-size: 13px; font-weight: 700; color: #1a1a1a; min-width: 60px; }
+        .lh-d-order-meta { flex: 1; min-width: 0; }
+        .lh-d-order-who  { font-size: 13px; color: #1a1a1a; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lh-d-order-when { font-size: 11px; color: #8e8e93; margin-top: 1px; }
+        .lh-d-order-amt  { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+
+        .lh-d-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .lh-d-pill.t-dine_in   { background: rgba(74,144,226,0.12); color: #4a90e2; }
+        .lh-d-pill.t-pos       { background: rgba(230,126,34,0.12); color: #E67E22; }
+        .lh-d-pill.t-delivery  { background: rgba(142,68,173,0.12); color: #8e44ad; }
+
+        .lh-d-empty { text-align: center; padding: 30px 10px; color: #b0b3b8; font-size: 13px; }
+        .lh-d-empty i { font-size: 32px; display: block; margin-bottom: 6px; opacity: 0.6; }
+
+        #lh-d-trend-chart { min-height: 260px; }
+    </style>
 @endpush
 
 @section('content')
-    <div class="content container-fluid">
-        <div>
-            <div class="row align-items-center">
-                <div class="col-sm mb-2 mb-sm-0">
-                    <h1 class="page-header-title c1">{{translate('welcome')}} {{translate('to')}} {{auth('branch')->user()->name}} {{translate('branch')}}</h1>
-                    <p class="text-dark font-weight-semibold">{{translate('Monitor_your_business_analytics_and_statistics')}}</p>
-                </div>
-            </div>
-        </div>
+    <div class="lh-d-page">
+        <div class="lh-d-shell">
 
-        <div class="card card-body mb-3">
-            <div class="row justify-content-between align-items-center g-2 mb-3">
-                <div class="col-auto">
-                    <h4 class="d-flex align-items-center gap-10 mb-0">
-                        <img width="20" class="avatar-img rounded-0" src="{{asset('public/assets/admin/img/icons/business_analytics.png')}}" alt="Business Analytics">
-                        {{translate('Business_Analytics')}}
-                    </h4>
+            {{-- ── Greeting ───────────────────────────────────────────── --}}
+            <div class="lh-d-greet">
+                <div>
+                    <h1>{{ translate('welcome') }}, {{ auth('branch')->user()->name }}.</h1>
+                    <div class="lh-d-sub">{{ translate('Here_is_what_is_happening_at_your_branch_today') }}</div>
                 </div>
-                <div class="col-auto">
-                    <select class="custom-select  min-w200" name="statistics_type" onchange="order_stats_update(this.value)">
-                        <option value="overall" {{session()->has('statistics_type') && session('statistics_type') == 'overall'?'selected':''}}>
-                            {{translate('Overall Statistics')}}
-                        </option>
-                        <option value="today" {{session()->has('statistics_type') && session('statistics_type') == 'today'?'selected':''}}>
-                            {{translate("Today")."'s"}} {{translate("Statistics")}}
-                        </option>
-                        <option value="this_month" {{session()->has('statistics_type') && session('statistics_type') == 'this_month'?'selected':''}}>
-                            {{translate("This Month")."'s"}} {{translate("Statistics")}}
-                        </option>
-                    </select>
-                </div>
+                <span class="lh-d-today-pill">
+                    <i class="tio-date-range"></i> {{ \Carbon\Carbon::today()->format('l, d M Y') }}
+                </span>
             </div>
-            <div class="row g-2" id="order_stats">
-                @include('branch-views.partials._dashboard-order-stats',['data'=>$data])
-            </div>
-        </div>
 
-        <div class="grid-chart mb-3">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
-                        <h4 class="d-flex align-items-center text-capitalize gap-10 mb-0">
-                            <img width="20" class="avatar-img rounded-0" src="{{asset('public/assets/admin/img/icons/earning_statistics.png')}}" alt="">
-                            {{translate('order_statistics')}}
-                        </h4>
+            {{-- ── 1. Today snapshot ─────────────────────────────────── --}}
+            <div class="lh-d-section-label">{{ translate('Today') }}</div>
+            <div class="lh-d-grid-4">
+                @php
+                    $deltaCls = fn ($p) => $p > 0 ? 'up' : ($p < 0 ? 'down' : 'flat');
+                    $deltaIco = fn ($p) => $p > 0 ? 'tio-trending-up' : ($p < 0 ? 'tio-trending-down' : 'tio-remove');
+                @endphp
 
-                        <ul class="option-select-btn">
-                            <li>
-                                <label>
-                                    <input type="radio" name="statistics" hidden checked>
-                                    <span data-order-type="yearOrder"
-                                          onclick="orderStatisticsUpdate(this)">{{translate('This_Year')}}</span>
-                                </label>
-                            </li>
-                            <li>
-                                <label>
-                                    <input type="radio" name="statistics" hidden="">
-                                    <span data-order-type="MonthOrder"
-                                          onclick="orderStatisticsUpdate(this)">{{translate('This_Month')}}</span>
-                                </label>
-                            </li>
-                            <li>
-                                <label>
-                                    <input type="radio" name="statistics" hidden="">
-                                    <span data-order-type="WeekOrder"
-                                          onclick="orderStatisticsUpdate(this)">{{translate('This Week')}}</span>
-                                </label>
-                            </li>
-                        </ul>
+                <div class="lh-d-tile lh-accent-orange">
+                    <div class="lh-d-tile-ico"><i class="tio-money"></i></div>
+                    <div class="lh-d-tile-label">{{ translate('Revenue') }}</div>
+                    <div class="lh-d-tile-value">{{ \App\CentralLogics\Helpers::set_symbol($snapshot['revenue']) }}</div>
+                    <div class="lh-d-tile-delta {{ $deltaCls($snapshot['revenue_delta_pct']) }}">
+                        <i class="{{ $deltaIco($snapshot['revenue_delta_pct']) }}"></i>
+                        {{ $snapshot['revenue_delta_pct'] }}% {{ translate('vs_yesterday') }}
                     </div>
+                </div>
 
-                    <div id="updatingOrderData" class="custom-chart mt-2">
-                        <div id="order-statistics-line-chart"></div>
+                <div class="lh-d-tile lh-accent-blue">
+                    <div class="lh-d-tile-ico"><i class="tio-shopping-cart"></i></div>
+                    <div class="lh-d-tile-label">{{ translate('Orders') }}</div>
+                    <div class="lh-d-tile-value">{{ $snapshot['orders'] }}</div>
+                    <div class="lh-d-tile-delta {{ $deltaCls($snapshot['orders_delta_pct']) }}">
+                        <i class="{{ $deltaIco($snapshot['orders_delta_pct']) }}"></i>
+                        {{ $snapshot['orders_delta_pct'] }}% {{ translate('vs_yesterday') }}
+                    </div>
+                </div>
+
+                <div class="lh-d-tile lh-accent-purple">
+                    <div class="lh-d-tile-ico"><i class="tio-chart-bar-2"></i></div>
+                    <div class="lh-d-tile-label">{{ translate('Avg_order_value') }}</div>
+                    <div class="lh-d-tile-value">{{ \App\CentralLogics\Helpers::set_symbol($snapshot['aov']) }}</div>
+                    <div class="lh-d-tile-delta {{ $deltaCls($snapshot['aov_delta_pct']) }}">
+                        <i class="{{ $deltaIco($snapshot['aov_delta_pct']) }}"></i>
+                        {{ $snapshot['aov_delta_pct'] }}% {{ translate('vs_yesterday') }}
+                    </div>
+                </div>
+
+                <div class="lh-d-tile lh-accent-green">
+                    <div class="lh-d-tile-ico"><i class="tio-restaurant-menu"></i></div>
+                    <div class="lh-d-tile-label">{{ translate('Tables_in_use') }}</div>
+                    <div class="lh-d-tile-value">
+                        {{ $snapshot['tables_in_use'] }}<span class="lh-d-tile-unit">/ {{ $snapshot['tables_total'] }}</span>
+                    </div>
+                    <div class="lh-d-tile-meta">
+                        @php $occ = $snapshot['tables_total'] > 0 ? round(($snapshot['tables_in_use'] / $snapshot['tables_total']) * 100) : 0; @endphp
+                        {{ $occ }}% {{ translate('occupancy_right_now') }}
                     </div>
                 </div>
             </div>
 
-            <div class="card h-100 order-last order-lg-0">
-                <div class="card-header">
-                    <h4 class="d-flex text-capitalize mb-0">
-                        {{translate('order_status_statistics')}}
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <div class="mt-2">
-                        <div>
-                            <div class="position-relative pie-chart">
-                                <div id="dognut-pie"></div>
-                                <div class="total--orders">
-                                    <h3>{{$donut['pending'] + $donut['ongoing'] + $donut['delivered']+ $donut['canceled']+ $donut['returned']+ $donut['failed']}} </h3>
-                                    <span>{{ translate('orders') }}</span>
-                                </div>
-                            </div>
-                            <div class="apex-legends">
-                                <div class="before-bg-pending">
-                                    <span>{{ translate('pending') }} ({{$donut['pending']}})</span>
-                                </div>
-                                <div class="before-bg-ongoing">
-                                    <span>{{ translate('ongoing') }} ({{$donut['ongoing']}})</span>
-                                </div>
-                                <div class="before-bg-delivered">
-                                    <span>{{ translate('delivered') }} ({{$donut['delivered']}})</span>
-                                </div>
-                                <div class="before-bg-17202A">
-                                    <span>{{ translate('canceled') }} ({{$donut['canceled']}})</span>
-                                </div>
-                                <div class="before-bg-21618C">
-                                    <span>{{ translate('returned') }} ({{$donut['returned']}})</span>
-                                </div>
-                                <div class="before-bg-27AE60">
-                                    <span>{{ translate('failed_to_deliver') }} ({{$donut['failed']}})</span>
-                                </div>
+            {{-- ── 2. Live operations ───────────────────────────────── --}}
+            <div class="lh-d-section-label">
+                {{ translate('Live_operations') }}
+                <a href="{{ route('branch.orders.list', ['status' => 'all']) }}" style="font-size: 11px; color: #E67E22; text-decoration: none; font-weight: 700; letter-spacing: 0.5px;">
+                    {{ translate('Open_active_orders') }} <i class="tio-chevron-right"></i>
+                </a>
+            </div>
+            <div class="lh-d-grid-4">
+                @php
+                    $funnelTiles = [
+                        ['key' => 'pending_kitchen', 'label' => translate('Pending_kitchen'),  'hint' => translate('not_yet_fired'),       'icon' => 'tio-time'],
+                        ['key' => 'in_kitchen',      'label' => translate('In_kitchen'),       'hint' => translate('cooking_now'),         'icon' => 'tio-restaurant-menu'],
+                        ['key' => 'on_route',        'label' => translate('On_route'),         'hint' => translate('out_for_delivery'),    'icon' => 'tio-bike'],
+                        ['key' => 'awaiting_payment','label' => translate('Awaiting_payment'),'hint' => translate('served_not_paid'),     'icon' => 'tio-credit-card-outlined'],
+                    ];
+                @endphp
+                @foreach($funnelTiles as $t)
+                    <a href="{{ route('branch.orders.list', ['status' => 'all']) }}"
+                       class="lh-d-funnel-tile {{ $live[$t['key']] > 0 ? 'is-active' : 'is-zero' }}">
+                        <div class="lh-d-funnel-row">
+                            <div class="lh-d-funnel-num">{{ $live[$t['key']] }}</div>
+                            <div class="lh-d-funnel-meta">
+                                <div class="lh-d-funnel-label"><i class="{{ $t['icon'] }}"></i> {{ $t['label'] }}</div>
+                                <div class="lh-d-funnel-hint">{{ $t['hint'] }}</div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </a>
+                @endforeach
             </div>
 
-            <div class="card h100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
-                        <h4 class="d-flex align-items-center text-capitalize gap-10 mb-0">
-                            <img width="20" class="avatar-img rounded-0" src="{{asset('public/assets/admin/img/icons/earning_statistics.png')}}" alt="">
-                            {{translate('earning_statistics')}}
-                        </h4>
-                        <ul class="option-select-btn">
-                            <li>
-                                <label>
-                                    <input type="radio" name="statistics2" hidden="" checked="">
-                                    <span data-earn-type="yearEarn"
-                                          onclick="earningStatisticsUpdate(this)">{{translate('This_Year')}}</span>
-                                </label>
-                            </li>
-                            <li>
-                                <label>
-                                    <input type="radio" name="statistics2" hidden="">
-                                    <span data-earn-type="MonthEarn"
-                                          onclick="earningStatisticsUpdate(this)">{{translate('This_Month')}}</span>
-                                </label>
-                            </li>
-                            <li>
-                                <label>
-                                    <input type="radio" name="statistics2" hidden="">
-                                    <span data-earn-type="WeekEarn"
-                                          onclick="earningStatisticsUpdate(this)">{{translate('This Week')}}</span>
-                                </label>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <div id="updatingData" class="custom-chart mt-2">
-                        <div id="line-adwords"></div>
+            {{-- ── 3. Revenue trend ─────────────────────────────────── --}}
+            <div class="lh-d-section-label">{{ translate('Revenue_trend') }}</div>
+            <div class="lh-d-card">
+                <div class="lh-d-card-head">
+                    <h2 class="lh-d-card-title"><i class="tio-poll"></i> {{ translate('Revenue_and_orders') }}</h2>
+                    <div class="lh-d-range" id="lh-d-range">
+                        <button data-range="7d">{{ translate('7_days') }}</button>
+                        <button data-range="30d" class="is-active">{{ translate('30_days') }}</button>
+                        <button data-range="12m">{{ translate('12_months') }}</button>
                     </div>
                 </div>
+                <div id="lh-d-trend-chart"></div>
             </div>
 
-            <div class="card h100 recent-orders">
-                <div class="card-header d-flex justify-content-between gap-10">
-                    <h5 class="mb-0">{{translate('Recent_Orders')}}</h5>
-                    <a href="{{ route('branch.orders.list', ['status' => 'all']) }}" class="btn-link">{{translate('View_All')}}</a>
-                </div>
-                <div class="card-body">
-                    <ul class="common-list">
-                        @foreach($data['recent_orders'] as $recent)
-                            <li class="pt-0 d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                                <div class="order-info ">
-                                    <h5><a href="{{route('branch.orders.details', ['id' => $recent->id])}}" class="text-dark" >{{translate('Order')}}# {{$recent->id}}</a></h5>
-                                    <p>{{\Illuminate\Support\Carbon::parse($recent->created_at)->format('d-m-y, h:m A')}}</p>
-                                </div>
-                                @if($recent['order_status'] == 'pending')
-                                    <span
-                                        class="status text-primary">{{translate($recent['order_status'])}}</span>
-                                @elseif($recent['order_status'] == 'delivered')
-                                    <span
-                                        class="status text-success">{{translate($recent['order_status'])}}</span>
-                                @elseif($recent['order_status'] == 'confirmed' || $recent['order_status'] == 'processing' || $recent['order_status'] == 'out_for_delivery')
-                                    <span
-                                        class="status text-warning">{{translate($recent['order_status'])}}</span>
-                                @elseif($recent['order_status'] == 'canceled' || $recent['order_status'] == 'failed')
-                                    @if($recent['order_status'] == 'failed')
-                                        <span
-                                            class="status text-warning">{{translate('failed_to_deliver')}}</span>
+            {{-- ── 4. What's moving ─────────────────────────────────── --}}
+            <div class="lh-d-section-label">{{ translate('What_is_moving') }}</div>
+            <div class="lh-d-grid-2">
+                <div class="lh-d-card">
+                    <div class="lh-d-card-head">
+                        <h2 class="lh-d-card-title"><i class="tio-fire-on"></i> {{ translate('Top_dishes_today') }}</h2>
+                    </div>
+                    @if($topToday->isEmpty())
+                        <div class="lh-d-empty">
+                            <i class="tio-restaurant-menu"></i>
+                            {{ translate('No_dishes_sold_yet_today') }}
+                        </div>
+                    @else
+                        <ul class="lh-d-list">
+                            @foreach($topToday as $i => $d)
+                                <li>
+                                    <span class="lh-d-rank">{{ $i + 1 }}</span>
+                                    @if($d->product?->image)
+                                        <img class="lh-d-thumb" src="{{ asset('storage/app/public/product/' . $d->product->image) }}"
+                                             onerror="this.style.visibility='hidden'" alt="">
                                     @else
-                                        <span
-                                            class="status text-warning">{{translate($recent['order_status'])}}</span>
+                                        <span class="lh-d-thumb"></span>
                                     @endif
+                                    <span class="lh-d-name">{{ $d->product?->name ?? translate('Removed_product') }}</span>
+                                    <span class="lh-d-qty">{{ $d->qty }}×</span>
+                                    <span class="lh-d-rev">{{ \App\CentralLogics\Helpers::set_symbol($d->revenue) }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
 
-                                @elseif($recent['order_status'] == 'cooking')
-                                    <span
-                                        class="status text-info">{{translate($recent['order_status'])}}</span>
-                                @elseif($recent['order_status'] == 'completed')
-                                    <span
-                                        class="status text-success">{{translate($recent['order_status'])}}</span>
-                                @else
-                                    <span
-                                        class="status text-primary">{{translate($recent['order_status'])}}</span>
-                                @endif
-                            </li>
+                <div class="lh-d-card">
+                    <div class="lh-d-card-head">
+                        <h2 class="lh-d-card-title"><i class="tio-time"></i> {{ translate('Recent_orders') }}</h2>
+                        <a href="{{ route('branch.orders.list', ['status' => 'all']) }}" style="font-size: 11px; color: #E67E22; font-weight: 700; text-decoration: none;">
+                            {{ translate('See_all') }} <i class="tio-chevron-right"></i>
+                        </a>
+                    </div>
+                    @if($recent->isEmpty())
+                        <div class="lh-d-empty">
+                            <i class="tio-shopping-cart"></i>
+                            {{ translate('No_orders_yet') }}
+                        </div>
+                    @else
+                        @foreach($recent as $o)
+                            <div class="lh-d-order-row">
+                                <span class="lh-d-order-id">#{{ $o->id }}</span>
+                                <div class="lh-d-order-meta">
+                                    <div class="lh-d-order-who">
+                                        <span class="lh-d-pill t-{{ $o->order_type }}">{{ str_replace('_', ' ', $o->order_type) }}</span>
+                                        @if($o->customer)
+                                            {{ $o->customer->f_name }} {{ $o->customer->l_name }}
+                                        @elseif($o->table)
+                                            {{ translate('Table') }} {{ $o->table->number }}
+                                        @else
+                                            {{ translate('Walk_in') }}
+                                        @endif
+                                    </div>
+                                    <div class="lh-d-order-when">{{ $o->created_at->diffForHumans() }}</div>
+                                </div>
+                                <span class="lh-d-order-amt">{{ \App\CentralLogics\Helpers::set_symbol($o->order_amount) }}</span>
+                            </div>
                         @endforeach
-                    </ul>
+                    @endif
                 </div>
             </div>
+
+            {{-- ── 5. Operational alerts (placeholder cards, live data) ── --}}
+            <div class="lh-d-section-label">{{ translate('Alerts') }}</div>
+            <div class="lh-d-grid-3">
+                <a href="{{ route('branch.product.list') }}" class="lh-d-tile lh-accent-amber">
+                    <div class="lh-d-tile-ico"><i class="tio-warning"></i></div>
+                    <div class="lh-d-tile-label">{{ translate('Low_stock_items') }}</div>
+                    <div class="lh-d-tile-value">{{ $alerts['low_stock'] }}</div>
+                    <div class="lh-d-tile-meta">{{ translate('products_at_or_below_5_units') }}</div>
+                </a>
+
+                <a href="{{ route('branch.orders.list', ['status' => 'returned']) }}" class="lh-d-tile lh-accent-red">
+                    <div class="lh-d-tile-ico"><i class="tio-undo"></i></div>
+                    <div class="lh-d-tile-label">{{ translate('Pending_refunds') }}</div>
+                    <div class="lh-d-tile-value">{{ $alerts['pending_refunds'] }}</div>
+                    <div class="lh-d-tile-meta">{{ translate('returned_or_balance_owed') }}</div>
+                </a>
+
+                {{-- Branch panel has no employee-management page, so the staff
+                     card is informational only (no link). --}}
+                <div class="lh-d-tile lh-accent-green">
+                    <div class="lh-d-tile-ico"><i class="tio-group-equal"></i></div>
+                    <div class="lh-d-tile-label">{{ translate('Staff_on_shift_today') }}</div>
+                    <div class="lh-d-tile-value">{{ $alerts['staff_on_shift'] }}</div>
+                    <div class="lh-d-tile-meta">{{ translate('rang_at_least_one_order_today') }}</div>
+                </div>
+            </div>
+
         </div>
-
-
     </div>
 @endsection
 
-@push('script')
-    <script src="{{asset('public/assets/admin')}}/vendor/chart.js/dist/Chart.min.js"></script>
-    <script src="{{asset('public/assets/admin')}}/vendor/chart.js.extensions/chartjs-extensions.js"></script>
-    <script src="{{asset('public/assets/admin')}}/vendor/chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.min.js"></script>
-    <script src="{{asset('public/assets/admin')}}/vendor/apex/apexcharts.min.js"></script>
-@endpush
-
-
 @push('script_2')
-
+    <script src="{{ asset('public/assets/admin') }}/vendor/apex/apexcharts.min.js"></script>
     <script>
-        var OSDCoptions = {
-            chart: {
-                height: 328,
-                type: 'line',
-                zoom: {
-                    enabled: false
-                },
-                toolbar: {
-                    show: false,
-                },
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 3
-            },
-            colors: ['rgba(255, 111, 112, 0.5)', '#107980'],
-            series: [{
-                name: "Order",
-                    data: [{{$orderStatisticsChart[1]}}, {{$orderStatisticsChart[2]}}, {{$orderStatisticsChart[3]}}, {{$orderStatisticsChart[4]}},
-                {{$orderStatisticsChart[5]}}, {{$orderStatisticsChart[6]}}, {{$orderStatisticsChart[7]}}, {{$orderStatisticsChart[8]}},
-                {{$orderStatisticsChart[9]}}, {{$orderStatisticsChart[10]}}, {{$orderStatisticsChart[11]}}, {{$orderStatisticsChart[12]}}]
-                },
-            ],
-            markers: {
-                size: 2,
-                strokeWidth: 0,
-                hover: {
-                    size: 5
-                }
-            },
-            grid: {
-                show: true,
-                padding: {
-                    bottom: 0
-                },
-                borderColor: "rgba(180, 208, 224, 0.5)",
-                strokeDashArray: 7,
-                xaxis: {
-                    lines: {
-                        show: true
-                    }
-                }
-            },
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            xaxis: {
-                tooltip: {
-                    enabled: false
-                }
-            },
-            legend: {
-                show: false,
-                position: 'top',
-                horizontalAlign: 'right',
-                offsetY: 10
-            }
-        }
+        (function () {
+            const trend = @json($trend);
+            let currentRange = '30d';
 
-        var chartLine = new ApexCharts(document.querySelector('#order-statistics-line-chart'), OSDCoptions);
-        chartLine.render();
-    </script>
-
-    <script>
-        var earningOptions = {
-            chart: {
-                height: 328,
-                type: 'line',
-                zoom: {
-                enabled: false
-                },
-                toolbar: {
-                    show: false,
-                },
-            },
-            stroke: {
-                curve: 'straight',
-                width: 3
-            },
-            colors: ['rgba(255, 111, 112, 0.5)', '#107980'],
-            series: [{
-                name: "Earning",
-                data: [{{$earning[1]}}, {{$earning[2]}}, {{$earning[3]}}, {{$earning[4]}}, {{$earning[5]}}, {{$earning[6]}},
-                    {{$earning[7]}}, {{$earning[8]}}, {{$earning[9]}}, {{$earning[10]}}, {{$earning[11]}}, {{$earning[12]}}]
-                },
-            ],
-            markers: {
-                size: 2,
-                strokeWidth: 0,
-                hover: {
-                    size: 5
-                }
-            },
-            grid: {
-                show: true,
-                padding: {
-                    bottom: 0
-                },
-                borderColor: "rgba(180, 208, 224, 0.5)",
-                strokeDashArray: 7,
-                xaxis: {
-                    lines: {
-                        show: true
-                    }
-                }
-            },
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            xaxis: {
-                tooltip: {
-                    enabled: false
-                }
-            },
-            legend: {
-                show: false,
-                position: 'top',
-                horizontalAlign: 'right',
-                offsetY: 10
-            }
-        }
-
-        var chartLine = new ApexCharts(document.querySelector('#line-adwords'), earningOptions);
-        chartLine.render();
-    </script>
-    <script>
-        Chart.plugins.unregister(ChartDataLabels);
-
-        var updatingChart = $.HSCore.components.HSChartJS.init($('#updatingData'));
-
-    </script>
-
-    <script>
-        function order_stats_update(type) {
-            $.ajaxSetup({
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                }
-            });
-
-            $.ajax({
-                url: "{{route('branch.order-stats')}}",
-                type: "post",
-                data: {
-                    statistics_type: type,
-                },
-                beforeSend: function () {
-                    $('#loading').show()
-                },
-                success: function (data) {
-                    $('#order_stats').html(data.view)
-                },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    console.log(textStatus, errorThrown);
-                },
-                complete: function () {
-                    $('#loading').hide()
-                }
-            });
-        }
-    </script>
-
-    <script>
-        function orderStatisticsUpdate(t) {
-            let value = $(t).attr('data-order-type');
-            console.log(value);
-
-            $.ajax({
-                url: '{{route('branch.order-statistics')}}',
-                type: 'GET',
-                data: {
-                    type: value
-                },
-                beforeSend: function () {
-                    $('#loading').show()
-                },
-                success: function (response_data) {
-                    console.log(response_data);
-                    document.getElementById("order-statistics-line-chart").remove();
-                    let graph = document.createElement('div');
-                    graph.setAttribute("id", "order-statistics-line-chart");
-                    document.getElementById("updatingOrderData").appendChild(graph);
-
-                    var options = {
-                        series: [{
-                            name: "Orders",
-                            data: response_data.orders,
-                        }],
-                        chart: {
-                            height: 316,
-                            type: 'line',
-                            zoom: {
-                                enabled: false
-                            },
-                            toolbar: {
-                                show: false,
-                            },
-                            markers: {
-                                size: 5,
-                            }
-                        },
-                        dataLabels: {
-                            enabled: false,
-                        },
-                        colors: ['rgba(255, 111, 112, 0.5)', '#107980'],
-                        stroke: {
-                            curve: 'smooth',
-                            width: 3,
-                        },
-                        xaxis: {
-                            categories: response_data.orders_label,
-                        },
-                        grid: {
-                            show: true,
-                            padding: {
-                                bottom: 0
-                            },
-                            borderColor: "rgba(180, 208, 224, 0.5)",
-                            strokeDashArray: 7,
-                            xaxis: {
-                                lines: {
-                                    show: true
-                                }
-                            }
-                        },
-                        yaxis: {
-                            tickAmount: 4,
-                        }
-                    };
-
-                    var chart = new ApexCharts(document.querySelector("#order-statistics-line-chart"), options);
-                    chart.render();
-                },
-                complete: function () {
-                    $('#loading').hide()
-                }
-            });
-        }
-
-        function earningStatisticsUpdate(t) {
-            let value = $(t).attr('data-earn-type');
-            $.ajax({
-                url: '{{route('branch.earning-statistics')}}',
-                type: 'GET',
-                data: {
-                    type: value
-                },
-                beforeSend: function () {
-                    $('#loading').show()
-                },
-                success: function (response_data) {
-                    document.getElementById("line-adwords").remove();
-                    let graph = document.createElement('div');
-                    graph.setAttribute("id", "line-adwords");
-                    document.getElementById("updatingData").appendChild(graph);
-
-                    var optionsLine = {
-                        chart: {
-                            height: 328,
-                            type: 'line',
-                            zoom: {
-                                enabled: false
-                            },
-                            toolbar: {
-                                show: false,
-                            },
-                        },
-                        stroke: {
-                            curve: 'straight',
-                            width: 2
-                        },
-                        colors: ['rgba(255, 111, 112, 0.5)', '#107980'],
-                        series: [{
-                            name: "Earning",
-                            data: response_data.earning,
-                        }],
-                        markers: {
-                            size: 6,
-                            strokeWidth: 0,
-                            hover: {
-                                size: 9
-                            }
-                        },
-                        grid: {
-                            show: true,
-                            padding: {
-                                bottom: 0
-                            },
-                            borderColor: "rgba(180, 208, 224, 0.5)",
-                            strokeDashArray: 7,
-                            xaxis: {
-                                lines: {
-                                    show: true
-                                }
-                            }
-                        },
-                        labels: response_data.earning_label,
-                        xaxis: {
-                            tooltip: {
-                                enabled: false
-                            }
-                        },
-                        legend: {
-                            position: 'top',
-                            horizontalAlign: 'right',
-                            offsetY: -20
-                        }
-                    }
-                    var chartLine = new ApexCharts(document.querySelector('#line-adwords'), optionsLine);
-                    chartLine.render();
-                },
-                complete: function () {
-                    $('#loading').hide()
-                }
-            });
-        }
-    </script>
-    <script>
-        var options = {
-            series: [{{$donut['ongoing']}}, {{$donut['delivered']}}, {{$donut['pending']}}, {{$donut['canceled']}}, {{$donut['returned']}}, {{$donut['failed']}}],
-            chart: {
-                width: 256,
-                type: 'donut',
-            },
-            labels: ['{{ translate('ongoing') }}', '{{ translate('delivered') }}', '{{ translate('pending') }}', '{{translate('canceled')}}', '{{translate('returned')}}', '{{translate('failed_to_deliver')}}'],
-            dataLabels: {
-                enabled: false,
-                style: {
-                    colors: ['#803838', '#27AE60', '#FF6F70', '#17202A', '#21618C', '#FF0000']
-                }
-            },
-            responsive: [{
-                breakpoint: 1650,
-                options: {
+            function buildOptions(range) {
+                const d = trend[range];
+                return {
                     chart: {
-                        width: 250
+                        type: 'area', height: 280, toolbar: { show: false },
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        animations: { enabled: true, speed: 350 }
                     },
-                }
-            }],
-            colors: ['#803838', '#27AE60', '#FF6F70', '#17202A', '#21618C', '#FF0000'],
-            fill: {
-                colors: ['#803838', '#27AE60', '#FF6F70', '#17202A', '#21618C', '#FF0000']
-            },
-            legend: {
-                show: false
-            },
-        };
+                    series: [
+                        { name: '{{ translate('Revenue') }}', type: 'area', data: d.revenue },
+                        { name: '{{ translate('Orders') }}',  type: 'line', data: d.orders }
+                    ],
+                    colors: ['#E67E22', '#4a90e2'],
+                    stroke: { curve: 'smooth', width: [2, 2] },
+                    fill: {
+                        type: ['gradient', 'solid'],
+                        gradient: { shade: 'light', type: 'vertical', shadeIntensity: 0.25, opacityFrom: 0.45, opacityTo: 0.05, stops: [0, 100] }
+                    },
+                    dataLabels: { enabled: false },
+                    xaxis: {
+                        categories: d.labels,
+                        labels: { style: { colors: '#8e8e93', fontSize: '11px' } },
+                        axisBorder: { show: false }, axisTicks: { show: false }
+                    },
+                    yaxis: [
+                        { seriesName: '{{ translate('Revenue') }}',
+                          labels: { style: { colors: '#8e8e93', fontSize: '11px' },
+                                    formatter: (v) => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v) } },
+                        { seriesName: '{{ translate('Orders') }}', opposite: true,
+                          labels: { style: { colors: '#8e8e93', fontSize: '11px' }, formatter: (v) => Math.round(v) } }
+                    ],
+                    grid: { borderColor: '#f1f2f4', strokeDashArray: 4 },
+                    legend: { position: 'top', horizontalAlign: 'right', markers: { width: 8, height: 8, radius: 4 }, fontSize: '12px' },
+                    tooltip: { theme: 'light', shared: true }
+                };
+            }
 
-        var chart = new ApexCharts(document.querySelector("#dognut-pie"), options);
-        chart.render();
+            const chart = new ApexCharts(document.querySelector('#lh-d-trend-chart'), buildOptions('30d'));
+            chart.render();
 
+            document.querySelectorAll('#lh-d-range button').forEach((btn) => {
+                btn.addEventListener('click', function () {
+                    const range = this.dataset.range;
+                    if (range === currentRange) return;
+                    currentRange = range;
+                    document.querySelectorAll('#lh-d-range button').forEach(b => b.classList.toggle('is-active', b === this));
+                    chart.updateOptions(buildOptions(range), false, true);
+                });
+            });
+        })();
     </script>
 @endpush
