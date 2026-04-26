@@ -7,7 +7,10 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     @include('receipt._styles')
 </head>
-<body>
+{{-- r-receipt-page class enables the @media print body wipe in
+     receipt/_styles.blade.php. Embedded receipts (inside KOT) don't
+     get this class, so their parent's body styling is preserved. --}}
+<body class="r-receipt-page">
 <div class="r-doc">
     @include('receipt._body', ['order' => $order])
 </div>

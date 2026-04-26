@@ -705,45 +705,10 @@
         </div>
 
 
-        @php
-
-
-            $order=\App\Model\Order::find(session('last_order'));
-
-
-        @endphp
-        @if($order)
-            @php
-                session(['last_order'=> false]);
-            @endphp
-            <div class="modal fade" id="print-invoice" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                    <div class="modal-content">
-                        <div class="modal-header flex-column">
-                            <div class="w-100 d-flex justify-content-between align-items-center gap-3">
-                                <h5 class="modal-title">{{translate('Print Invoice')}}</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
-                            </div>
-                            <div class="mt-4">
-                                <center>
-                                    <input type="button" class="btn btn-primary non-printable print-button" value="{{translate('Proceed, If thermal printer is ready.')}}"/>
-                                    <a href="{{url()->previous()}}" class="btn btn-danger non-printable">{{translate('Back')}}</a>
-                                </center>
-                                <hr class="non-printable">
-                            </div>
-                        </div>
-                        <div class="modal-body row ff-emoji overflow-auto pt-0">
-                            <div class="row m-auto" id="printableArea">
-                                @include('admin-views.pos.order.invoice')
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @endif
+        {{-- Legacy #print-invoice modal removed — its job is now handled
+             by the orderPlacedModal (kitchen ticket + embedded customer
+             receipt for take-away/delivery via the kitchen-ticket route)
+             and by /r/{token} for ad-hoc reprints from order lists. --}}
 
         <div class="modal fade p-0" id="AddressModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered madl--lg">
@@ -2684,25 +2649,36 @@
             });
         });
 
-        // Auto-show on POS load. Cases:
-        //   (a) order just placed → don't interrupt the post-order modal,
-        //       BUT chain on its close so the operator goes straight from
-        //       "Send to Kitchen" / "OK" into capturing the next customer.
-        //       We drive them; they don't have to remember to click anything.
-        //   (b) session has a customer → resume confirmation
-        //   (c) no session → fresh lookup
+        // Auto-show on POS load. Order matters here:
+        //   (a) order just placed → ALWAYS chain on the post-order modal's
+        //       close so the operator goes straight from "Send to Kitchen"
+        //       into the next customer. Must be checked FIRST — the
+        //       referrer is also /admin/pos at this point, so the
+        //       intra-POS guard would otherwise suppress the rearm.
+        //   (b) intra-POS navigation (category change, pagination, search,
+        //       reload) → operator never left the POS surface, don't
+        //       interrupt their flow with a modal
+        //   (c) session has a customer → resume confirmation
+        //   (d) no session → fresh lookup
         $(function () {
+            // (a) — explicit fresh-sale signal wins over everything else.
             const orderJustPlaced = {{ session('order_placed') ? 'true' : 'false' }};
             if (orderJustPlaced) {
-                // Wait for the order-placed modal to close (operator clicked
-                // "Send to Kitchen" or X), then surface the lookup with the
-                // next customer ready to type. Bind once so we don't stack.
                 $('#orderPlacedModal').one('hidden.bs.modal', function () {
                     showState('lookup');
                     $modal.modal('show');
                 });
                 return;
             }
+
+            // (b) — only kicks in for non-post-order page loads.
+            try {
+                if (document.referrer
+                    && new URL(document.referrer).pathname === window.location.pathname) {
+                    return;
+                }
+            } catch (e) { /* malformed referrer — fall through to default behaviour */ }
+
             const hasCustomer = {{ isset($selected_customer) && $selected_customer ? 'true' : 'false' }};
             if (hasCustomer) {
                 showState('resume');

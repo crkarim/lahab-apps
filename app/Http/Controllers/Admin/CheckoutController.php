@@ -53,8 +53,14 @@ class CheckoutController extends Controller
                     $order->receipt_token = Str::random(32);
                     $order->save();
                 }
-                $this->sendReceiptSms($order, $phone);
-                Toastr::success(translate('Receipt sent'));
+                $smsResult = $this->sendReceiptSms($order, $phone);
+                if ($smsResult === 'success') {
+                    Toastr::success(translate('Receipt sent by SMS'));
+                } elseif ($smsResult === 'not_found') {
+                    Toastr::warning(translate('No SMS gateway is configured — enable one under Third Party → SMS Module'));
+                } else {
+                    Toastr::error(translate('SMS gateway returned an error — receipt was not sent'));
+                }
             }
 
             if (in_array($delivery, ['print', 'both']) && !empty($order->receipt_token)) {
@@ -122,8 +128,9 @@ class CheckoutController extends Controller
 
         $order->refresh();
 
+        $smsResult = null;
         if (in_array($delivery, ['sms', 'both'])) {
-            $this->sendReceiptSms($order, $phone);
+            $smsResult = $this->sendReceiptSms($order, $phone);
         }
 
         if ($changeDue > 0) {
@@ -134,6 +141,16 @@ class CheckoutController extends Controller
             Toastr::success(translate('Payment completed'));
         }
 
+        // Surface the real SMS outcome separately from the payment toast so
+        // operators don't get a false-positive when no gateway is configured.
+        if ($smsResult === 'not_found') {
+            Toastr::warning(translate('No SMS gateway is configured — enable one under Third Party → SMS Module'));
+        } elseif ($smsResult === 'error') {
+            Toastr::error(translate('SMS gateway returned an error — receipt was not sent'));
+        } elseif ($smsResult === 'success') {
+            Toastr::success(translate('Receipt sent by SMS'));
+        }
+
         if (in_array($delivery, ['print', 'both']) && !empty($order->receipt_token)) {
             session()->flash('auto_print_receipt_token', $order->receipt_token);
         }
@@ -141,7 +158,13 @@ class CheckoutController extends Controller
         return redirect()->route('admin.orders.details', ['id' => $order->id]);
     }
 
-    private function sendReceiptSms(Order $order, string $phone): void
+    /**
+     * Returns 'success' | 'error' | 'not_found' so the caller can show
+     * an honest toast. SMSModule::send() returns 'not_found' (string)
+     * when no gateway is enabled — it never throws — so we must inspect
+     * the return value, not rely on a try/catch.
+     */
+    private function sendReceiptSms(Order $order, string $phone): string
     {
         $name   = Helpers::get_business_settings('restaurant_name') ?: config('app.name');
         $total  = Helpers::set_symbol($order->order_amount);
@@ -149,9 +172,10 @@ class CheckoutController extends Controller
         $msg    = "Thanks for dining at {$name}! Total {$total}. Receipt: {$link}";
 
         try {
-            SMSModule::send($phone, $msg);
+            $result = SMSModule::send($phone, $msg);
+            return in_array($result, ['success', 'error', 'not_found'], true) ? $result : 'error';
         } catch (\Throwable $e) {
-            Toastr::warning(translate('SMS gateway not configured — receipt link copied to order notes'));
+            return 'error';
         }
     }
 }

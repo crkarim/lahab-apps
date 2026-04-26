@@ -106,7 +106,6 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('orders', [POSController::class, 'order_list'])->name('orders');
             Route::get('export-excel', [POSController::class, 'export_excel'])->name('export-excel');
             Route::get('order-details/{id}', [POSController::class, 'order_details'])->name('order-details');
-            Route::get('invoice/{id}', [POSController::class, 'generate_invoice']);
             Route::any('store-keys', [POSController::class, 'store_keys'])->name('store-keys');
             Route::post('table', [POSController::class, 'getTableListByBranch'])->name('table');
             Route::get('clear', [POSController::class, 'clear_session_data'])->name('clear');

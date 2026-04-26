@@ -707,8 +707,8 @@ class POSController extends Controller
             }
 
             session()->forget('cart');
-            session(['last_order' => $order->id]);
-
+            // last_order session retired — see admin POSController for
+            // the same change. The legacy #print-invoice modal is gone.
             session()->forget('customer_id');
             session()->forget('branch_id');
             session()->forget('table_id');
@@ -883,15 +883,8 @@ class POSController extends Controller
      * @param $id
      * @return JsonResponse
      */
-    public function generateInvoice($id): JsonResponse
-    {
-        $order = $this->order->where('id', $id)->first();
-
-        return response()->json([
-            'success' => 1,
-            'view' => view('branch-views.pos.order.invoice', compact('order'))->render(),
-        ]);
-    }
+    // generateInvoice() removed — replaced by ReceiptController and
+    // the kitchen-ticket route. See admin POSController for the matching change.
 
     /**
      * @return RedirectResponse

@@ -18,7 +18,15 @@
     .r-doc *, .r-doc *::before, .r-doc *::after { box-sizing: border-box; }
 
     .r-doc .r-shop { text-align: center; margin-bottom: 4mm; }
-    .r-doc .r-logo { max-width: 60mm; max-height: 18mm; margin-bottom: 2mm; object-fit: contain; }
+    /* Logo carries the Lahab wordmark — bumped to 76mm × 28mm so the
+       brand reads clearly. The `:not(:last-child)` keeps a small gap
+       only when subs follow; an image-only header leaves no orphan
+       margin under the logo. */
+    .r-doc .r-logo {
+        max-width: 76mm; max-height: 28mm;
+        object-fit: contain; display: block; margin: 0 auto;
+    }
+    .r-doc .r-logo:not(:last-child) { margin-bottom: 3mm; }
     .r-doc .r-name { font-size: 15px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
     .r-doc .r-sub  { font-size: 11px; margin-top: 1mm; }
 
@@ -43,6 +51,26 @@
     .r-doc .r-payments { margin-top: 2mm; }
     .r-doc .r-pay-row { display: flex; justify-content: space-between; font-size: 11px; }
 
+    /* Total Paid — bold sum of all tenders, sits right after the
+       payment-method rows with a hairline divider above it. */
+    .r-doc .r-paid {
+        font-weight: 700; font-size: 12px;
+        margin-top: 1.2mm; padding-top: 1.2mm;
+        border-top: 1px dashed #000;
+    }
+    /* Change — cash to give back. Green so operators don't miss it. */
+    .r-doc .r-change {
+        font-weight: 800; font-size: 13px;
+        color: #1a6b3a; margin-top: 1mm;
+    }
+    /* BALANCE DUE — what the customer still owes. Boxed + bold so it
+       can't be missed by either the customer or the operator. */
+    .r-doc .r-due {
+        font-weight: 800; font-size: 14px; color: #b22020;
+        border: 1.5px solid #b22020; padding: 1.5mm 2mm;
+        margin-top: 2mm; border-radius: 1mm;
+    }
+
     .r-doc .r-footer { text-align: center; margin-top: 4mm; font-size: 10px; }
     .r-doc .r-barcode-wrap { text-align: center; margin-top: 3mm; }
     .r-doc .r-barcode { height: 38px; max-width: 100%; display: block; margin: 0 auto; }
@@ -55,11 +83,18 @@
     }
 
     /* Print: isolate the receipt on its own 80mm page. Two cases:
-       1) Standalone pages (/r/{token}, KOT): body contains only .r-doc blocks — hide nothing extra.
-       2) Modal preview: JS clones .r-doc into body-level #print-host; hide every other body child. */
+       1) Standalone pages (/r/{token}): body has class="r-receipt-page",
+          body padding is wiped so the .r-doc fills the page edge-to-edge.
+       2) Modal preview: JS clones .r-doc into body-level #print-host; hide every other body child.
+       3) Embedded in KOT (take-away / delivery): receipt sits BELOW the
+          kitchen ticket on the same page. We deliberately DON'T touch
+          body styling here — the parent KOT body owns padding/margin,
+          and the .r-doc class is already self-contained. The previous
+          version overrode body padding with !important which shifted
+          the KOT layout for take-away/delivery prints only. */
     @media print {
         @page { size: 80mm auto; margin: 0; }
-        html, body { background: #fff; margin: 0 !important; padding: 0 !important; }
+        body.r-receipt-page { background: #fff; margin: 0 !important; padding: 0 !important; }
         /* If a #print-host exists, hide every other body child. */
         body:has(#print-host) > *:not(#print-host) { display: none !important; }
         #print-host, #print-host * { visibility: visible; }

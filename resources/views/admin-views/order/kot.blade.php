@@ -6,8 +6,12 @@
     <title>KOT {{ $order->kot_number }}</title>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <style>
+        /* 80mm thermal — every printer in the shop is the same width.
+           Declaring @page explicitly stops the print preview from
+           defaulting to A4 and shows the operator the real layout. */
+        @page { size: 80mm auto; margin: 2mm; }
         body { font-family: -apple-system, "SF Mono", Menlo, Consolas, monospace;
-               max-width: 80mm; margin: 0 auto; padding: 10mm 6mm; color: #000;
+               max-width: 80mm; margin: 0 auto; padding: 4mm; color: #000;
                background: #fff; }
         .kot-head { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 6px; margin-bottom: 8px; }
         .kot-label { font-size: 12px; letter-spacing: 2px; font-weight: 700; }
@@ -27,11 +31,30 @@
         .kot-packaging small { display: block; font-weight: 600; font-size: 11px; letter-spacing: 1px; margin-top: 2px; }
         .kot-meta { font-size: 13px; margin: 2px 0; }
         .kot-meta strong { font-weight: 700; }
-        .items { margin: 8px 0; }
-        .item { margin-bottom: 10px; page-break-inside: avoid; }
-        .item-main { font-size: 16px; font-weight: 700; }
-        .item-qty { display: inline-block; min-width: 28px; }
-        .item-sub { font-size: 13px; margin-left: 36px; }
+        /* Items table — gives the kitchen a fixed QTY column so they
+           can scan numbers down the left edge instead of hunting through
+           prose. Modifications + addons sit indented under the item name. */
+        .items-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+        .items-table thead th {
+            font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+            border-bottom: 2px solid #000; padding: 4px 0; text-align: left;
+            font-weight: 700;
+        }
+        .items-table thead th.qty-col { width: 18mm; text-align: center; }
+        .items-table tbody td {
+            padding: 6px 0 6px; border-bottom: 1px dashed #000;
+            vertical-align: top; page-break-inside: avoid;
+        }
+        .items-table tbody tr:last-child td { border-bottom: none; }
+        .items-table .qty-cell {
+            text-align: center; font-size: 22px; font-weight: 800;
+            line-height: 1; padding-right: 4px;
+        }
+        .items-table .item-main { font-size: 16px; font-weight: 700; }
+        .items-table .item-sub  {
+            font-size: 12px; margin-left: 12px; margin-top: 2px;
+            color: #222; line-height: 1.3;
+        }
         .divider { border-top: 1px dashed #000; margin: 6px 0; }
         .barcode-wrap { text-align: center; margin-top: 10px; }
         #kotBarcode { max-width: 100%; height: 50px; }
@@ -105,7 +128,14 @@
 
 <div class="divider"></div>
 
-<div class="items">
+<table class="items-table">
+    <thead>
+        <tr>
+            <th class="qty-col">QTY</th>
+            <th>Item</th>
+        </tr>
+    </thead>
+    <tbody>
     @foreach($itemsToPrint as $item)
         @php
             $p = is_array($item->product_details) ? $item->product_details : json_decode($item->product_details, true);
@@ -114,31 +144,33 @@
             $addonQtys = is_array($item->add_on_qtys) ? $item->add_on_qtys : json_decode($item->add_on_qtys, true);
             $productAddons = collect($p['add_ons'] ?? []);
         @endphp
-        <div class="item">
-            <div class="item-main">
-                <span class="item-qty">{{ $item->quantity }}×</span> {{ $p['name'] ?? 'Item' }}
-            </div>
-            @if(!empty($variation) && is_array($variation))
-                @foreach($variation as $v)
-                    <div class="item-sub">• {{ $v['type'] ?? $v['Size'] ?? '' }}</div>
-                @endforeach
-            @endif
-            @if(!empty($addonIds) && is_array($addonIds))
-                @foreach($addonIds as $i => $addonId)
-                    @php
-                        $addonName = $productAddons->firstWhere('id', $addonId)['name'] ?? null;
-                        if (!$addonName) {
-                            $addonModel = \App\Model\AddOn::find($addonId);
-                            $addonName = $addonModel->name ?? 'Addon';
-                        }
-                        $qty = $addonQtys[$i] ?? 1;
-                    @endphp
-                    <div class="item-sub">+ {{ $qty }}× {{ $addonName }}</div>
-                @endforeach
-            @endif
-        </div>
+        <tr>
+            <td class="qty-cell">{{ $item->quantity }}×</td>
+            <td>
+                <div class="item-main">{{ $p['name'] ?? 'Item' }}</div>
+                @if(!empty($variation) && is_array($variation))
+                    @foreach($variation as $v)
+                        <div class="item-sub">• {{ $v['type'] ?? $v['Size'] ?? '' }}</div>
+                    @endforeach
+                @endif
+                @if(!empty($addonIds) && is_array($addonIds))
+                    @foreach($addonIds as $i => $addonId)
+                        @php
+                            $addonName = $productAddons->firstWhere('id', $addonId)['name'] ?? null;
+                            if (!$addonName) {
+                                $addonModel = \App\Model\AddOn::find($addonId);
+                                $addonName = $addonModel->name ?? 'Addon';
+                            }
+                            $qty = $addonQtys[$i] ?? 1;
+                        @endphp
+                        <div class="item-sub">+ {{ $qty }}× {{ $addonName }}</div>
+                    @endforeach
+                @endif
+            </td>
+        </tr>
     @endforeach
-</div>
+    </tbody>
+</table>
 
 <div class="divider"></div>
 

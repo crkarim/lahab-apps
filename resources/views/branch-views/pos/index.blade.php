@@ -325,44 +325,10 @@
             </div>
         </div>
 
-        @php
-
-            $order=\App\Model\Order::find(session('last_order'));
-
-        @endphp
-        @if($order)
-        @php
-            session(['last_order'=> false]);
-        @endphp
-        <div class="modal fade" id="print-invoice" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content">
-                    <div class="modal-header flex-column">
-                        <div class="w-100 d-flex justify-content-between align-items-center gap-3">
-                            <h5 class="modal-title">{{translate('Print Invoice')}}</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="mt-4">
-                            <center>
-                                <input type="button" class="btn btn-primary non-printable print-button"
-                                    value="{{translate('Proceed, If thermal printer is ready.')}}"/>
-                                <a href="{{url()->previous()}}" class="btn btn-danger non-printable">{{translate('Back')}}</a>
-                            </center>
-                            <hr class="non-printable">
-                        </div>
-                    </div>
-                    <div class="modal-body row custom-modal-body overflow-auto pt-0">
-                        <div class="row custom-print-area-auto" id="printableArea">
-                            @include('branch-views.pos.order.invoice')
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
+        {{-- Legacy #print-invoice modal removed — superseded by the
+             orderPlacedModal flow (kitchen ticket + embedded customer
+             receipt for take-away/delivery) and by /r/{token} for
+             ad-hoc reprints. --}}
 
     <div class="modal p-0 fade" id="AddressModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered madl--lg">

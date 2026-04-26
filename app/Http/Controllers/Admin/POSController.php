@@ -795,7 +795,9 @@ class POSController extends Controller
                 }
 
                 session()->forget('cart');
-                session(['last_order' => $order->id]);
+                // last_order session value removed — its only consumer
+                // (the legacy #print-invoice modal) was retired in favour
+                // of the orderPlacedModal + kitchen-ticket flow.
                 session()->forget('customer_id');
                 session()->forget('branch_id');
                 session()->forget('table_id');
@@ -1033,19 +1035,8 @@ class POSController extends Controller
         return view('admin-views.order.order-view', compact('order', 'deliverymen', 'orderId'));
     }
 
-    /**
-     * @param $id
-     * @return JsonResponse
-     */
-    public function generate_invoice($id): JsonResponse
-    {
-        $order = $this->order->where('id', $id)->first();
-
-        return response()->json([
-            'success' => 1,
-            'view' => view('admin-views.pos.order.invoice', compact('order'))->render(),
-        ]);
-    }
+    // generate_invoice() removed — replaced by ReceiptController and the
+    // kitchen-ticket route. See receipt/show.blade.php and admin-views/order/kot.blade.php.
 
     /**
      * @param Request $request
