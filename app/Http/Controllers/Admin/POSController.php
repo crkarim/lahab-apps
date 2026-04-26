@@ -102,39 +102,7 @@ class POSController extends Controller
         $current_branch = $this->admin->find(auth('admin')->id());
         $branches = $this->branch->select('id', 'name')->get();
 
-        // Hybrid Favorites: recommended products first, then top-sellers (last 30d) to fill up to 6.
-        $recommended = $this->product->with(['branch_products' => function ($q) use ($selected_branch) {
-                $q->where(['is_available' => 1, 'branch_id' => $selected_branch]);
-            }])
-            ->whereHas('branch_products', function ($q) use ($selected_branch) {
-                $q->where(['is_available' => 1, 'branch_id' => $selected_branch]);
-            })
-            ->where('is_recommended', 1)->active()->take(6)->get();
-
-        $need = 6 - $recommended->count();
-        $topSellers = collect();
-        if ($need > 0) {
-            $topSellerIds = \App\Model\OrderDetail::select('product_id', \DB::raw('SUM(quantity) as qty'))
-                ->whereHas('order', function ($q) use ($selected_branch) {
-                    $q->where('branch_id', $selected_branch)
-                      ->where('created_at', '>=', now()->subDays(30));
-                })
-                ->whereNotIn('product_id', $recommended->pluck('id'))
-                ->groupBy('product_id')
-                ->orderByDesc('qty')
-                ->take($need)
-                ->pluck('product_id');
-
-            if ($topSellerIds->isNotEmpty()) {
-                $topSellers = $this->product->with(['branch_products' => function ($q) use ($selected_branch) {
-                        $q->where(['is_available' => 1, 'branch_id' => $selected_branch]);
-                    }])
-                    ->whereIn('id', $topSellerIds)->active()->get();
-            }
-        }
-        $favorites = $recommended->concat($topSellers)->take(6);
-
-        return view('admin-views.pos.index', compact('categories', 'products', 'category', 'keyword', 'current_branch', 'branches', 'selected_customer', 'selected_table', 'tables', 'favorites'));
+        return view('admin-views.pos.index', compact('categories', 'products', 'category', 'keyword', 'current_branch', 'branches', 'selected_customer', 'selected_table', 'tables'));
     }
 
     /**
@@ -1211,6 +1179,138 @@ class POSController extends Controller
 
         Toastr::success(translate('customer added successfully'));
         return back();
+    }
+
+    /**
+     * Normalise a Bangladesh phone string into the canonical
+     * `+880XXXXXXXXXX` form that's stored in the `users.phone` column.
+     * Accepts the operator typing the number any of these ways:
+     *   01715253043       (11 digits with leading 0)
+     *   1715253043        (10 digits without leading 0)
+     *   +8801715253043    (already canonical)
+     *   880 1715253043    (with country code, missing +)
+     */
+    private function normaliseBdPhone(?string $raw): ?string
+    {
+        if (!$raw) return null;
+        $digits = preg_replace('/\D+/', '', $raw); // strip everything non-digit
+        // Strip leading 880 country code if present
+        if (str_starts_with($digits, '880')) {
+            $digits = substr($digits, 3);
+        }
+        // Strip leading 0
+        if (str_starts_with($digits, '0')) {
+            $digits = substr($digits, 1);
+        }
+        // Need exactly 10 digits left for a valid BD number
+        if (strlen($digits) !== 10) return null;
+        return '+880' . $digits;
+    }
+
+    /**
+     * Admin-only customer lookup for the POS "customer-first" modal.
+     * Takes a phone in any format the operator might type, returns
+     * { found, id?, name?, phone, ... } as JSON. No app-API contract
+     * change — this route is admin auth-protected and only called from
+     * the POS view's lookup modal.
+     */
+    public function customer_lookup(Request $request): JsonResponse
+    {
+        $phone = $this->normaliseBdPhone($request->input('phone'));
+        if (!$phone) {
+            return response()->json([
+                'found'   => false,
+                'invalid' => true,
+                'message' => translate('Phone must be 10 digits (no leading 0) or 11 digits (with leading 0).'),
+            ]);
+        }
+
+        $user = $this->user
+            ->where('phone', $phone)
+            ->select('id', 'f_name', 'l_name', 'phone', 'point', 'wallet_balance', 'created_at')
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'found' => false,
+                'phone' => $phone,
+            ]);
+        }
+
+        // Aggregate signal for the operator: how many times has this
+        // person ordered, when was the last visit. Cheap two-query lookup.
+        $orderCount = \App\Model\Order::where('user_id', $user->id)->count();
+        $lastOrder  = \App\Model\Order::where('user_id', $user->id)
+            ->latest('created_at')
+            ->value('created_at');
+
+        return response()->json([
+            'found'           => true,
+            'id'              => $user->id,
+            'name'            => trim(($user->f_name ?? '') . ' ' . ($user->l_name ?? '')),
+            'phone'           => $user->phone,
+            'loyalty_points'  => (float) $user->point,
+            'wallet_balance'  => (float) $user->wallet_balance,
+            'order_count'     => $orderCount,
+            'last_order_at'   => $lastOrder?->toDateTimeString(),
+            'last_order_human' => $lastOrder ? $lastOrder->diffForHumans() : null,
+        ]);
+    }
+
+    /**
+     * Lightweight "I just need a name + phone" customer creation,
+     * called from the POS lookup modal when the operator types a
+     * phone we've never seen and a name. Skips the email/address
+     * requirements of customer_store because the operator at the
+     * counter doesn't have time to ask for those.
+     *
+     * The created user can later self-register in the customer app via
+     * OTP using the same phone — Laravel auth will recognise the
+     * existing record and let them set a password / claim it.
+     */
+    public function quick_add_customer(Request $request): JsonResponse
+    {
+        $request->validate([
+            'name'  => 'nullable|string|max:100',
+            'phone' => 'required',
+        ]);
+
+        $phone = $this->normaliseBdPhone($request->input('phone'));
+        if (!$phone) {
+            return response()->json([
+                'success' => false,
+                'message' => translate('Phone must be 10 digits (no leading 0) or 11 digits (with leading 0).'),
+            ], 422);
+        }
+
+        // Race-condition safety — the lookup might have said "not found"
+        // but a parallel POS session could have just created this phone.
+        if ($this->user->where('phone', $phone)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => translate('A customer with this phone already exists.'),
+            ], 409);
+        }
+
+        // Name is optional — operator might capture just a phone for the
+        // quick-receipt flow. When skipped, we use a stable "Customer" so
+        // the dropdown + receipts still have something to render.
+        $name = trim((string) $request->input('name'));
+
+        $user = $this->user->create([
+            'f_name'   => $name !== '' ? $name : 'Customer',
+            'l_name'   => null,
+            'email'    => null,
+            'phone'    => $phone,
+            'password' => bcrypt(\Illuminate\Support\Str::random(20)),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'id'      => $user->id,
+            'name'    => $user->f_name,
+            'phone'   => $user->phone,
+        ]);
     }
 
     /**

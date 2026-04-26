@@ -111,6 +111,10 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('table', [POSController::class, 'getTableListByBranch'])->name('table');
             Route::get('clear', [POSController::class, 'clear_session_data'])->name('clear');
             Route::post('customer-store', [POSController::class, 'customer_store'])->name('customer-store');
+            // Customer-first lookup modal — admin-only AJAX endpoints,
+            // no impact on the user app's API surface.
+            Route::get('customer-lookup', [POSController::class, 'customer_lookup'])->name('customer-lookup');
+            Route::post('quick-add-customer', [POSController::class, 'quick_add_customer'])->name('quick-add-customer');
             Route::post('session-destroy', [POSController::class, 'session_destroy'])->name('session-destroy');
             Route::post('add-delivery-address', [POSController::class, 'addDeliveryInfo'])->name('add-delivery-address');
             Route::post('order_type/store', [POSController::class, 'order_type_store'])->name('order_type.store');

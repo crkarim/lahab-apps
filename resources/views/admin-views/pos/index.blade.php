@@ -51,23 +51,6 @@
             box-shadow: 0 2px 8px rgba(230,126,34,0.25);
         }
 
-        /* Favorites hero */
-        .pos-ix-favs {
-            background: linear-gradient(180deg, rgba(230,126,34,0.05), transparent);
-            border: 1px solid rgba(230,126,34,0.12); border-radius: 12px;
-            padding: 12px 14px; margin-bottom: 14px;
-        }
-        .pos-ix-favs-label {
-            font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
-            text-transform: uppercase; color: #E67E22; margin-bottom: 10px;
-        }
-        .pos-ix-favs-row {
-            display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
-        }
-        @media (max-width: 1399px) { .pos-ix-favs-row { grid-template-columns: repeat(5, 1fr); } }
-        @media (max-width: 1199px) { .pos-ix-favs-row { grid-template-columns: repeat(4, 1fr); } }
-        @media (max-width: 767px)  { .pos-ix-favs-row { grid-template-columns: repeat(3, 1fr); } }
-
         /* Product grid wrapper */
         .pos-ix-grid-wrap { min-height: 200px; }
 
@@ -426,18 +409,6 @@
                                             data-category-id="{{ $item->id }}">{{ Str::limit($item->name, 30) }}</button>
                                 @endforeach
                             </div>
-
-                            {{-- Favorites hero row --}}
-                            @if(isset($favorites) && $favorites->count())
-                                <div class="pos-ix-favs">
-                                    <div class="pos-ix-favs-label">⭐ {{ translate('Favorites') }}</div>
-                                    <div class="pos-ix-favs-row">
-                                        @foreach($favorites as $product)
-                                            @include('admin-views.pos._single_product',['product'=>$product])
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
 
                             {{-- Main product grid --}}
                             <div id="items" class="pos-ix-grid-wrap">
@@ -979,6 +950,159 @@
          Keeping them here (instead of inside _cart.blade.php) prevents Bootstrap's
          modal backdrop from getting orphaned when the cart partial refreshes. --}}
     @include('admin-views.pos._cart-modals')
+
+    {{-- Customer-first lookup modal — opens automatically when POS loads
+         so the operator captures (or consciously skips) the customer's
+         phone before the order is built. POC version: client-side mocked
+         lookup, real AJAX wiring lands once UX is approved. --}}
+    <div class="modal fade" id="lh-customer-lookup" tabindex="-1" data-backdrop="static" data-keyboard="false" aria-labelledby="lhCustomerLookupTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content lh-cl-content">
+                <div class="modal-header lh-cl-header text-center justify-content-center">
+                    <h5 class="modal-title mb-0" id="lhCustomerLookupTitle">
+                        <i class="tio-user mr-2"></i>{{ translate('Customer') }}
+                    </h5>
+                </div>
+
+                <div class="modal-body lh-cl-body">
+                    {{-- STATE 0 — resume confirmation. Opens automatically
+                         when the operator returns to POS with an in-progress
+                         sale (session has customer_id). Stops accidental
+                         re-use of an order someone meant to abandon. --}}
+                    <div class="lh-cl-state d-none" data-state="resume">
+                        <p class="text-muted mb-3 fz-14">
+                            {{ translate('You have a sale in progress. What do you want to do?') }}
+                        </p>
+                        @if(isset($selected_customer) && $selected_customer)
+                            <div class="lh-cl-card">
+                                <div class="lh-cl-avatar"><i class="tio-user"></i></div>
+                                <div class="lh-cl-info">
+                                    <div class="lh-cl-name">{{ trim(($selected_customer->f_name ?? '') . ' ' . ($selected_customer->l_name ?? '')) ?: translate('Customer') }}</div>
+                                    <div class="text-muted fz-14">{{ $selected_customer->phone }}</div>
+                                    <div class="lh-cl-meta mt-2">
+                                        <span class="badge badge-soft-warning">{{ translate('In progress') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                        <button type="button" class="btn btn-success btn-block mt-3 lh-cl-btn-resume">
+                            <i class="tio-checkmark-circle"></i> {{ translate('Continue this order') }}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-block mt-2 lh-cl-btn-new-sale">
+                            <i class="tio-refresh"></i> {{ translate('Start a new sale instead') }}
+                        </button>
+                    </div>
+
+                    {{-- STATE 1 — phone lookup form. --}}
+                    <div class="lh-cl-state" data-state="lookup">
+                        <p class="text-muted mb-3 fz-14">{{ translate('Enter the customer\'s phone to begin the order.') }}</p>
+                        <div class="input-group input-group-lg lh-cl-phone-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text font-weight-bold">+880</span>
+                            </div>
+                            {{-- type="text" not "tel" — the global intl-tel-input
+                                 plugin auto-decorates every type="tel" with its
+                                 own flag picker, which collides with our +880
+                                 prefix and shows two country codes at once.
+                                 inputmode=numeric still gives the on-screen
+                                 numeric keypad on touch devices. --}}
+                            <input type="text"
+                                   id="lh-cl-phone"
+                                   class="form-control form-control-lg lh-cl-phone-input"
+                                   placeholder="1XXXXXXXXX"
+                                   maxlength="11"
+                                   inputmode="numeric"
+                                   autocomplete="off"
+                                   pattern="[0-9]*">
+                        </div>
+                        <small class="text-muted d-block mt-2">{{ translate('10 digits, no leading 0') }}</small>
+
+                        <button type="button" class="btn btn-primary btn-block mt-4 lh-cl-btn-lookup" disabled>
+                            <i class="tio-search"></i> {{ translate('Continue with this customer') }}
+                        </button>
+                    </div>
+
+                    {{-- STATE 2 — customer found. Populated by lookup JS. --}}
+                    <div class="lh-cl-state d-none" data-state="found">
+                        <div class="lh-cl-card">
+                            <div class="lh-cl-avatar"><i class="tio-user"></i></div>
+                            <div class="lh-cl-info">
+                                <div class="lh-cl-name"></div>
+                                <div class="lh-cl-phone-display text-muted fz-14"></div>
+                                <div class="lh-cl-meta mt-2"></div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-success btn-block mt-3 lh-cl-btn-continue">
+                            <i class="tio-checkmark-circle"></i> {{ translate('Continue Order') }}
+                        </button>
+                        <button type="button" class="btn btn-link btn-block mt-1 lh-cl-btn-back text-muted fz-13">
+                            ← {{ translate('Different customer') }}
+                        </button>
+                    </div>
+
+                    {{-- STATE 3 — new customer (just phone + name). --}}
+                    <div class="lh-cl-state d-none" data-state="new">
+                        <div class="lh-cl-new-banner">
+                            <i class="tio-add-circle-outlined"></i>
+                            <span>{{ translate('New customer') }}</span>
+                        </div>
+                        <div class="lh-cl-summary mt-3">
+                            <span class="text-muted fz-13">{{ translate('Phone') }}</span>
+                            <strong class="lh-cl-phone-display d-block fz-16"></strong>
+                        </div>
+                        <div class="form-group mt-3 mb-0">
+                            <label class="input-label d-flex align-items-center">
+                                {{ translate('Customer Name') }}
+                                <span class="text-muted fz-12 font-weight-normal ml-2">({{ translate('optional') }})</span>
+                            </label>
+                            <input type="text"
+                                   id="lh-cl-new-name"
+                                   class="form-control form-control-lg"
+                                   placeholder="{{ translate('Leave blank if customer is in a hurry') }}"
+                                   autocomplete="off">
+                        </div>
+                        <button type="button" class="btn btn-primary btn-block mt-3 lh-cl-btn-save">
+                            <i class="tio-save"></i> {{ translate('Save & Continue') }}
+                        </button>
+                        <button type="button" class="btn btn-link btn-block mt-1 lh-cl-btn-back text-muted fz-13">
+                            ← {{ translate('Use a different phone') }}
+                        </button>
+                    </div>
+
+                    {{-- Footer:
+                         · Dashboard / Active Orders are coloured buttons so
+                           the operator who landed on POS by mistake has
+                           obvious ways out without abandoning to walk-in.
+                         · Walk-in stays a quiet text link below — it's the
+                           genuine no-phone escape but should feel like a
+                           last resort, not a primary path. --}}
+                    <div class="lh-cl-footer mt-4 pt-3">
+                        <div class="row no-gutters lh-cl-exits">
+                            <div class="col-6 pr-1">
+                                <a href="{{ route('admin.dashboard') }}"
+                                   class="btn btn-block lh-cl-exit-btn lh-cl-exit-dashboard">
+                                    <i class="tio-home"></i>
+                                    <span class="ml-1">{{ translate('Dashboard') }}</span>
+                                </a>
+                            </div>
+                            <div class="col-6 pl-1">
+                                <a href="{{ route('admin.table.order.running') }}"
+                                   class="btn btn-block lh-cl-exit-btn lh-cl-exit-active">
+                                    <i class="tio-shopping-cart"></i>
+                                    <span class="ml-1">{{ translate('Active Orders') }}</span>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="javascript:void(0);" class="text-muted fz-12 lh-cl-btn-walkin">
+                                {{ translate('No phone — continue as walk-in') }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('script_2')
@@ -2241,5 +2365,353 @@
             </div>
         </div>
     </div>
+
+    {{-- Customer-first lookup modal — wired to admin-only AJAX
+         endpoints (admin.pos.customer-lookup, admin.pos.quick-add-customer).
+         No app-API contract change. --}}
+    <style>
+        .lh-cl-content    { border-radius: 14px; overflow: hidden; }
+        .lh-cl-header     { background: linear-gradient(135deg, #FFF3E6 0%, #fff 100%); border-bottom: 1px solid #f4e6d5; }
+        .lh-cl-header .modal-title { color: #6B2F1A; font-weight: 700; }
+        .lh-cl-body       { padding: 24px; }
+        .lh-cl-phone-input { font-size: 18px; font-weight: 600; letter-spacing: 1px; }
+        .lh-cl-phone-group .input-group-text {
+            background: #FFF3E6; color: #6B2F1A; border-color: #f4e6d5;
+            font-size: 16px;
+        }
+        .lh-cl-card {
+            display: flex; gap: 14px; align-items: center;
+            background: #FFF8F0; border: 1px solid #f4e6d5;
+            border-radius: 10px; padding: 16px;
+        }
+        .lh-cl-avatar {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--lh-orange, #E67E22); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; flex-shrink: 0;
+        }
+        .lh-cl-name { font-size: 18px; font-weight: 700; color: #2d2d33; }
+        .lh-cl-meta .badge { font-size: 11px; }
+        .lh-cl-new-banner {
+            background: #E8F4FD; color: #0c5460; border-radius: 8px;
+            padding: 10px 14px; display: flex; align-items: center; gap: 8px;
+            font-weight: 600;
+        }
+        .lh-cl-summary {
+            background: #f7f7fa; border-radius: 8px; padding: 12px 14px;
+        }
+        .lh-cl-footer { border-top: 1px dashed #e5e5ea; }
+        .lh-cl-btn-walkin:hover { color: #6B2F1A !important; text-decoration: underline; }
+        /* Exit buttons — Dashboard + Active Orders, side-by-side. Soft
+           coloured fills so they're discoverable but quieter than the
+           primary Continue button. Different hues so they're visually
+           distinct from each other at a glance. */
+        .lh-cl-exit-btn {
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 8px 12px;
+        }
+        .lh-cl-exit-btn i { font-size: 14px; }
+        /* Dashboard — soft blue, "home base" feel. */
+        .lh-cl-exit-dashboard {
+            background: #e7f1fb !important;
+            color: #1a5fa4 !important;
+            border-color: #cfe1f5 !important;
+        }
+        .lh-cl-exit-dashboard:hover {
+            background: #cfe1f5 !important;
+            color: #154d85 !important;
+        }
+        /* Active Orders — brand orange, ties visually to the queue page. */
+        .lh-cl-exit-active {
+            background: var(--lh-orange-tint, #FFF3E6) !important;
+            color: var(--lh-brown, #6B2F1A) !important;
+            border-color: #f4e6d5 !important;
+        }
+        .lh-cl-exit-active:hover {
+            background: var(--lh-orange, #E67E22) !important;
+            color: #fff !important;
+            border-color: var(--lh-orange, #E67E22) !important;
+        }
+    </style>
+    <script>
+    (function () {
+        const LOOKUP_URL    = '{{ route("admin.pos.customer-lookup") }}';
+        const QUICK_ADD_URL = '{{ route("admin.pos.quick-add-customer") }}';
+        const STORE_KEY_URL = '{{ route("admin.pos.store-keys") }}';
+        const CSRF          = '{{ csrf_token() }}';
+
+        const $modal     = $('#lh-customer-lookup');
+        const $phoneIn   = $modal.find('#lh-cl-phone');
+        const $newName   = $modal.find('#lh-cl-new-name');
+        const $btnLookup = $modal.find('.lh-cl-btn-lookup');
+        const $btnSave   = $modal.find('.lh-cl-btn-save');
+        let lastLookupResult = null;
+        let lastLookupPhone  = null;
+
+        // Show one of the four states, hide the others. Focus the
+        // most-likely-next control so Enter always Just Works without
+        // the operator having to click anywhere.
+        function showState(name) {
+            $modal.find('.lh-cl-state').addClass('d-none');
+            $modal.find('.lh-cl-state[data-state="' + name + '"]').removeClass('d-none');
+            setTimeout(function () {
+                if (name === 'lookup') $phoneIn.trigger('focus');
+                if (name === 'new')    $newName.trigger('focus');
+                if (name === 'found')  $modal.find('.lh-cl-btn-continue').trigger('focus');
+                if (name === 'resume') $modal.find('.lh-cl-btn-resume').trigger('focus');
+            }, 50);
+        }
+
+        // Operator may type 10 digits (sans leading 0) or 11 digits
+        // (with the leading 0 — Bangladesh natural format). Either is
+        // valid; the server normalises to canonical +880XXXXXXXXXX.
+        function isValidPhoneInput(v) {
+            return /^[0-9]{10,11}$/.test(v) && (v.length === 10 || v.startsWith('0'));
+        }
+
+        $phoneIn.on('input', function () {
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);
+            $btnLookup.prop('disabled', !isValidPhoneInput(this.value));
+        });
+        $phoneIn.on('keydown', function (e) {
+            if (e.key === 'Enter' && !$btnLookup.prop('disabled')) {
+                e.preventDefault();
+                $btnLookup.trigger('click');
+            }
+        });
+
+        // Name is optional now — Enter on the name field saves whatever
+        // is there (including empty). The server falls back to "Customer".
+        $newName.on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $btnSave.trigger('click');
+            }
+        });
+
+        $btnLookup.on('click', function () {
+            const phone = $phoneIn.val().trim();
+            if (!isValidPhoneInput(phone)) return;
+
+            $btnLookup.prop('disabled', true).html('<i class="tio-loading"></i> {{ translate("Looking up...") }}');
+
+            $.ajax({
+                url: LOOKUP_URL,
+                type: 'GET',
+                data: { phone: phone },
+                dataType: 'json',
+                success: function (resp) {
+                    lastLookupResult = resp;
+                    lastLookupPhone  = phone;
+                    if (resp.invalid) {
+                        toastr.error(resp.message || 'Invalid phone');
+                        return;
+                    }
+                    if (resp.found) {
+                        renderFound(resp);
+                        showState('found');
+                    } else {
+                        $modal.find('.lh-cl-state[data-state="new"] .lh-cl-phone-display').text(resp.phone);
+                        $newName.val('').trigger('input');
+                        showState('new');
+                    }
+                },
+                error: function () {
+                    toastr.error('{{ translate("Lookup failed — please try again") }}');
+                },
+                complete: function () {
+                    $btnLookup.html('<i class="tio-search"></i> {{ translate("Continue with this customer") }}');
+                    $btnLookup.prop('disabled', !isValidPhoneInput($phoneIn.val()));
+                }
+            });
+        });
+
+        // Render the "found" state from a lookup response. Loyalty +
+        // wallet show only when there's something interesting to show.
+        function renderFound(resp) {
+            const $found = $modal.find('.lh-cl-state[data-state="found"]');
+            $found.find('.lh-cl-name').text(resp.name || '(unnamed)');
+            $found.find('.lh-cl-phone-display').text(resp.phone);
+            const bits = [];
+            if (resp.loyalty_points > 0) {
+                bits.push('Loyalty: <strong>' + Math.round(resp.loyalty_points) + ' pts</strong>');
+            }
+            if (resp.wallet_balance > 0) {
+                bits.push('Wallet: <strong>৳ ' + resp.wallet_balance.toFixed(2) + '</strong>');
+            }
+            if (resp.order_count > 0) {
+                bits.push(resp.order_count + ' previous order' + (resp.order_count === 1 ? '' : 's'));
+            }
+            if (resp.last_order_human) {
+                bits.push('last ' + resp.last_order_human);
+            }
+            const meta = bits.length
+                ? '<span class="badge badge-soft-success">App / Returning</span> <small class="text-muted ml-1">' + bits.join(' · ') + '</small>'
+                : '<span class="badge badge-soft-info">First-time</span>';
+            $found.find('.lh-cl-meta').html(meta);
+        }
+
+        // Set the chosen customer into the POS — append the option to the
+        // dropdown if it isn't there, select it, and POST to store-keys
+        // so the server-side session(customer_id) is updated. This mirrors
+        // exactly what changing the dropdown manually does today, just
+        // initiated from the modal instead of clicking the dropdown.
+        function attachCustomerToPos(id, label) {
+            const $select = $('#customer.customer-select-index');
+            if ($select.find('option[value="' + id + '"]').length === 0) {
+                $select.append(new Option(label, id, false, false));
+            }
+            $select.val(String(id)).trigger('change');
+
+            $.ajax({
+                url: STORE_KEY_URL,
+                type: 'POST',
+                data: { _token: CSRF, key: 'customer_id', value: id },
+                error: function () {
+                    toastr.error('{{ translate("Could not attach customer to this sale") }}');
+                }
+            });
+        }
+
+        // Continue with the looked-up customer.
+        $modal.find('.lh-cl-btn-continue').on('click', function () {
+            if (!lastLookupResult || !lastLookupResult.found) return;
+            const r = lastLookupResult;
+            attachCustomerToPos(r.id, r.name + ' (' + r.phone + ')');
+            $modal.modal('hide');
+        });
+
+        // Save & continue with a brand-new customer. Name is optional;
+        // server falls back to "Customer" when blank.
+        $btnSave.on('click', function () {
+            const name  = $newName.val().trim();
+            const phone = lastLookupPhone || $phoneIn.val().trim();
+            if (!isValidPhoneInput(phone)) return;
+
+            $btnSave.prop('disabled', true).html('<i class="tio-loading"></i> {{ translate("Saving...") }}');
+
+            $.ajax({
+                url: QUICK_ADD_URL,
+                type: 'POST',
+                data: { _token: CSRF, name: name, phone: phone },
+                dataType: 'json',
+                success: function (resp) {
+                    if (resp.success) {
+                        attachCustomerToPos(resp.id, resp.name + ' (' + resp.phone + ')');
+                        toastr.success('{{ translate("Customer added") }}');
+                        $modal.modal('hide');
+                    } else {
+                        toastr.error(resp.message || '{{ translate("Could not add customer") }}');
+                    }
+                },
+                error: function (xhr) {
+                    const msg = (xhr.responseJSON && xhr.responseJSON.message) || '{{ translate("Could not add customer") }}';
+                    toastr.error(msg);
+                },
+                complete: function () {
+                    $btnSave.html('<i class="tio-save"></i> {{ translate("Save & Continue") }}');
+                    $btnSave.prop('disabled', false);
+                }
+            });
+        });
+
+        // Back buttons reset to the lookup state.
+        $modal.find('.lh-cl-btn-back').on('click', function () {
+            $phoneIn.val('').trigger('input');
+            showState('lookup');
+        });
+
+        // Enter-anywhere-in-the-modal advances the operator forward —
+        // matches the muscle memory of "fill, hit Enter, next field".
+        // The per-input keydown handlers above already cover lookup
+        // (Enter on phone → lookup) and new (Enter on name → save);
+        // this catches the found + resume states which have no input.
+        $modal.on('keydown', function (e) {
+            if (e.key !== 'Enter') return;
+            const $visible = $modal.find('.lh-cl-state:not(.d-none)');
+            const state = $visible.data('state');
+            if (state === 'found') {
+                e.preventDefault();
+                $modal.find('.lh-cl-btn-continue').trigger('click');
+            } else if (state === 'resume') {
+                e.preventDefault();
+                $modal.find('.lh-cl-btn-resume').trigger('click');
+            }
+        });
+
+        // When the modal switches to a state with no auto-focused input,
+        // park focus on the primary button so Enter "just works" without
+        // the operator first having to click anywhere.
+        $modal.on('shown.bs.modal', function () {
+            const $visible = $modal.find('.lh-cl-state:not(.d-none)');
+            const state = $visible.data('state');
+            if (state === 'resume') $modal.find('.lh-cl-btn-resume').trigger('focus');
+            if (state === 'found')  $modal.find('.lh-cl-btn-continue').trigger('focus');
+        });
+
+        // Walk-in just dismisses; no customer attached, sale proceeds anonymously.
+        $modal.find('.lh-cl-btn-walkin').on('click', function () {
+            $modal.modal('hide');
+        });
+
+        // Resume — operator confirmed they want to keep the existing sale.
+        // Just close the modal; nothing else needed.
+        $modal.find('.lh-cl-btn-resume').on('click', function () {
+            $modal.modal('hide');
+        });
+
+        // Start a new sale instead — wipe the in-progress session
+        // (customer + cart + table + address + order_type) via the
+        // existing session-destroy endpoint, then reload so the cart
+        // panel + dropdowns reset cleanly. The lookup modal will open
+        // again on the fresh page.
+        $modal.find('.lh-cl-btn-new-sale').on('click', function () {
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<i class="tio-loading"></i> {{ translate("Starting fresh...") }}');
+            $.ajax({
+                url: '{{ route("admin.pos.session-destroy") }}',
+                type: 'POST',
+                data: { _token: CSRF },
+                complete: function () {
+                    window.location.reload();
+                }
+            });
+        });
+
+        // Auto-show on POS load. Cases:
+        //   (a) order just placed → don't interrupt the post-order modal,
+        //       BUT chain on its close so the operator goes straight from
+        //       "Send to Kitchen" / "OK" into capturing the next customer.
+        //       We drive them; they don't have to remember to click anything.
+        //   (b) session has a customer → resume confirmation
+        //   (c) no session → fresh lookup
+        $(function () {
+            const orderJustPlaced = {{ session('order_placed') ? 'true' : 'false' }};
+            if (orderJustPlaced) {
+                // Wait for the order-placed modal to close (operator clicked
+                // "Send to Kitchen" or X), then surface the lookup with the
+                // next customer ready to type. Bind once so we don't stack.
+                $('#orderPlacedModal').one('hidden.bs.modal', function () {
+                    showState('lookup');
+                    $modal.modal('show');
+                });
+                return;
+            }
+            const hasCustomer = {{ isset($selected_customer) && $selected_customer ? 'true' : 'false' }};
+            if (hasCustomer) {
+                showState('resume');
+            } else {
+                showState('lookup');
+            }
+            $modal.modal('show');
+        });
+    })();
+    </script>
 @endpush
 
