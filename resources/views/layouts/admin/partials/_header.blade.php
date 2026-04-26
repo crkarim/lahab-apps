@@ -33,6 +33,46 @@
                 <!-- Navbar -->
                 <ul class="navbar-nav align-items-center flex-row">
 
+                    {{-- Live counts for the Active Orders button. Two buckets:
+                         "urgent" = pending/confirmed (must be sent to the
+                         kitchen — drives the red pulse), "in flight" = food
+                         is being cooked or waiting for the next operator
+                         action. Both update on every page load; cheap because
+                         it's one indexed query. --}}
+                    @php
+                        $activeUrgent  = \App\Model\Order::whereIn('order_status', ['pending', 'confirmed'])->count();
+                        $activeInFlight = \App\Model\Order::whereIn('order_status', ['cooking', 'done', 'processing', 'out_for_delivery'])->count();
+                        $activeTotal   = $activeUrgent + $activeInFlight;
+                    @endphp
+                    <li class="nav-item d-none d-sm-inline-block mr-2">
+                        <a href="{{ route('admin.table.order.running') }}"
+                           class="lh-header-action lh-header-active-orders {{ $activeUrgent > 0 ? 'lh-needs-action' : '' }}"
+                           title="{{ translate('Active Orders') }} — {{ $activeUrgent }} {{ translate('to send') }}, {{ $activeInFlight }} {{ translate('in progress') }}">
+                            <i class="tio-shopping-cart"></i>
+                            <span class="lh-header-label">{{ translate('Active Orders') }}</span>
+                            @if($activeUrgent > 0)
+                                <span class="lh-header-badge lh-header-badge-urgent">{{ $activeUrgent }}</span>
+                            @endif
+                            @if($activeInFlight > 0)
+                                <span class="lh-header-badge lh-header-badge-flight">{{ $activeInFlight }}</span>
+                            @endif
+                            @if($activeTotal === 0)
+                                <span class="lh-header-badge lh-header-badge-idle">0</span>
+                            @endif
+                        </a>
+                    </li>
+
+                    @if(\App\CentralLogics\Helpers::module_permission_check(MANAGEMENT_SECTION['pos_management']))
+                        <li class="nav-item d-none d-sm-inline-block mr-2">
+                            <a href="{{ route('admin.pos.index') }}"
+                               class="lh-header-action lh-header-new-sale"
+                               title="{{ translate('Start a new POS sale') }}">
+                                <i class="tio-add-circle-outlined"></i>
+                                <span class="lh-header-label">{{ translate('New Sale') }}</span>
+                            </a>
+                        </li>
+                    @endif
+
                     <li class="nav-item d-none d-md-inline-block mr-2">
                         <button type="button"
                                 class="btn btn-sm d-flex align-items-center gap-2"

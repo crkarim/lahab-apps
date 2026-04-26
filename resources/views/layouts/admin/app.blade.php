@@ -361,6 +361,116 @@
                 transform: none !important;
             }
         }
+
+        /* ═════════════════════════════════════════════════════════════
+           Header quick-action buttons (Active Orders + New Sale).
+           Always-visible top-right entry points so the operator never
+           has to find the sidebar in the middle of a rush.
+           ═════════════════════════════════════════════════════════════ */
+        .lh-header-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 38px;
+            padding: 0 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            line-height: 1;
+            text-decoration: none !important;
+            transition: background 120ms, transform 120ms, box-shadow 120ms;
+        }
+        .lh-header-action i { font-size: 16px; line-height: 1; }
+        .lh-header-action:hover { transform: translateY(-1px); }
+
+        /* New Sale — solid brand orange, primary CTA. */
+        .lh-header-new-sale {
+            background: var(--lh-orange);
+            color: #fff !important;
+            box-shadow: 0 2px 6px rgba(230, 126, 34, 0.25);
+        }
+        .lh-header-new-sale:hover {
+            background: var(--lh-orange-dark);
+            color: #fff !important;
+            box-shadow: 0 4px 10px rgba(230, 126, 34, 0.35);
+        }
+
+        /* Active Orders — calm white pill at idle, gets dressed up with
+           coloured badges and a pulsing red shadow when there's work
+           waiting. The .lh-needs-action class is added server-side when
+           there are pending/confirmed orders that haven't been sent to
+           the kitchen yet. */
+        .lh-header-active-orders {
+            background: #fff;
+            color: #2d2d33 !important;
+            border: 1px solid #e5e5ea;
+        }
+        .lh-header-active-orders:hover {
+            background: #f9f9fb;
+            color: #2d2d33 !important;
+        }
+        .lh-header-active-orders.lh-needs-action {
+            background: linear-gradient(135deg, #ffefef 0%, #ffe1e1 100%);
+            border-color: #f5b9b9;
+            color: #b22020 !important;
+            animation: lh-header-urgent 1.6s ease-in-out infinite;
+        }
+        .lh-header-active-orders.lh-needs-action i { color: #dc3545; }
+
+        @keyframes lh-header-urgent {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.55); }
+            50%      { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
+        }
+
+        /* Badges nested inside the Active Orders button. Two flavours:
+           urgent (red, pending/confirmed) and in-flight (orange, cooking
+           or done). Both render side-by-side so the operator gets the
+           full picture at a glance. */
+        .lh-header-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 7px;
+            border-radius: 11px;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .lh-header-badge-urgent {
+            background: #dc3545;
+            color: #fff;
+            animation: lh-badge-pop 1.2s ease-in-out infinite;
+        }
+        .lh-header-badge-flight {
+            background: var(--lh-orange);
+            color: #fff;
+        }
+        .lh-header-badge-idle {
+            background: #f0f0f4;
+            color: #8a8a92;
+        }
+
+        @keyframes lh-badge-pop {
+            0%, 100% { transform: scale(1); }
+            50%      { transform: scale(1.12); }
+        }
+
+        /* Hide the long label on tighter widths so the button still fits
+           between the logo and the search box. Icon + badges still tell
+           the story. */
+        @media (max-width: 1100px) {
+            .lh-header-label { display: none; }
+            .lh-header-action { padding: 0 10px; gap: 6px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .lh-header-active-orders.lh-needs-action,
+            .lh-header-badge-urgent {
+                animation: none !important;
+            }
+        }
     </style>
 </head>
 
