@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Auth\CustomerAuthController;
 use App\Http\Controllers\Api\V1\Auth\DeliveryManLoginController;
 use App\Http\Controllers\Api\V1\Auth\KitchenLoginController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
+use App\Http\Controllers\Api\V1\Auth\WaiterAuthController;
 use App\Http\Controllers\Api\V1\BannerController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\CategoryController;
@@ -61,6 +62,17 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
         Route::group(['prefix' => 'kitchen', 'middleware' => 'app_activate:' . APPS['kitchen_app']['software_id']], function () {
             Route::post('login', [KitchenLoginController::class, 'login']);
             Route::post('logout', [KitchenLoginController::class, 'logout'])->middleware('auth:kitchen_api');
+        });
+    });
+
+    // Waiter app — Passport tokens against the Admin model so floor staff
+    // can authenticate from the tablet POS. Mounted at the v1 root (NOT
+    // under `auth/`) so all future waiter endpoints live under one prefix.
+    Route::group(['prefix' => 'waiter'], function () {
+        Route::group(['prefix' => 'auth'], function () {
+            Route::post('login',  [WaiterAuthController::class, 'login']);
+            Route::post('logout', [WaiterAuthController::class, 'logout'])->middleware('auth:waiter_api');
+            Route::get('me',      [WaiterAuthController::class, 'me'])->middleware('auth:waiter_api');
         });
     });
 

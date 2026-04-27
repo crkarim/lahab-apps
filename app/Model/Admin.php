@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Passport\HasApiTokens;
 
 class Admin extends Authenticatable
 {
-    use Notifiable;
+    // HasApiTokens lets the waiter-app API issue Passport tokens for staff
+    // (employees) — separate guard `waiter_api`, used in routes/api/v1/api.php.
+    use HasApiTokens, Notifiable;
 
     protected $fillable = ['admin_role_id'];
 

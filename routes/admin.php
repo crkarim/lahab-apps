@@ -32,6 +32,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\QRCodeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReviewsController;
+use App\Http\Controllers\Admin\PrinterController;
 use App\Http\Controllers\Admin\SMSModuleController;
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\TableController;
@@ -374,6 +375,13 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
                 Route::get('third-party/sms-module', [SMSModuleController::class, 'smsIndex'])->name('sms-module');
                 Route::post('sms-module-update/{sms_module}', [SMSModuleController::class, 'smsUpdate'])->name('sms-module-update');
+
+                // Network thermal printer (used by waiter app + admin POS).
+                Route::group(['prefix' => 'printer', 'as' => 'printer.'], function () {
+                    Route::get('/',     [PrinterController::class, 'index'])->name('index');
+                    Route::post('/',    [PrinterController::class, 'update'])->name('update');
+                    Route::post('test', [PrinterController::class, 'testPrint'])->name('test');
+                });
 
                 Route::get('third-party/payment-method', [BusinessSettingsController::class, 'paymentIndex'])->name('payment-method')->middleware('actch');
                 Route::post('payment-method-update/{payment_method}', [BusinessSettingsController::class, 'payment_update'])->name('payment-method-update')->middleware('actch');

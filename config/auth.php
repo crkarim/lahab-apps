@@ -65,6 +65,15 @@ return [
             'driver' => 'passport',
             'provider' => 'kitchen',
         ],
+
+        // Waiter-app guard. Issues Passport personal-access tokens to
+        // Admin (employee) rows so the Flutter waiter app can authenticate
+        // against /api/v1/waiter/* endpoints without the session-based
+        // admin guard kicking in.
+        'waiter_api' => [
+            'driver' => 'passport',
+            'provider' => 'admins',
+        ],
     ],
 
     /*
