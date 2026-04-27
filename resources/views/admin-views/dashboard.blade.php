@@ -215,7 +215,7 @@
                 </div>
 
                 <div class="lh-d-tile lh-accent-green">
-                    <div class="lh-d-tile-ico"><i class="tio-restaurant-menu"></i></div>
+                    <div class="lh-d-tile-ico"><i class="tio-restaurant"></i></div>
                     <div class="lh-d-tile-label">{{ translate('Tables_in_use') }}</div>
                     <div class="lh-d-tile-value">
                         {{ $snapshot['tables_in_use'] }}<span class="lh-d-tile-unit">/ {{ $snapshot['tables_total'] }}</span>
@@ -238,7 +238,7 @@
                 @php
                     $funnelTiles = [
                         ['key' => 'pending_kitchen', 'label' => translate('Pending_kitchen'),  'hint' => translate('not_yet_fired'),       'icon' => 'tio-time'],
-                        ['key' => 'in_kitchen',      'label' => translate('In_kitchen'),       'hint' => translate('cooking_now'),         'icon' => 'tio-restaurant-menu'],
+                        ['key' => 'in_kitchen',      'label' => translate('In_kitchen'),       'hint' => translate('cooking_now'),         'icon' => 'tio-fastfood'],
                         ['key' => 'on_route',        'label' => translate('On_route'),         'hint' => translate('out_for_delivery'),    'icon' => 'tio-bike'],
                         ['key' => 'awaiting_payment','label' => translate('Awaiting_payment'),'hint' => translate('served_not_paid'),     'icon' => 'tio-credit-card-outlined'],
                     ];
@@ -280,7 +280,7 @@
                     </div>
                     @if($topToday->isEmpty())
                         <div class="lh-d-empty">
-                            <i class="tio-restaurant-menu"></i>
+                            <i class="tio-restaurant"></i>
                             {{ translate('No_dishes_sold_yet_today') }}
                         </div>
                     @else

@@ -112,7 +112,7 @@
                             <li class="navbar-vertical-aside-has-menu
                                 {{ Request::is('admin/product*') || Request::is('admin/category*') || Request::is('admin/cuisine*') || Request::is('admin/addon*') || Request::is('admin/table/*') || Request::is('admin/promotion*') || Request::is('admin/banner*') || Request::is('admin/coupon*') || Request::is('admin/reviews*') ? 'active' : '' }}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('Menu') }}">
-                                    <i class="tio-restaurant-menu nav-icon"></i>
+                                    <i class="tio-restaurant nav-icon"></i>
                                     <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Menu') }}</span>
                                 </a>
                                 <ul class="js-navbar-vertical-aside-submenu nav nav-sub"

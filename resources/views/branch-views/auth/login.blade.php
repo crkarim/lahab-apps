@@ -324,6 +324,12 @@
             text-align: center; margin-top: 22px;
             font-size: 12px; color: var(--lh-muted);
         }
+
+        /* Bootstrap utility — declared inline because this page only loads
+           the icon-set + toastr stylesheets, not vendor.min.css. Without
+           it the v3-fallback captcha block stays visible even when
+           reCAPTCHA v3 is active. */
+        .d-none { display: none !important; }
     </style>
 </head>
 
@@ -344,7 +350,7 @@
 
             <div class="auth-brand__feats">
                 <div class="auth-brand__feat"><i class="tio-shop"></i>{{ translate('Branch POS') }}</div>
-                <div class="auth-brand__feat"><i class="tio-restaurant-menu"></i>{{ translate('Send to Kitchen') }}</div>
+                <div class="auth-brand__feat"><i class="tio-receipt"></i>{{ translate('Send to Kitchen') }}</div>
                 <div class="auth-brand__feat"><i class="tio-group-senior"></i>{{ translate('Table Service') }}</div>
                 <div class="auth-brand__feat"><i class="tio-receipt-outlined"></i>{{ translate('Daily Close-out') }}</div>
             </div>

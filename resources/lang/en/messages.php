@@ -3330,4 +3330,12 @@
   'Low_stock_items' => 'Low stock items',
   'products_at_or_below_5_units' => 'Products at or below 5 units',
   'Here_is_what_is_happening_at_Lahab_today' => 'Here is what is happening at Lahab today',
+  'Delivery & Riders' => 'Delivery & Riders',
+  'POS & Tables' => 'POS & Tables',
+  'No_dishes_sold_yet_today' => 'No dishes sold yet today',
+  'Online Ordering' => 'Online Ordering',
+  'From' => 'From',
+  'online order' => 'Online order',
+  'to the kitchen — one platform.' => 'To the kitchen — one platform.',
+  'Online ordering, POS, kitchen tickets, table service, delivery, and reports — every part of your restaurant in a single workspace.' => 'Online ordering, POS, kitchen tickets, table service, delivery, and reports — every part of your restaurant in a single workspace.',
 );

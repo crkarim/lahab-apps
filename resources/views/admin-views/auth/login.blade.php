@@ -320,6 +320,13 @@
 
         /* Password visibility toggle: match HSTogglePassword's expectation */
         .js-toggle-password { /* no override, script toggles type */ }
+
+        /* Bootstrap utility — declared inline because this page only loads
+           the icon-set + toastr stylesheets, not vendor.min.css. Without
+           it the v3-fallback captcha block stays visible even when
+           reCAPTCHA v3 is active. The auth JS toggles this class on/off
+           when v3 fails to load. */
+        .d-none { display: none !important; }
     </style>
 </head>
 
@@ -334,12 +341,14 @@
 
         <div class="auth-brand__hero">
             <span class="auth-brand__eyebrow"><span class="dot"></span> {{ translate('Admin Workspace') }}</span>
-            <h1 class="auth-brand__title">{{ translate('Run your') }} <span>{{ translate('kitchen') }}</span> {{ translate('with speed and flavor.') }}</h1>
-            <p class="auth-brand__sub">{{ translate('Orders, tables, menu, reports — all in one place. Sign in to take control of every service.') }}</p>
+            <h1 class="auth-brand__title">{{ translate('From') }} <span>{{ translate('online order') }}</span> {{ translate('to the kitchen — one platform.') }}</h1>
+            <p class="auth-brand__sub">{{ translate('Online ordering, POS, kitchen tickets, table service, delivery, and reports — every part of your restaurant in a single workspace.') }}</p>
 
             <div class="auth-brand__feats">
-                <div class="auth-brand__feat"><i class="tio-shop"></i>{{ translate('Live POS') }}</div>
-                <div class="auth-brand__feat"><i class="tio-restaurant-menu"></i>{{ translate('Kitchen Tickets') }}</div>
+                <div class="auth-brand__feat"><i class="tio-shopping-cart"></i>{{ translate('Online Ordering') }}</div>
+                <div class="auth-brand__feat"><i class="tio-shop"></i>{{ translate('POS & Tables') }}</div>
+                <div class="auth-brand__feat"><i class="tio-receipt"></i>{{ translate('Kitchen Tickets') }}</div>
+                <div class="auth-brand__feat"><i class="tio-bike"></i>{{ translate('Delivery & Riders') }}</div>
                 <div class="auth-brand__feat"><i class="tio-chart-bar-2"></i>{{ translate('Live Analytics') }}</div>
                 <div class="auth-brand__feat"><i class="tio-credit-card-outlined"></i>{{ translate('Split Payments') }}</div>
             </div>
