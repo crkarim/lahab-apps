@@ -34,7 +34,8 @@ class EmployeeController extends Controller
     public function index(): Renderable
     {
         $roles = $this->admin_role->whereNotIn('id', [1])->get();
-        return view('admin-views.employee.add-new', compact('roles'));
+        $branches = \App\Model\Branch::query()->orderBy('name')->get(['id', 'name']);
+        return view('admin-views.employee.add-new', compact('roles', 'branches'));
     }
 
     /**
@@ -51,6 +52,7 @@ class EmployeeController extends Controller
         $request->validate([
             'name' => 'required',
             'role_id' => 'required',
+            'branch_id' => 'nullable|integer|exists:branches,id',
             'image' => 'required|image|max:'. $this->maxImageSizeKB .'|mimes:' . implode(',', array_column(IMAGEEXTENSION, 'key')),
             'email' => 'required|email|unique:admins',
             'password' => 'required',
@@ -87,6 +89,9 @@ class EmployeeController extends Controller
             'phone' => $request->phone,
             'email' => $request->email,
             'admin_role_id' => $request->role_id,
+            // Branch scoping for floor staff (waiters, branch managers).
+            // NULL = HQ-wide account that sees all branches.
+            'branch_id' => $request->filled('branch_id') ? (int) $request->branch_id : null,
             'identity_number' => $request->identity_number,
             'identity_type' => $request->identity_type,
             'identity_image' => $identityImage,
@@ -110,7 +115,7 @@ class EmployeeController extends Controller
         $search = $request['search'];
         $key = explode(' ', $request['search']);
 
-        $query = $this->admin->with(['role'])
+        $query = $this->admin->with(['role', 'branch'])
             ->when($search != null, function ($query) use ($key) {
                 $query->whereNotIn('id', [1])->where(function ($query) use ($key) {
                     foreach ($key as $value) {
@@ -136,7 +141,8 @@ class EmployeeController extends Controller
     {
         $employee = $this->admin->where(['id' => $id])->first();
         $roles = $this->admin_role->whereNotIn('id', [1])->get();
-        return view('admin-views.employee.edit', compact('roles', 'employee'));
+        $branches = \App\Model\Branch::query()->orderBy('name')->get(['id', 'name']);
+        return view('admin-views.employee.edit', compact('roles', 'employee', 'branches'));
     }
 
     /**
@@ -155,6 +161,7 @@ class EmployeeController extends Controller
             'name' => 'required',
             'image' => 'image|max:'. $this->maxImageSizeKB .'|mimes:' . implode(',', array_column(IMAGEEXTENSION, 'key')),
             'role_id' => 'required',
+            'branch_id' => 'nullable|integer|exists:branches,id',
             'email' => 'required|email|unique:admins,email,' . $id,
             'phone' => 'required',
             'identity_type' => 'required',
@@ -201,6 +208,7 @@ class EmployeeController extends Controller
             'phone' => $request->phone,
             'email' => $request->email,
             'admin_role_id' => $request->role_id,
+            'branch_id' => $request->filled('branch_id') ? (int) $request->branch_id : null,
             'password' => $password,
             'image' => $employee['image'],
             'updated_at' => now(),

@@ -6,6 +6,11 @@ use App\Http\Controllers\Api\V1\Auth\DeliveryManLoginController;
 use App\Http\Controllers\Api\V1\Auth\KitchenLoginController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\WaiterAuthController;
+use App\Http\Controllers\Api\V1\Waiter\WaiterActiveOrdersController;
+use App\Http\Controllers\Api\V1\Waiter\WaiterCustomerController;
+use App\Http\Controllers\Api\V1\Waiter\WaiterMenuController;
+use App\Http\Controllers\Api\V1\Waiter\WaiterOrderController;
+use App\Http\Controllers\Api\V1\Waiter\WaiterTableController;
 use App\Http\Controllers\Api\V1\BannerController;
 use App\Http\Controllers\Api\V1\BranchController;
 use App\Http\Controllers\Api\V1\CategoryController;
@@ -73,6 +78,30 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::post('login',  [WaiterAuthController::class, 'login']);
             Route::post('logout', [WaiterAuthController::class, 'logout'])->middleware('auth:waiter_api');
             Route::get('me',      [WaiterAuthController::class, 'me'])->middleware('auth:waiter_api');
+        });
+
+        // Token-protected resources. `waiter_branch` requires the
+        // authenticated admin to have a branch_id and pins
+        // Config::get('branch_id') to it so reused customer-side logic
+        // (ProductLogic / Helpers) stays branch-scoped.
+        Route::group(['middleware' => ['auth:waiter_api', 'waiter_branch']], function () {
+            Route::get('tables',     [WaiterTableController::class, 'index']);
+            Route::get('categories', [WaiterMenuController::class, 'categories']);
+            Route::get('products',   [WaiterMenuController::class, 'products']);
+
+            // Customer-first capture (mirror of admin POS phone-lookup flow).
+            Route::post('customer/lookup',      [WaiterCustomerController::class, 'lookup']);
+            Route::post('customer/quick-add',   [WaiterCustomerController::class, 'quickAdd']);
+            Route::post('customer/update-name', [WaiterCustomerController::class, 'updateName']);
+
+            // Place order + fire KOT in one shot.
+            Route::post('order',              [WaiterOrderController::class, 'place']);
+            Route::post('order/{id}/print-kot',[WaiterOrderController::class, 'printKot'])->whereNumber('id');
+            Route::post('order/{id}/append',  [WaiterOrderController::class, 'append'])->whereNumber('id');
+
+            // Active orders + per-order details (Phase 2.5)
+            Route::get('orders',              [WaiterActiveOrdersController::class, 'index']);
+            Route::get('order/{id}',          [WaiterActiveOrdersController::class, 'show'])->whereNumber('id');
         });
     });
 

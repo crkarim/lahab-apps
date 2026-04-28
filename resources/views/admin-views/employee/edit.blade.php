@@ -49,6 +49,18 @@
                                             @endforeach
                                     </select>
                                 </div>
+
+                                <div class="form-group">
+                                    <label for="branch_id">{{ translate('Branch') }}</label>
+                                    <select class="custom-select" name="branch_id" id="branch_id">
+                                        <option value="" {{ $employee->branch_id === null ? 'selected' : '' }}>{{ translate('No branch — HQ / global access') }}</option>
+                                        @foreach(($branches ?? \App\Model\Branch::query()->orderBy('name')->get(['id','name'])) as $b)
+                                            <option value="{{ $b->id }}" {{ (int) $employee->branch_id === (int) $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="form-text text-muted">{{ translate('Pick a branch to scope this employee. Leave blank for HQ-wide accounts.') }}</small>
+                                </div>
+
                                 <div class="form-group">
                                     <label for="identity_type">{{translate('Identity Type')}}</label>
                                     <select class="custom-select" name="identity_type" id="identity_type" tabindex="4">

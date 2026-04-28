@@ -32,6 +32,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\QRCodeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReviewsController;
+use App\Http\Controllers\Admin\PrintFailureController;
 use App\Http\Controllers\Admin\PrinterController;
 use App\Http\Controllers\Admin\SMSModuleController;
 use App\Http\Controllers\Admin\SystemController;
@@ -62,6 +63,16 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
     Route::group(['middleware' => ['admin']], function () {
         Route::get('/', [DashboardController::class, 'dashboard'])->name('dashboard');
         Route::post('order-stats', [DashboardController::class, 'orderStats'])->name('order-stats');
+
+        // Print-failure escalation. Polled by the admin layout's JS;
+        // returns the queue of unactioned KOT print failures branch-
+        // scoped to the current admin (HQ admins see all branches).
+        Route::group(['prefix' => 'print-failures', 'as' => 'print-failures.'], function () {
+            Route::get('pending',                [PrintFailureController::class, 'pending'])->name('pending');
+            Route::post('{id}/retry',            [PrintFailureController::class, 'retry'])->whereNumber('id')->name('retry');
+            Route::post('{id}/ack-printed',      [PrintFailureController::class, 'ackPrinted'])->whereNumber('id')->name('ack-printed');
+            Route::post('{id}/mark-handled',     [PrintFailureController::class, 'markHandled'])->whereNumber('id')->name('mark-handled');
+        });
         Route::get('settings', [SystemController::class, 'settings'])->name('settings');
         Route::post('settings', [SystemController::class, 'settingsUpdate']);
         Route::post('settings-password', [SystemController::class, 'settingsPasswordUpdate'])->name('settings-password');

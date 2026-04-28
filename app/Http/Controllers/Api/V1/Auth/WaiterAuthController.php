@@ -81,16 +81,18 @@ class WaiterAuthController extends Controller
      */
     private function profilePayload(Admin $admin): array
     {
-        $admin->loadMissing('role');
+        $admin->loadMissing('role', 'branch');
         return [
-            'id'        => $admin->id,
-            'f_name'    => $admin->f_name,
-            'l_name'    => $admin->l_name,
-            'email'     => $admin->email,
-            'phone'     => $admin->phone,
-            'image'     => $admin->image_full_path,
-            'role_id'   => $admin->admin_role_id,
-            'role_name' => $admin->role?->name,
+            'id'          => $admin->id,
+            'f_name'      => $admin->f_name,
+            'l_name'      => $admin->l_name,
+            'email'       => $admin->email,
+            'phone'       => $admin->phone,
+            'image'       => $admin->image_full_path,
+            'role_id'     => $admin->admin_role_id,
+            'role_name'   => $admin->role?->name,
+            'branch_id'   => $admin->branch_id,
+            'branch_name' => $admin->branch?->name,
         ];
     }
 }

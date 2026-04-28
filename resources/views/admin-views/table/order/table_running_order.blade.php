@@ -200,9 +200,19 @@
                                     <td>
                                         {{-- Placed By — admin/cashier/waiter who created
                                              the order at the POS. Null for self-service
-                                             web/app orders where the customer placed it. --}}
+                                             web/app orders where the customer placed it.
+                                             Admin model uses f_name/l_name (no `name`),
+                                             which is why this used to render blank. --}}
                                         @if($order->placedBy)
-                                            <span>{{ $order->placedBy->name }}</span>
+                                            @php
+                                                $placedByName = trim(($order->placedBy->f_name ?? '') . ' ' . ($order->placedBy->l_name ?? ''));
+                                            @endphp
+                                            <span class="text-capitalize fw-bold">
+                                                {{ $placedByName !== '' ? $placedByName : ($order->placedBy->email ?? translate('Staff')) }}
+                                            </span>
+                                            @if($order->placedBy->role?->name)
+                                                <div class="text-muted" style="font-size:11px;">{{ $order->placedBy->role->name }}</div>
+                                            @endif
                                         @else
                                             <span class="text-muted">—</span>
                                         @endif

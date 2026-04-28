@@ -68,6 +68,7 @@
                                     <th>{{translate('Name')}}</th>
                                     <th>{{translate('Contact_Info')}}</th>
                                     <th>{{translate('Role')}}</th>
+                                    <th>{{translate('Branch')}}</th>
                                     <th>{{translate('Status')}}</th>
                                     <th class="text-center">{{translate('action')}}</th>
                                 </tr>
@@ -90,6 +91,13 @@
                                       <div><a href="tel:{{$employee['phone']}}" class="text-dark">{{$employee['phone']}}</a></div>
                                     </td>
                                     <td><span class="badge badge-soft-info py-1 px-2">{{$employee->role['name']}}</span></td>
+                                    <td>
+                                        @if($employee->branch)
+                                            <span class="badge badge-soft-warning py-1 px-2">{{ $employee->branch->name }}</span>
+                                        @else
+                                            <span class="text-muted" style="font-size:11px;">{{ translate('HQ — all branches') }}</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <label class="switcher">
                                             <input type="checkbox" class="switcher_input redirect-url"

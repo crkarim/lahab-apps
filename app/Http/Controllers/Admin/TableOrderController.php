@@ -58,12 +58,12 @@ class TableOrderController extends Controller
             //all branch
             if (session('branch_filter') == 0) {
                 if ($status == 'all') {
-                    $orders = $this->order->with(['customer', 'branch', 'table'])
+                    $orders = $this->order->with(['customer', 'branch', 'table', 'placedBy'])
                         ->when($from && $to, function ($query) use ($from, $to) {
                             $query->whereBetween('created_at', [$from, Carbon::parse($to)->endOfDay()]);
                         });
                 } else {
-                    $orders = $this->order->with(['customer', 'branch', 'table'])
+                    $orders = $this->order->with(['customer', 'branch', 'table', 'placedBy'])
                         ->where(['order_status' => $status])
                         ->when($from && $to, function ($query) use ($from, $to) {
                             $query->whereBetween('created_at', [$from, Carbon::parse($to)->endOfDay()]);
@@ -72,12 +72,12 @@ class TableOrderController extends Controller
             } //selected branch
             else {
                 if ($status == 'all') {
-                    $orders = $this->order->with(['customer', 'branch', 'table'])->where('branch_id', session('branch_filter'))
+                    $orders = $this->order->with(['customer', 'branch', 'table', 'placedBy'])->where('branch_id', session('branch_filter'))
                         ->when($from && $to, function ($query) use ($from, $to) {
                             $query->whereBetween('created_at', [$from, Carbon::parse($to)->endOfDay()]);
                         });
                 } else {
-                    $orders = $this->order->with(['customer', 'branch', 'table'])
+                    $orders = $this->order->with(['customer', 'branch', 'table', 'placedBy'])
                         ->where(['order_status' => $status, 'branch_id' => session('branch_filter')])
                         ->when($from && $to, function ($query) use ($from, $to) {
                             $query->whereBetween('created_at', [$from, Carbon::parse($to)->endOfDay()]);
@@ -206,7 +206,7 @@ class TableOrderController extends Controller
 
         // Build the main list query based on the selected tab.
         $orders = $this->order
-            ->with('table_order', 'table', 'customer', 'branch', 'placedBy', 'delivery_man')
+            ->with('table_order', 'table', 'customer', 'branch', 'placedBy.role', 'delivery_man')
             ->where('branch_id', $branchId)
             ->where(function ($q) use ($type, $dineInActive, $deliveryActive, $takeAwayActive) {
                 if ($type === 'dine_in') {

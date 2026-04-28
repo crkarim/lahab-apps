@@ -260,6 +260,16 @@
                                             {{translate('Guest Customer')}}
                                         </h6>
                                     @endif
+                                    @if($order->placedBy)
+                                        @php
+                                            $placedByName = trim(($order->placedBy->f_name ?? '') . ' ' . ($order->placedBy->l_name ?? ''));
+                                        @endphp
+                                        <div class="fz-11 text-muted mt-1" style="font-size:11px;">
+                                            <i class="tio-user" style="font-size:10px"></i>
+                                            {{ translate('Placed_by') }}:
+                                            <span class="text-dark fw-bold">{{ $placedByName ?: $order->placedBy->email }}</span>
+                                        </div>
+                                    @endif
                                 </td>
                                 <td>
                                     <span class="badge-soft-info px-2 py-1 rounded">{{$order->branch?$order->branch->name:'Branch deleted!'}}</span>

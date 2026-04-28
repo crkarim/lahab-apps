@@ -150,7 +150,28 @@
                 <div class="item-main">{{ $p['name'] ?? 'Item' }}</div>
                 @if(!empty($variation) && is_array($variation))
                     @foreach($variation as $v)
-                        <div class="item-sub">• {{ $v['type'] ?? $v['Size'] ?? '' }}</div>
+                        @php
+                            // Tolerate three shapes:
+                            //   waiter API:  ['name' => 'Size', 'value' => '10inch', ...]
+                            //   admin POS:   ['name' => 'Size', 'values' => [['label' => '10inch', ...], ...]]
+                            //   legacy:      ['type' => '...']  or  ['Size' => '...']
+                            $variationLabel = '';
+                            if (is_array($v)) {
+                                if (!empty($v['value'])) {
+                                    $variationLabel = $v['value'];
+                                } elseif (!empty($v['values']) && is_array($v['values'])) {
+                                    $variationLabel = collect($v['values'])
+                                        ->map(fn ($x) => is_array($x) ? ($x['label'] ?? $x['level'] ?? $x['name'] ?? '') : (string) $x)
+                                        ->filter()->implode(', ');
+                                } else {
+                                    $variationLabel = $v['type'] ?? $v['Size'] ?? '';
+                                }
+                                $variationName = $v['name'] ?? null;
+                            }
+                        @endphp
+                        @if($variationLabel !== '')
+                            <div class="item-sub">• {{ $variationName ? $variationName . ': ' : '' }}{{ $variationLabel }}</div>
+                        @endif
                     @endforeach
                 @endif
                 @if(!empty($addonIds) && is_array($addonIds))
@@ -165,6 +186,11 @@
                         @endphp
                         <div class="item-sub">+ {{ $qty }}× {{ $addonName }}</div>
                     @endforeach
+                @endif
+                @if(!empty($p['line_note']))
+                    <div class="item-sub" style="font-weight:700; color:#000; margin-top:3px;">
+                        ✎ Note: {{ $p['line_note'] }}
+                    </div>
                 @endif
             </td>
         </tr>
@@ -208,10 +234,17 @@
         catch (e) {}
     });
 
-    window.addEventListener('load', function () {
-        setTimeout(function () { window.print(); }, 450);
-    });
-    window.addEventListener('afterprint', function () { window.close(); });
+    // Auto-print on load unless the URL is `?preview=1` — the print-
+    // failure bottom sheet uses preview mode for its "View KOT" action
+    // (operator just wants to look at the ticket without firing a
+    // print job).
+    var _isPreview = new URLSearchParams(location.search).get('preview') === '1';
+    if (!_isPreview) {
+        window.addEventListener('load', function () {
+            setTimeout(function () { window.print(); }, 450);
+        });
+        window.addEventListener('afterprint', function () { window.close(); });
+    }
 </script>
 
 </body>

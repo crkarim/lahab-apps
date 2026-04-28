@@ -14,11 +14,17 @@ class Admin extends Authenticatable
     // (employees) — separate guard `waiter_api`, used in routes/api/v1/api.php.
     use HasApiTokens, Notifiable;
 
-    protected $fillable = ['admin_role_id'];
+    protected $fillable = ['admin_role_id', 'branch_id'];
 
     public function role(): BelongsTo
     {
         return $this->belongsTo(AdminRole::class, 'admin_role_id');
+    }
+
+    /** Optional branch assignment — NULL means HQ/global admin. */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 
     public function getImageFullPathAttribute(): string

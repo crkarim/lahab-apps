@@ -27,6 +27,9 @@ class Order extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'kot_sent_at' => 'datetime',
+        'print_failure_at' => 'datetime',
+        'print_failure_handled_at' => 'datetime',
+        'kot_native_printed_at' => 'datetime',
         'delivery_address' => 'array',
         'table_id' => 'integer',
         'number_of_people' => 'integer',
@@ -54,6 +57,14 @@ class Order extends Model
         'is_cutlery_required',
         'bring_change_amount',
         'referral_discount',
+        // Print-failure escalation columns (Phase 2.4.5).
+        'print_failure_at',
+        'print_failure_reason',
+        'print_failure_handled_at',
+        'print_failure_handled_by',
+        // Native browser print audit (Phase 2.5.3).
+        'kot_native_printed_at',
+        'kot_native_printed_by',
     ];
 
     public function details(): HasMany

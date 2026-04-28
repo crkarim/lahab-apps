@@ -105,11 +105,11 @@ class OrderController extends Controller
         }
 
         if ($status == 'schedule') {
-            $query->with(['customer', 'branch'])->schedule();
+            $query->with(['customer', 'branch', 'placedBy'])->schedule();
         } elseif ($status != 'all') {
-            $query->with(['customer', 'branch'])->where('order_status', $status)->notSchedule();
+            $query->with(['customer', 'branch', 'placedBy'])->where('order_status', $status)->notSchedule();
         } else {
-            $query->with(['customer', 'branch']);
+            $query->with(['customer', 'branch', 'placedBy']);
         }
 
         $key = explode(' ', $request['search']);

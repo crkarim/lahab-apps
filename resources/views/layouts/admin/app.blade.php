@@ -514,6 +514,7 @@
 
     @include('layouts.admin.partials._confirmation-modal')
     @include('layouts.admin.partials._command-palette')
+    @include('layouts.admin.partials._print-failure-alert')
     <!-- Footer -->
     @include('layouts.admin.partials._footer')
     <!-- End Footer -->

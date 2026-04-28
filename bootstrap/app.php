@@ -89,6 +89,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'deliveryman_is_active' => ApiActiveDeliveryMan::class,
             'branch_status' => BranchStatusCheck::class,
             'branch_adder' => BranchAdder::class,
+            'waiter_branch' => \App\Http\Middleware\WaiterBranchScope::class,
             'maintenance_mode' => MaintenanceModeMiddleware::class,
         ]);
     })

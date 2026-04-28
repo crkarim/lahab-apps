@@ -192,6 +192,7 @@
                         <th>{{translate('SL')}}</th>
                         <th>{{translate('order_ID')}}</th>
                         <th>{{translate('order_Date')}}</th>
+                        <th>{{translate('Customer')}}</th>
                         <th>{{translate('branch')}}</th>
                         <th>{{translate('total_Amount')}}</th>
                         <th>{{translate('order')}} {{translate('status')}}</th>
@@ -212,6 +213,27 @@
                             <td>
                                 <div>{{date('d M Y',strtotime($order['created_at']))}}</div>
                                 <div>{{date('h:m A',strtotime($order['created_at']))}}</div>
+                            </td>
+                            <td>
+                                @if($order->customer)
+                                    <div class="text-capitalize fw-bold">{{ trim(($order->customer->f_name ?? '') . ' ' . ($order->customer->l_name ?? '')) ?: translate('Customer') }}</div>
+                                    @if($order->customer->phone)
+                                        <a class="text-dark fz-12" href="tel:{{$order->customer->phone}}">{{ $order->customer->phone }}</a>
+                                    @endif
+                                @elseif($order->is_guest)
+                                    <span class="text-info">{{ translate('Walk-in') }}</span>
+                                @else
+                                    <span class="text-muted">{{ translate('—') }}</span>
+                                @endif
+                                @if($order->placedBy)
+                                    @php
+                                        $placedByName = trim(($order->placedBy->f_name ?? '') . ' ' . ($order->placedBy->l_name ?? ''));
+                                    @endphp
+                                    <div class="text-muted mt-1" style="font-size:11px;">
+                                        <i class="tio-user" style="font-size:10px"></i>
+                                        {{ translate('Placed_by') }}: <span class="text-dark fw-bold">{{ $placedByName ?: $order->placedBy->email }}</span>
+                                    </div>
+                                @endif
                             </td>
                             <td>
                                 @if($order->branch)
