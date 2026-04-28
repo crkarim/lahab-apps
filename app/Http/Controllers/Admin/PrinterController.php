@@ -33,6 +33,7 @@ class PrinterController extends Controller
             'port'        => 'nullable|integer|min:1|max:65535',
             'width_chars' => 'nullable|integer|min:24|max:64',
             'enabled'     => 'nullable|boolean',
+            'print_path'  => 'nullable|in:device,server',
         ]);
 
         if ($validator->fails()) {
@@ -45,6 +46,7 @@ class PrinterController extends Controller
             'port'            => (int) $request->input('port', 9100),
             'width_chars'     => (int) $request->input('width_chars', 48),
             'enabled'         => (bool) $request->input('enabled', false),
+            'print_path'      => (string) $request->input('print_path', 'device'),
             'timeout_seconds' => 5,
         ]);
 

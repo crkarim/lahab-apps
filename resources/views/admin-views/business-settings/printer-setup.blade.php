@@ -38,6 +38,25 @@
                                 </div>
                             </div>
 
+                            <div class="row g-3 mb-3">
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">{{ translate('Print path') }}</label>
+                                    <small class="form-text text-muted d-block mb-2">
+                                        {{ translate('Who actually opens the TCP socket to the printer. Cloud-hosted admin panels can\'t reach a LAN printer — leave this on Device.') }}
+                                    </small>
+                                    <div class="d-flex flex-wrap gap-3">
+                                        <div class="custom-radio">
+                                            <input type="radio" id="path-device" name="print_path" value="device" {{ ($settings['print_path'] ?? 'device') === 'device' ? 'checked' : '' }}>
+                                            <label for="path-device">{{ translate('Device — the waiter tablet prints (recommended for cloud admin)') }}</label>
+                                        </div>
+                                        <div class="custom-radio">
+                                            <input type="radio" id="path-server" name="print_path" value="server" {{ ($settings['print_path'] ?? 'device') === 'server' ? 'checked' : '' }}>
+                                            <label for="path-server">{{ translate('Server — admin panel prints (only works when admin is on the printer\'s LAN)') }}</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="row g-3">
                                 <div class="col-12 col-md-6">
                                     <label for="printer-ip" class="form-label">{{ translate('Printer IP address') }} *</label>
@@ -82,9 +101,10 @@
                             {{ translate('How it works') }}
                         </h5>
                         <ul class="text-muted small mb-0 pl-3">
-                            <li>{{ translate('The waiter tablet will tell the server to print; the server then opens a TCP socket to the printer.') }}</li>
-                            <li>{{ translate('No driver install on the tablet. Tablets only need network access to the printer.') }}</li>
-                            <li>{{ translate('If the test page fails, verify the printer IP from its self-test page and that port 9100 is reachable from the server.') }}</li>
+                            <li><strong>{{ translate('Device mode (default):') }}</strong> {{ translate('the waiter tablet talks to the printer directly over LAN — no driver install needed, just network access.') }}</li>
+                            <li><strong>{{ translate('Server mode:') }}</strong> {{ translate('the admin panel server opens the socket. Only useful when the admin panel runs on the same LAN as the printer.') }}</li>
+                            <li>{{ translate('Test print on this page only exercises Server mode. To test Device mode, use the printer screen inside the waiter app.') }}</li>
+                            <li>{{ translate('If a print silently fails, the bottom-sheet escalation here lets you native-print the KOT from the browser as a final fallback.') }}</li>
                         </ul>
                     </div>
                 </div>

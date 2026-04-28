@@ -30,17 +30,32 @@ class ReceiptPrinter
         $this->timeoutSeconds = (int)    ($config['timeout_seconds'] ?? 5);
     }
 
-    /** Reads the saved printer settings from business_settings. */
+    /**
+     * Reads the saved printer settings from business_settings.
+     *
+     * `print_path` decides who actually owns the TCP socket:
+     *   - 'device' (default for cloud-hosted admin panels) — the waiter
+     *     Flutter app prints over its own LAN connection, the server
+     *     skips its TCP attempt entirely. This is the only path that
+     *     works when the admin panel runs on the cloud and the printer
+     *     lives on a restaurant LAN.
+     *   - 'server' — server prints over network. Needs the printer's IP
+     *     to be reachable from the server (typical for self-hosted
+     *     admin panels on the same LAN as the printer).
+     */
     public static function config(): array
     {
         $raw = Helpers::get_business_settings('receipt_printer');
         $val = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: []);
+        $path = (string) ($val['print_path'] ?? 'device');
+        if (!in_array($path, ['device', 'server'], true)) $path = 'device';
         return [
             'ip'              => $val['ip']              ?? '',
             'port'            => (int) ($val['port']     ?? 9100),
             'enabled'         => (bool) ($val['enabled'] ?? false),
             'width_chars'     => (int) ($val['width_chars'] ?? 48),
             'timeout_seconds' => (int) ($val['timeout_seconds'] ?? 5),
+            'print_path'      => $path,
         ];
     }
 

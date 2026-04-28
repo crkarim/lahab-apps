@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Auth\KitchenLoginController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\WaiterAuthController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterActiveOrdersController;
+use App\Http\Controllers\Api\V1\Waiter\WaiterConfigController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterCustomerController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterMenuController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterOrderController;
@@ -98,10 +99,21 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::post('order',              [WaiterOrderController::class, 'place']);
             Route::post('order/{id}/print-kot',[WaiterOrderController::class, 'printKot'])->whereNumber('id');
             Route::post('order/{id}/append',  [WaiterOrderController::class, 'append'])->whereNumber('id');
+            Route::post('order/{id}/checkout',[WaiterOrderController::class, 'checkout'])->whereNumber('id');
 
             // Active orders + per-order details (Phase 2.5)
             Route::get('orders',              [WaiterActiveOrdersController::class, 'index']);
             Route::get('order/{id}',          [WaiterActiveOrdersController::class, 'show'])->whereNumber('id');
+
+            // Device-side print plumbing (Phase 2.5.4). Config delivers
+            // the printer settings (IP / port / width / print_path) the
+            // device needs to talk to the network printer directly.
+            Route::get('config',              [WaiterConfigController::class, 'index']);
+            // After a device-side print attempt, the device tells the
+            // server whether paper actually landed so the admin panel
+            // can drop / pop the escalation modal accordingly.
+            Route::post('order/{id}/print-success', [WaiterOrderController::class, 'reportPrintSuccess'])->whereNumber('id');
+            Route::post('order/{id}/print-failure', [WaiterOrderController::class, 'reportPrintFailure'])->whereNumber('id');
         });
     });
 

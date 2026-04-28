@@ -65,6 +65,8 @@ class Order extends Model
         // Native browser print audit (Phase 2.5.3).
         'kot_native_printed_at',
         'kot_native_printed_by',
+        // Waiter checkout (Phase 2.6).
+        'tip_amount',
     ];
 
     public function details(): HasMany

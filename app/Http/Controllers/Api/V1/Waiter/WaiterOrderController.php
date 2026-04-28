@@ -91,8 +91,10 @@ class WaiterOrderController extends Controller
             'order_amount'        => (float) $order->order_amount,
             'printed'             => $print['ok'],
             'print_skipped'       => $print['skipped'],
+            'print_deferred'      => (bool) ($print['deferred'] ?? false),
             'print_error'         => $print['error'],
             'kitchen_ticket_url'  => url("/admin/orders/{$order->id}/kitchen-ticket"),
+            'items'               => $this->itemsForDevice($order),
             'message'             => 'Order sent to the kitchen.',
         ]);
     }
@@ -171,10 +173,155 @@ class WaiterOrderController extends Controller
             'order_amount'        => (float) $order->fresh()->order_amount,
             'printed'             => $print['ok'],
             'print_skipped'       => $print['skipped'],
+            'print_deferred'      => (bool) ($print['deferred'] ?? false),
             'print_error'         => $print['error'],
             'kitchen_ticket_url'  => url("/admin/orders/{$order->id}/kitchen-ticket"),
+            // Only the just-appended detail rows — the device prints a
+            // SUPPLEMENTARY KOT showing the new round, not the originals.
+            'items'               => $this->itemsForDevice($order, $newDetailIds),
             'message'             => 'Items added to the order.',
         ]);
+    }
+
+    /**
+     * Settle an order — accept payment, save tip / discount, mark
+     * paid, return everything the device needs to print the customer
+     * receipt. Mirrors admin POS's place_order payment-capture branch
+     * but for an order that's already been fired (KOT sent, items
+     * cooking) and is now being closed at table turn-over.
+     *
+     * Body shape:
+     *   tip_amount      (number, optional)   default 0
+     *   discount_amount (number, optional)   default 0 — flat ৳ off
+     *   payments        (array, required)    [{ method: 'cash'|'card', amount: number }]
+     *   change_amount   (number, optional)   computed if missing
+     */
+    public function checkout(Request $request, int $id): JsonResponse
+    {
+        $admin = $request->user('waiter_api');
+        if (!$admin || !$admin->branch_id) {
+            return response()->json([
+                'errors' => [['code' => 'no_branch', 'message' => 'Your account is not assigned to a branch yet.']],
+            ], 403);
+        }
+
+        $order = Order::query()
+            ->where('id', $id)
+            ->where('branch_id', $admin->branch_id)
+            ->first();
+        if (!$order) {
+            return response()->json([
+                'errors' => [['code' => 'not_found', 'message' => 'Order not found in this branch.']],
+            ], 404);
+        }
+        if ($order->payment_status === 'paid') {
+            return response()->json([
+                'errors' => [['code' => 'already_paid', 'message' => 'Order is already paid.']],
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'tip_amount'       => 'nullable|numeric|min:0',
+            'discount_amount'  => 'nullable|numeric|min:0',
+            'change_amount'    => 'nullable|numeric|min:0',
+            'payments'         => 'required|array|min:1',
+            'payments.*.method'=> 'required|in:cash,card,wallet_payment',
+            'payments.*.amount'=> 'required|numeric|min:0',
+        ]);
+
+        $tip      = (float) ($validated['tip_amount'] ?? 0);
+        $discount = (float) ($validated['discount_amount'] ?? 0);
+        $tendered = collect($validated['payments'])->sum('amount');
+
+        // Order amount stays as the kitchen total — tips are tracked
+        // separately, discounts reduce what the customer owes. We
+        // recompute the final figure here rather than mutating
+        // `order_amount` so historical reports aren't disturbed.
+        $orderTotal      = (float) $order->order_amount;
+        $payable         = max(0, $orderTotal - $discount + $tip);
+        $changeRequested = (float) ($validated['change_amount'] ?? 0);
+        $change          = $changeRequested > 0
+            ? $changeRequested
+            : max(0, $tendered - $payable);
+
+        if ($tendered + 0.01 < $payable) {
+            return response()->json([
+                'errors' => [['code' => 'insufficient_payment', 'message' => 'Tendered amount is less than the bill.']],
+            ], 422);
+        }
+
+        DB::transaction(function () use ($order, $validated, $tip, $discount, $change, $admin) {
+            $order->forceFill([
+                'tip_amount'          => $tip > 0 ? $tip : null,
+                'extra_discount'      => $discount > 0 ? $discount : 0,
+                'bring_change_amount' => $change,
+                'payment_status'      => 'paid',
+                'payment_method'      => $validated['payments'][0]['method'] ?? null,
+            ])->save();
+
+            // Drop any prior partial-payment rows in case this is a
+            // re-checkout after admin cleared an old failed attempt.
+            \App\Model\OrderPartialPayment::where('order_id', $order->id)->delete();
+            foreach ($validated['payments'] as $p) {
+                \App\Model\OrderPartialPayment::create([
+                    'order_id'    => $order->id,
+                    'paid_with'   => $p['method'],
+                    'paid_amount' => (float) $p['amount'],
+                    'due_amount'  => 0,
+                ]);
+            }
+        });
+
+        $order->refresh();
+        return response()->json([
+            'success'        => true,
+            'order_id'       => $order->id,
+            'kot_number'     => $order->kot_number,
+            'order_amount'   => (float) $order->order_amount,
+            'tip_amount'     => (float) $tip,
+            'discount_amount'=> (float) $discount,
+            'payable'        => (float) $payable,
+            'tendered'       => (float) $tendered,
+            'change_amount'  => (float) $change,
+            'receipt'        => $this->receiptPayload($order, $tip, $discount, $payable, $change, $validated['payments']),
+            'message'        => 'Payment recorded.',
+        ]);
+    }
+
+    /**
+     * Slim shape the device-side ReceiptPrinter needs to compose the
+     * customer receipt. Mirrors the admin Receipt blade fields so the
+     * paper looks identical regardless of which path printed it.
+     */
+    private function receiptPayload(Order $order, float $tip, float $discount, float $payable, float $change, array $payments): array
+    {
+        $order->loadMissing(['details', 'customer:id,f_name,l_name,phone', 'table:id,number,zone', 'placedBy:id,f_name,l_name', 'branch:id,name,address,phone']);
+        $customer = $order->customer
+            ? trim(($order->customer->f_name ?? '') . ' ' . ($order->customer->l_name ?? ''))
+            : null;
+        $placedBy = $order->placedBy
+            ? trim(($order->placedBy->f_name ?? '') . ' ' . ($order->placedBy->l_name ?? ''))
+            : null;
+        return [
+            'order_id'       => $order->id,
+            'kot_number'     => $order->kot_number,
+            'order_type'     => $order->order_type,
+            'table_number'   => $order->table?->number,
+            'customer'       => $customer ?: 'Walk-in',
+            'customer_phone' => $order->customer?->phone,
+            'placed_by'      => $placedBy,
+            'branch_name'    => $order->branch?->name,
+            'branch_address' => $order->branch?->address,
+            'branch_phone'   => $order->branch?->phone,
+            'items'          => $this->itemsForDevice($order),
+            'subtotal'       => (float) ($order->order_amount - ($order->total_tax_amount ?? 0)),
+            'tax'            => (float) ($order->total_tax_amount ?? 0),
+            'discount'       => (float) $discount,
+            'tip'            => (float) $tip,
+            'total'          => (float) $payable,
+            'change'         => (float) $change,
+            'payments'       => $payments,
+        ];
     }
 
     /**
@@ -205,14 +352,32 @@ class WaiterOrderController extends Controller
         }
 
         $print = $this->safelyPrintKot($order, isReprint: true);
+        $order->loadMissing(['table:id,number,zone', 'customer:id,f_name,l_name', 'placedBy:id,f_name,l_name']);
+
+        $customer = $order->customer
+            ? trim(($order->customer->f_name ?? '') . ' ' . ($order->customer->l_name ?? ''))
+            : null;
+        $placedBy = $order->placedBy
+            ? trim(($order->placedBy->f_name ?? '') . ' ' . ($order->placedBy->l_name ?? ''))
+            : null;
 
         return response()->json([
             'order_id'           => $order->id,
             'kot_number'         => $order->kot_number,
+            'order_type'         => $order->order_type,
+            'table_number'       => $order->table?->number,
+            'table_zone'         => $order->table?->zone,
+            'customer'           => $customer ?: ($order->is_guest ? 'Walk-in' : null),
+            'placed_by'          => $placedBy,
+            'order_note'         => $order->order_note,
             'printed'            => $print['ok'],
             'print_skipped'      => $print['skipped'],
+            'print_deferred'     => (bool) ($print['deferred'] ?? false),
             'print_error'        => $print['error'],
             'kitchen_ticket_url' => url("/admin/orders/{$order->id}/kitchen-ticket"),
+            // Reprint includes the full item list so the device can
+            // re-render the KOT layout without a separate detail fetch.
+            'items'              => $this->itemsForDevice($order),
             'message'            => $print['ok']
                 ? 'Reprint sent to the kitchen.'
                 : ($print['skipped']
@@ -225,9 +390,21 @@ class WaiterOrderController extends Controller
      * Wraps KitchenPrinter to swallow any unexpected throw and stamp
      * a print-failure flag on the order so the admin escalation modal
      * can pick it up. On a successful retry we clear the flag.
+     *
+     * If `print_path = device`, the cloud doesn't even try the TCP
+     * socket — the waiter Flutter app prints over its own LAN
+     * connection and reports the outcome via reportPrintSuccess /
+     * reportPrintFailure. Returns `defer` so callers can branch.
      */
     private function safelyPrintKot(Order $order, bool $isReprint): array
     {
+        $cfg = \App\Services\Printer\ReceiptPrinter::config();
+        if (($cfg['print_path'] ?? 'device') === 'device') {
+            // Device handles printing. Don't stamp a failure — that
+            // would race with the device's own success report.
+            return ['ok' => false, 'skipped' => true, 'deferred' => true, 'error' => null];
+        }
+
         try {
             $result = (new KitchenPrinter())->printOrder($order, $isReprint);
         } catch (\Throwable $e) {
@@ -237,6 +414,7 @@ class WaiterOrderController extends Controller
             ]);
             $result = ['ok' => false, 'skipped' => false, 'error' => $e->getMessage()];
         }
+        $result['deferred'] = false;
 
         if ($result['ok']) {
             // Clear any prior failure stamp — print succeeded so the
@@ -261,6 +439,73 @@ class WaiterOrderController extends Controller
         }
 
         return $result;
+    }
+
+    /**
+     * Device successfully printed the KOT — clear any escalation
+     * stamp and record the audit timestamp so reports can tell
+     * device-printed KOTs from server-printed ones.
+     */
+    public function reportPrintSuccess(Request $request, int $id): JsonResponse
+    {
+        $admin = $request->user('waiter_api');
+        if (!$admin || !$admin->branch_id) {
+            return response()->json(['errors' => [['code' => 'no_branch', 'message' => 'No branch.']]], 403);
+        }
+
+        $order = Order::query()
+            ->where('id', $id)
+            ->where('branch_id', $admin->branch_id)
+            ->first();
+        if (!$order) {
+            return response()->json(['errors' => [['code' => 'not_found', 'message' => 'Order not found.']]], 404);
+        }
+
+        $order->forceFill([
+            'print_failure_at'         => null,
+            'print_failure_reason'     => null,
+            'print_failure_handled_at' => null,
+            'print_failure_handled_by' => null,
+            'kot_native_printed_at'    => now(),
+            'kot_native_printed_by'    => $admin->id,
+        ])->save();
+        $order->increment('kot_print_count');
+
+        return response()->json(['ok' => true, 'message' => 'Print acknowledged.']);
+    }
+
+    /**
+     * Device failed to print (printer offline / IP wrong / TCP timeout).
+     * Stamp the failure so the admin panel's bottom sheet pops up with
+     * the L2 fallback (browser native print). Idempotent — re-firing
+     * doesn't compound rows.
+     */
+    public function reportPrintFailure(Request $request, int $id): JsonResponse
+    {
+        $admin = $request->user('waiter_api');
+        if (!$admin || !$admin->branch_id) {
+            return response()->json(['errors' => [['code' => 'no_branch', 'message' => 'No branch.']]], 403);
+        }
+
+        $order = Order::query()
+            ->where('id', $id)
+            ->where('branch_id', $admin->branch_id)
+            ->first();
+        if (!$order) {
+            return response()->json(['errors' => [['code' => 'not_found', 'message' => 'Order not found.']]], 404);
+        }
+
+        $reason = (string) $request->input('reason', 'Printer offline');
+        if (mb_strlen($reason) > 250) $reason = mb_substr($reason, 0, 250);
+
+        $order->forceFill([
+            'print_failure_at'         => now(),
+            'print_failure_reason'     => $reason,
+            'print_failure_handled_at' => null,
+            'print_failure_handled_by' => null,
+        ])->save();
+
+        return response()->json(['ok' => true, 'message' => 'Failure recorded.']);
     }
 
     private function buildAndFire(array $payload, $admin): Order
@@ -596,5 +841,68 @@ class WaiterOrderController extends Controller
         }
 
         return $result;
+    }
+
+    /**
+     * Produce the slim item shape the Flutter KotPrinter needs to
+     * compose ESC/POS bytes locally — name, qty, variation summary,
+     * addons, line note. Same fields as `WaiterActiveOrdersController::shapeItem`
+     * but pared down (no prices, taxes, discounts: a KOT doesn't show money).
+     *
+     * @param array<int, int>|null $detailIdFilter when set, only those
+     *   detail IDs are returned (used for the supplementary append KOT
+     *   so device prints just the new round, not the originals).
+     */
+    private function itemsForDevice(Order $order, ?array $detailIdFilter = null): array
+    {
+        $order->loadMissing('details');
+        $rows = $detailIdFilter
+            ? $order->details->whereIn('id', $detailIdFilter)
+            : $order->details;
+
+        return $rows->map(function ($d) {
+            $product = is_array($d->product_details)
+                ? $d->product_details
+                : (json_decode($d->product_details, true) ?: []);
+            $variations = is_array($d->variation)
+                ? $d->variation
+                : (json_decode($d->variation, true) ?: []);
+            $addonIds  = is_array($d->add_on_ids)  ? $d->add_on_ids  : (json_decode($d->add_on_ids, true)  ?: []);
+            $addonQtys = is_array($d->add_on_qtys) ? $d->add_on_qtys : (json_decode($d->add_on_qtys, true) ?: []);
+
+            $variationSummary = [];
+            foreach ($variations as $v) {
+                if (!is_array($v)) continue;
+                $name  = $v['name'] ?? null;
+                $value = $v['value'] ?? '';
+                if ($value === '' && !empty($v['values']) && is_array($v['values'])) {
+                    $value = collect($v['values'])
+                        ->map(fn ($x) => is_array($x) ? ($x['label'] ?? $x['level'] ?? $x['name'] ?? '') : (string) $x)
+                        ->filter()->implode(', ');
+                }
+                if ($value !== '') {
+                    $variationSummary[] = ($name ? "$name: " : '') . $value;
+                }
+            }
+
+            $addons = [];
+            foreach ($addonIds as $i => $aid) {
+                $name = collect($product['add_ons'] ?? [])->firstWhere('id', $aid)['name']
+                    ?? AddOn::find($aid)?->name
+                    ?? 'Addon';
+                $addons[] = [
+                    'name' => $name,
+                    'qty'  => (int) ($addonQtys[$i] ?? 1),
+                ];
+            }
+
+            return [
+                'name'              => $product['name'] ?? 'Item',
+                'quantity'          => (int) $d->quantity,
+                'variation_summary' => implode(' · ', $variationSummary),
+                'addons'            => $addons,
+                'note'              => $product['line_note'] ?? null,
+            ];
+        })->values()->all();
     }
 }
