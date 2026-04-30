@@ -45,6 +45,53 @@ Route::post('/subscribeToTopic', [FirebaseController::class, 'subscribeToTopic']
 Route::get('r/{token}', [\App\Http\Controllers\ReceiptController::class, 'show'])->name('receipt.show');
 
 /**
+ * Emergency repair endpoint — token-gated, framework-aware. Same job
+ * as public/_repair.php but routed through Laravel so it's accessible
+ * even on hosts whose deploy filters underscore-prefixed files. Resets
+ * composer's classmap and clears bootstrap/cache so newly-pushed
+ * controllers/helpers can be discovered without SSH access.
+ *
+ * Usage: GET /sys-repair?token=YOUR_MAINTENANCE_TOKEN
+ *
+ * Delete the route once the deploy is settled.
+ */
+Route::get('sys-repair', function (\Illuminate\Http\Request $request) {
+    $expected = (string) env('MAINTENANCE_TOKEN', '');
+    if ($expected === '' || !hash_equals($expected, (string) $request->query('token', ''))) {
+        abort(401, 'Forbidden — token missing or mismatch.');
+    }
+
+    $base = base_path();
+    $log = ["App root: $base"];
+
+    // 1. Reset composer's classmap to empty so PSR-4 fallback discovers
+    //    new classes on the next request. Safer than rewriting from
+    //    scratch — Laravel's autoload still works because PSR-4 maps
+    //    namespace prefixes to directories at request time.
+    $cm = $base . '/vendor/composer/autoload_classmap.php';
+    if (is_file($cm) && @file_put_contents($cm, "<?php\nreturn array();\n") !== false) {
+        $log[] = 'OK   reset autoload_classmap.php';
+    } else {
+        $log[] = 'WARN could not reset autoload_classmap.php';
+    }
+
+    // 2. Clear Laravel's compiled bootstrap caches so it re-reads
+    //    routes / config / services on the next request.
+    foreach (['bootstrap/cache/config.php', 'bootstrap/cache/services.php', 'bootstrap/cache/packages.php', 'bootstrap/cache/events.php'] as $f) {
+        $abs = $base . '/' . $f;
+        if (is_file($abs)) {
+            $log[] = (@unlink($abs) ? 'OK   removed ' : 'WARN could not remove ') . $f;
+        }
+    }
+    foreach (glob($base . '/bootstrap/cache/routes-*.php') as $rf) {
+        $log[] = (@unlink($rf) ? 'OK   removed ' : 'WARN could not remove ') . basename($rf);
+    }
+
+    return response("=== sys-repair ===\n" . implode("\n", $log) . "\n\nDone. Open https://office.lahab.com.bd/admin\nDelete this route after the admin is back up.\n", 200)
+        ->header('Content-Type', 'text/plain');
+});
+
+/**
  * Pages
  */
 Route::get('about-us', [HomeController::class, 'about_us'])->name('about-us');

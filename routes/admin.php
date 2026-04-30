@@ -91,10 +91,12 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // Kitchen-side scan-to-ready surface (Phase 3a). Single
         // page + endpoint — kitchen scans the printed KOT barcode,
         // order flips to 'ready', waiter gets an FCM push.
-        Route::group(['prefix' => 'kitchen', 'as' => 'kitchen.'], function () {
-            Route::get('scan',  [KitchenScanController::class, 'index'])->name('scan.index');
-            Route::post('scan', [KitchenScanController::class, 'scan'])->name('scan');
-        });
+        if (class_exists(KitchenScanController::class)) {
+            Route::group(['prefix' => 'kitchen', 'as' => 'kitchen.'], function () {
+                Route::get('scan',  [KitchenScanController::class, 'index'])->name('scan.index');
+                Route::post('scan', [KitchenScanController::class, 'scan'])->name('scan');
+            });
+        }
 
         Route::group(['prefix' => 'cash-handovers', 'as' => 'cash-handovers.'], function () {
             Route::get('/',                       [CashHandoverController::class, 'index'])->name('index');
