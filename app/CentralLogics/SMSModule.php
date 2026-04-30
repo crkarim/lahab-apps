@@ -7,47 +7,66 @@ use Twilio\Rest\Client;
 
 class SMSModule
 {
-    public static function send($receiver, $otp): string
+    /**
+     * @param string $receiver E.164 phone number.
+     * @param string $message  When $raw is false, this is treated as the OTP
+     *                         and substituted into the gateway's configured
+     *                         `otp_template`. When $raw is true, the
+     *                         message ships as-is — used for receipt SMS
+     *                         and other non-OTP flows where we want the
+     *                         link / body unmangled.
+     * @param bool   $raw      Bypass the OTP template substitution. Some
+     *                         template-id-based gateways (msg91, 2factor)
+     *                         can't honour this and will degrade to OTP
+     *                         mode — for those, switch to a free-text
+     *                         gateway (twilio, nexmo, alphanet_sms,
+     *                         signal_wire) if you need link delivery.
+     */
+    public static function send($receiver, $message, $raw = false): string
     {
         $config = self::get_settings('twilio');
         if (isset($config) && $config['status'] == 1) {
-            return self::twilio($receiver, $otp);
+            return self::twilio($receiver, $message, $raw);
         }
 
         $config = self::get_settings('nexmo');
         if (isset($config) && $config['status'] == 1) {
-            return self::nexmo($receiver, $otp);
+            return self::nexmo($receiver, $message, $raw);
         }
 
         $config = self::get_settings('2factor');
         if (isset($config) && $config['status'] == 1) {
-            return self::two_factor($receiver, $otp);
+            return self::two_factor($receiver, $message);
         }
 
         $config = self::get_settings('msg91');
         if (isset($config) && $config['status'] == 1) {
-            return self::msg_91($receiver, $otp);
+            return self::msg_91($receiver, $message);
         }
 
         $config = self::get_settings('signal_wire');
         if (isset($config) && $config['status'] == 1) {
-            return self::signal_wire($receiver, $otp);
+            return self::signal_wire($receiver, $message, $raw);
         }
 
         $config = self::get_settings('alphanet_sms');
         if (isset($config) && $config['status'] == 1) {
-            return self::alphanet_sms($receiver, $otp);
+            return self::alphanet_sms($receiver, $message, $raw);
         }
 
         return 'not_found';
     }
 
-    public static function twilio($receiver, $otp): string
+    public static function twilio($receiver, $otp, $raw = false): string
     {
         $config = self::get_settings('twilio');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            // Receipt SMS / other free-text messages bypass the OTP
+            // template so the link survives intact. OTP path keeps the
+            // legacy substitution for backwards-compat with existing
+            // admin-configured templates.
+            $message = $raw ? (string) $otp : str_replace("#OTP#", $otp, $config['otp_template']);
             $sid = $config['sid'];
             $token = $config['token'];
             try {
@@ -67,12 +86,12 @@ class SMSModule
         return $response;
     }
 
-    public static function nexmo($receiver, $otp): string
+    public static function nexmo($receiver, $otp, $raw = false): string
     {
         $config = self::get_settings('nexmo');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = $raw ? (string) $otp : str_replace("#OTP#", $otp, $config['otp_template']);
             try {
                 $ch = curl_init();
 
@@ -163,13 +182,13 @@ class SMSModule
         return $response;
     }
 
-    public static function signal_wire($receiver, $otp): string
+    public static function signal_wire($receiver, $otp, $raw = false): string
     {
         $config = self::get_settings('signal_wire');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
 
-            $message = str_replace("#OTP#", $otp, "Your otp is #OTP#.");
+            $message = $raw ? (string) $otp : str_replace("#OTP#", $otp, "Your otp is #OTP#.");
 
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, "https://" . $config['space_url'] . "/api/laml/2010-04-01/Accounts/" . $config['project_id'] . "/Messages");
@@ -197,13 +216,15 @@ class SMSModule
         return $response;
     }
 
-    public static function alphanet_sms($receiver, $otp): string
+    public static function alphanet_sms($receiver, $otp, $raw = false): string
     {
         $config = self::get_settings('alphanet_sms');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
             $receiver = str_replace("+", "", $receiver);
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            // Free-text BD provider — receipts pass through unchanged
+            // when $raw is true, so the receipt link stays clickable.
+            $message = $raw ? (string) $otp : str_replace("#OTP#", $otp, $config['otp_template']);
             $api_key = $config['api_key'];
 
             $curl = curl_init();

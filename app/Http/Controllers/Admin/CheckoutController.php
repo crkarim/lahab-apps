@@ -172,7 +172,10 @@ class CheckoutController extends Controller
         $msg    = "Thanks for dining at {$name}! Total {$total}. Receipt: {$link}";
 
         try {
-            $result = SMSModule::send($phone, $msg);
+            // raw: true ships the receipt body with the link as-is —
+            // skips the OTP template substitution that would otherwise
+            // mangle the URL.
+            $result = SMSModule::send($phone, $msg, true);
             return in_array($result, ['success', 'error', 'not_found'], true) ? $result : 'error';
         } catch (\Throwable $e) {
             return 'error';

@@ -360,7 +360,11 @@ class WaiterOrderController extends Controller
         $msg   = "Thanks for dining at {$name}! Total {$total}. Receipt: {$link}";
 
         try {
-            $result = \App\CentralLogics\SMSModule::send($phone, $msg);
+            // raw: true bypasses the gateway's `otp_template` so the
+            // receipt link reaches the customer unmangled. Without
+            // this the message gets stuffed into "Your OTP is #OTP#"
+            // style templates and the link is destroyed.
+            $result = \App\CentralLogics\SMSModule::send($phone, $msg, true);
             return in_array($result, ['success', 'error', 'not_found'], true) ? $result : 'error';
         } catch (\Throwable $e) {
             \Log::warning('Waiter checkout SMS error', [
