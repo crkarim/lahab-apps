@@ -34,6 +34,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReviewsController;
 use App\Http\Controllers\Admin\CashHandoverController;
 use App\Http\Controllers\Admin\KitchenScanController;
+use App\Http\Controllers\Admin\ShiftController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\PrintFailureController;
 use App\Http\Controllers\Admin\PrinterController;
@@ -113,6 +114,20 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('{id}/dispute',           [CashHandoverController::class, 'dispute'])->whereNumber('id')->name('dispute');
             Route::post('collect/{waiterId}',     [CashHandoverController::class, 'collectFromWaiter'])->whereNumber('waiterId')->name('collect');
         });
+
+        // Cashier shift sessions (Phase 4 — Shifts module). Open Drawer
+        // → take orders → Close Drawer with variance reconciliation.
+        // Class-existence guarded so a stale composer classmap can't
+        // 500 the entire admin (same pattern as Kitchen Scan).
+        if (class_exists(ShiftController::class)) {
+            Route::group(['prefix' => 'shifts', 'as' => 'shifts.'], function () {
+                Route::get('/',              [ShiftController::class, 'index'])->name('index');
+                Route::get('{id}',           [ShiftController::class, 'show'])->whereNumber('id')->name('show');
+                Route::post('open',          [ShiftController::class, 'open'])->name('open');
+                Route::post('{id}/close',    [ShiftController::class, 'close'])->whereNumber('id')->name('close');
+                Route::post('{id}/payout',   [ShiftController::class, 'payout'])->whereNumber('id')->name('payout');
+            });
+        }
         Route::get('settings', [SystemController::class, 'settings'])->name('settings');
         Route::post('settings', [SystemController::class, 'settingsUpdate']);
         Route::post('settings-password', [SystemController::class, 'settingsPasswordUpdate'])->name('settings-password');

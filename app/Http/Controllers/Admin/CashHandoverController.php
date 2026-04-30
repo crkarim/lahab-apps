@@ -83,8 +83,17 @@ class CashHandoverController extends Controller
             return back()->with('error', 'Handover is no longer pending.');
         }
 
+        // Attach to the cashier's open shift so the shift's cash
+        // reconciliation includes this handover. Best-effort —
+        // null is fine if no shift is open (warn-but-allow).
+        $shiftId = null;
+        try {
+            $shiftId = \App\Http\Controllers\Admin\ShiftController::currentFor(auth('admin')->user()->id)?->id;
+        } catch (\Throwable $e) { /* shifts module not migrated yet */ }
+
         $handover->update([
             'cashier_id'  => auth('admin')->user()->id,
+            'shift_id'    => $shiftId,
             'received_at' => now(),
             'status'      => 'received',
         ]);
@@ -149,9 +158,19 @@ class CashHandoverController extends Controller
             // Direct collection: status = received in one shot. Both
             // submitted_at and received_at are now (the cashier did
             // both halves of the handshake).
+            // Cashier-initiated collect — same shift attribution as
+            // a regular receive(). The collect flow skips the waiter's
+            // submit step but the cash still lands in this cashier's
+            // till during their shift.
+            $shiftId = null;
+            try {
+                $shiftId = \App\Http\Controllers\Admin\ShiftController::currentFor($admin->id)?->id;
+            } catch (\Throwable $e) { /* shifts module not migrated yet */ }
+
             $h = CashHandover::create([
                 'waiter_id'    => $waiter->id,
                 'cashier_id'   => $admin->id,
+                'shift_id'     => $shiftId,
                 'branch_id'    => $effectiveBranch,
                 'submitted_at' => now(),
                 'received_at'  => now(),

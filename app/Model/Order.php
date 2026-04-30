@@ -71,6 +71,8 @@ class Order extends Model
         // Kitchen-ready audit (Phase 3a).
         'ready_at',
         'ready_by_admin_id',
+        // Cashier shift attribution (Phase 4 — Shifts module).
+        'shift_id',
     ];
 
     public function details(): HasMany

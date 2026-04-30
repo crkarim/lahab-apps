@@ -640,11 +640,28 @@ class WaiterOrderController extends Controller
             $orderId = (Order::orderByDesc('id')->value('id') ?? $orderId) + 1;
         }
 
+        // Attribute the order to the cashier's currently-open shift.
+        // Per design: warn-but-allow — if no shift is open, shift_id
+        // stays null and the order surfaces under "no shift" on the
+        // Day-End. Lookup keyed on the placing waiter's branch since
+        // a waiter doesn't run their own till — they hand cash to a
+        // cashier whose shift owns it.
+        $shiftId = null;
+        try {
+            $openShift = \App\Models\Shift::query()
+                ->where('branch_id', $branchId)
+                ->where('status', 'open')
+                ->orderByDesc('opened_at')
+                ->first();
+            $shiftId = $openShift?->id;
+        } catch (\Throwable $e) { /* shifts table missing pre-migration — skip */ }
+
         $order = new Order();
         $order->id                = $orderId;
         $order->user_id           = $payload['customer_id'] ?? null;
         $order->is_guest          = empty($payload['customer_id']) ? 1 : 0;
         $order->placed_by_admin_id= $admin->id;
+        $order->shift_id          = $shiftId;
         $order->branch_id         = $branchId;
         $order->table_id          = $orderType === 'dine_in' ? ($payload['table_id'] ?? null) : null;
         $order->number_of_people  = $orderType === 'dine_in' ? ($payload['number_of_people'] ?? null) : null;

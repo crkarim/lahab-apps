@@ -26,6 +26,7 @@ class CashHandover extends Model
     protected $fillable = [
         'waiter_id',
         'cashier_id',
+        'shift_id',
         'branch_id',
         'submitted_at',
         'received_at',

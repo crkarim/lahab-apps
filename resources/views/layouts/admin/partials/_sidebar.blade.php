@@ -147,6 +147,34 @@
                                             </span>
                                         </a>
                                     </li>
+                                    {{-- Shift sessions — open/close drawer + variance ledger.
+                                         Route::has guard mirrors the Kitchen Scan pattern so a
+                                         stale routes-cache doesn't crash the sidebar. --}}
+                                    @if(Route::has('admin.shifts.index'))
+                                    <li class="nav-item {{ Request::is('admin/shifts*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.shifts.index') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate sidebar--badge-container">
+                                                {{ translate('Shifts') }}
+                                                @php
+                                                    $sbShiftBranch = auth('admin')->user()?->branch_id;
+                                                    $openShifts = 0;
+                                                    try {
+                                                        $openShifts = \App\Models\Shift::query()
+                                                            ->where('status', 'open')
+                                                            ->when($sbShiftBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                            ->count();
+                                                    } catch (\Throwable $e) {
+                                                        // Schema mid-migration — fail soft.
+                                                    }
+                                                @endphp
+                                                @if($openShifts > 0)
+                                                    <span class="badge badge-soft-success badge-pill ml-1">{{ $openShifts }}</span>
+                                                @endif
+                                            </span>
+                                        </a>
+                                    </li>
+                                    @endif
                                     <li class="nav-item {{ Request::is('admin/orders/list/*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('admin.orders.list', ['all']) }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
