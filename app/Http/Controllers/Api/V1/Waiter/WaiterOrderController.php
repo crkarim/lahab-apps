@@ -385,25 +385,49 @@ class WaiterOrderController extends Controller
         $placedBy = $order->placedBy
             ? trim(($order->placedBy->f_name ?? '') . ' ' . ($order->placedBy->l_name ?? ''))
             : null;
+
+        // Logo + restaurant name come from business_settings — same
+        // source as the admin-panel receipt template, so paper from the
+        // waiter app and paper from the admin POS look identical.
+        $logoFile = \App\CentralLogics\Helpers::get_business_settings('logo');
+        $logoUrl  = $logoFile ? asset('storage/app/public/restaurant/' . $logoFile) : null;
+        $restaurantName = \App\CentralLogics\Helpers::get_business_settings('restaurant_name');
+
+        // Mint a receipt_token here if the order doesn't have one yet —
+        // the verification barcode at the receipt footer encodes it,
+        // and the customer-facing /r/{token} link uses the same value.
+        if (empty($order->receipt_token)) {
+            $order->forceFill(['receipt_token' => \Illuminate\Support\Str::random(32)])->save();
+        }
+
+        $totalPaid  = array_sum(array_map(fn ($p) => (float) ($p['amount'] ?? 0), $payments));
+        $balanceDue = max(0, $payable - $totalPaid);
+
         return [
-            'order_id'       => $order->id,
-            'kot_number'     => $order->kot_number,
-            'order_type'     => $order->order_type,
-            'table_number'   => $order->table?->number,
-            'customer'       => $customer ?: 'Walk-in',
-            'customer_phone' => $order->customer?->phone,
-            'placed_by'      => $placedBy,
-            'branch_name'    => $order->branch?->name,
-            'branch_address' => $order->branch?->address,
-            'branch_phone'   => $order->branch?->phone,
-            'items'          => $this->itemsForDevice($order),
-            'subtotal'       => (float) ($order->order_amount - ($order->total_tax_amount ?? 0)),
-            'tax'            => (float) ($order->total_tax_amount ?? 0),
-            'discount'       => (float) $discount,
-            'tip'            => (float) $tip,
-            'total'          => (float) $payable,
-            'change'         => (float) $change,
-            'payments'       => $payments,
+            'order_id'        => (int) $order->id,
+            'kot_number'      => $order->kot_number,
+            'order_type'      => $order->order_type,
+            'table_number'    => $order->table?->number,
+            'customer'        => $customer ?: 'Walk-in',
+            'customer_phone'  => $order->customer?->phone,
+            'placed_by'       => $placedBy,
+            'branch_name'     => $order->branch?->name,
+            'branch_address'  => $order->branch?->address,
+            'branch_phone'    => $order->branch?->phone,
+            'restaurant_name' => $restaurantName,
+            'logo_url'        => $logoUrl,
+            'created_at'      => $order->created_at?->toIso8601String(),
+            'receipt_token'   => $order->receipt_token,
+            'items'           => $this->itemsForDevice($order),
+            'subtotal'        => (float) ($order->order_amount - ($order->total_tax_amount ?? 0)),
+            'tax'             => (float) ($order->total_tax_amount ?? 0),
+            'discount'        => (float) $discount,
+            'tip'             => (float) $tip,
+            'total'           => (float) $payable,
+            'total_paid'      => (float) $totalPaid,
+            'balance_due'     => (float) $balanceDue,
+            'change'          => (float) $change,
+            'payments'        => $payments,
         ];
     }
 
