@@ -93,8 +93,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // order flips to 'ready', waiter gets an FCM push.
         if (class_exists(KitchenScanController::class)) {
             Route::group(['prefix' => 'kitchen', 'as' => 'kitchen.'], function () {
-                Route::get('scan',  [KitchenScanController::class, 'index'])->name('scan.index');
-                Route::post('scan', [KitchenScanController::class, 'scan'])->name('scan');
+                Route::get('scan',         [KitchenScanController::class, 'index'])->name('scan.index');
+                Route::post('scan',        [KitchenScanController::class, 'scan'])->name('scan');
+                Route::get('cooking-json', [KitchenScanController::class, 'cookingJson'])->name('cooking-json');
             });
         }
 

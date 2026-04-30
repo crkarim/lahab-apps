@@ -140,6 +140,66 @@ class KitchenScanController extends Controller
         }
     }
 
+    /**
+     * Live queue of orders currently cooking — feeds the scan page's
+     * grid so the kitchen can see what they're waiting on. Includes
+     * minimal shape (KOT + table + age + items count) and skips
+     * non-cooking states because those don't belong on the pass.
+     */
+    public function cookingJson(Request $request): JsonResponse
+    {
+        $admin = auth('admin')->user();
+        $branchId = $admin?->branch_id;
+
+        $orders = Order::query()
+            ->where('order_status', 'cooking')
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->with([
+                'table:id,number,zone',
+                'placedBy:id,f_name,l_name',
+                'customer:id,f_name,l_name',
+                'details:id,order_id,quantity',
+            ])
+            ->orderBy('id')
+            ->limit(80)
+            ->get();
+
+        $rows = $orders->map(function (Order $o) {
+            $placedBy = $o->placedBy
+                ? trim(($o->placedBy->f_name ?? '') . ' ' . ($o->placedBy->l_name ?? ''))
+                : null;
+            $customer = $o->customer
+                ? trim(($o->customer->f_name ?? '') . ' ' . ($o->customer->l_name ?? ''))
+                : null;
+            $itemCount = (int) $o->details->sum('quantity');
+            // Use raw timestamps because Carbon 2.62+ flipped diffInSeconds
+            // to signed-by-default; max() then clamps a negative result
+            // to zero and we lose all aging signal. Explicit math is
+            // immune to that.
+            $ageSeconds = $o->created_at ? max(0, now()->getTimestamp() - $o->created_at->getTimestamp()) : 0;
+            return [
+                'id'           => $o->id,
+                'kot_number'   => $o->kot_number,
+                'order_type'   => $o->order_type,
+                'table_label'  => $o->order_type === 'pos' || $o->order_type === 'take_away'
+                    ? 'Take-away'
+                    : ($o->table?->number ? 'Table ' . $o->table->number : '—'),
+                'table_zone'   => $o->table?->zone,
+                'customer'     => $customer ?: ($o->is_guest ? 'Walk-in' : '—'),
+                'placed_by'    => $placedBy ?: '—',
+                'item_count'   => $itemCount,
+                'age_seconds'  => $ageSeconds,
+                'created_at'   => $o->created_at?->toIso8601String(),
+            ];
+        });
+
+        return response()->json([
+            'count'  => $rows->count(),
+            'orders' => $rows,
+            'fetched_at' => now()->toIso8601String(),
+        ]);
+    }
+
     private function shape(Order $o): array
     {
         $placedBy = $o->placedBy
