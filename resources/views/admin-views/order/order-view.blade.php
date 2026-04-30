@@ -625,6 +625,21 @@
                                     <dd class="col-6 text-dark text-right">
                                         - {{ Helpers::set_symbol($order['referral_discount']) }}</dd>
 
+                                    {{-- Tip captured at waiter-app checkout. Shown only when present
+                                         so the line doesn't clutter regular customer-app orders that
+                                         don't have a tip concept yet. --}}
+                                    @if(!empty($order['tip_amount']) && (float) $order['tip_amount'] > 0)
+                                        <dt class="col-6">
+                                            <div class="d-flex max-w220 ml-auto">
+                                                <span class="text-success">{{translate('tip')}}</span>
+                                                <span>:</span>
+                                            </div>
+                                        </dt>
+                                        <dd class="col-6 text-success text-right font-weight-bold">
+                                            + {{ Helpers::set_symbol($order['tip_amount']) }}
+                                        </dd>
+                                    @endif
+
                                     <dt class="col-6">
                                         <div class="d-flex max-w220 ml-auto">
                                             <span>{{translate('tax')}} / {{translate('vat')}}</span>
@@ -670,6 +685,34 @@
                                         </div>
                                     </dt>
                                     <dd class="col-6 border-top pt-2 fz-16 font-weight-bold text-dark text-right">{{ Helpers::set_symbol($subTotal + $del_c) }}</dd>
+
+                                    {{-- Grand total = order total + waiter tip. Only shown when a
+                                         tip is present so customer-app orders keep their existing
+                                         layout. The partial_payment rows below should sum to this
+                                         number, not to "total" alone, when there's a tip. --}}
+                                    @if(!empty($order['tip_amount']) && (float) $order['tip_amount'] > 0)
+                                        <dt class="col-6 fz-16 font-weight-bold">
+                                            <div class="d-flex max-w220 ml-auto">
+                                                <span class="text-success">{{translate('Grand total')}} <small>({{translate('with tip')}})</small></span>
+                                                <span>:</span>
+                                            </div>
+                                        </dt>
+                                        <dd class="col-6 fz-16 font-weight-bold text-success text-right">
+                                            {{ Helpers::set_symbol($subTotal + $del_c + (float) $order['tip_amount']) }}
+                                        </dd>
+                                    @endif
+
+                                    @if(!empty($order['bring_change_amount']) && (float) $order['bring_change_amount'] > 0)
+                                        <dt class="col-6">
+                                            <div class="d-flex max-w220 ml-auto">
+                                                <span>{{translate('Change due')}}</span>
+                                                <span>:</span>
+                                            </div>
+                                        </dt>
+                                        <dd class="col-6 text-dark text-right">
+                                            {{ Helpers::set_symbol($order['bring_change_amount']) }}
+                                        </dd>
+                                    @endif
 
                                     @if ($order->order_partial_payments->isNotEmpty())
                                         @foreach($order->order_partial_payments as $partial)

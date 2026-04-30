@@ -82,6 +82,7 @@ class WaiterOrderController extends Controller
         // stamp the result on the response so the waiter app can show
         // an honest toast + offer a Reprint affordance.
         $print = $this->safelyPrintKot($order, isReprint: false);
+        $hdr = $this->headerForDevice($order, $admin);
 
         return response()->json([
             'success'             => true,
@@ -95,6 +96,7 @@ class WaiterOrderController extends Controller
             'print_error'         => $print['error'],
             'kitchen_ticket_url'  => url("/admin/orders/{$order->id}/kitchen-ticket"),
             'items'               => $this->itemsForDevice($order),
+            'header'              => $hdr,
             'message'             => 'Order sent to the kitchen.',
         ]);
     }
@@ -179,6 +181,7 @@ class WaiterOrderController extends Controller
             // Only the just-appended detail rows — the device prints a
             // SUPPLEMENTARY KOT showing the new round, not the originals.
             'items'               => $this->itemsForDevice($order, $newDetailIds),
+            'header'              => $this->headerForDevice($order, $admin),
             'message'             => 'Items added to the order.',
         ]);
     }
@@ -225,7 +228,10 @@ class WaiterOrderController extends Controller
             'discount_amount'  => 'nullable|numeric|min:0',
             'change_amount'    => 'nullable|numeric|min:0',
             'payments'         => 'required|array|min:1',
-            'payments.*.method'=> 'required|in:cash,card,wallet_payment',
+            // Tender methods — must match what the day-end report
+            // recognises as a drawer bucket. New gateways added here
+            // automatically appear in the report's payment breakdown.
+            'payments.*.method'=> 'required|in:cash,card,wallet_payment,bkash,nagad,rocket',
             'payments.*.amount'=> 'required|numeric|min:0',
         ]);
 
@@ -237,8 +243,12 @@ class WaiterOrderController extends Controller
         // separately, discounts reduce what the customer owes. We
         // recompute the final figure here rather than mutating
         // `order_amount` so historical reports aren't disturbed.
+        // Round payable UP to whole Taka — matches the device's
+        // ceil math so a ৳485.48 internal bill takes ৳485 cash
+        // (restaurants don't deal in paisa).
         $orderTotal      = (float) $order->order_amount;
-        $payable         = max(0, $orderTotal - $discount + $tip);
+        $payable         = (float) ceil($orderTotal - $discount + $tip);
+        if ($payable < 0) $payable = 0;
         $changeRequested = (float) ($validated['change_amount'] ?? 0);
         $change          = $changeRequested > 0
             ? $changeRequested
@@ -251,19 +261,33 @@ class WaiterOrderController extends Controller
         }
 
         DB::transaction(function () use ($order, $validated, $tip, $discount, $change, $admin) {
+            // Settle = lifecycle terminal. We close the order on three
+            // axes at once:
+            //   - payment_status='paid' so reports + the active-orders
+            //     filter agree the bill is done
+            //   - order_status='completed' so anyone watching status
+            //     directly (kitchen views, exports, the header badge)
+            //     sees the closed state
+            //   - print_failure_handled_at stamped so the admin panel's
+            //     bottom-sheet escalation drops this row — the order
+            //     has left the kitchen, there's nothing to reprint
             $order->forceFill([
-                'tip_amount'          => $tip > 0 ? $tip : null,
-                'extra_discount'      => $discount > 0 ? $discount : 0,
-                'bring_change_amount' => $change,
-                'payment_status'      => 'paid',
-                'payment_method'      => $validated['payments'][0]['method'] ?? null,
+                'tip_amount'              => $tip > 0 ? $tip : null,
+                'extra_discount'          => $discount > 0 ? $discount : 0,
+                'bring_change_amount'     => $change,
+                'payment_status'          => 'paid',
+                'payment_method'          => $validated['payments'][0]['method'] ?? null,
+                'order_status'            => 'completed',
+                'print_failure_handled_at'=> now(),
+                'print_failure_handled_by'=> $admin->id,
+                'print_failure_reason'    => null,
             ])->save();
 
             // Drop any prior partial-payment rows in case this is a
             // re-checkout after admin cleared an old failed attempt.
-            \App\Model\OrderPartialPayment::where('order_id', $order->id)->delete();
+            \App\Models\OrderPartialPayment::where('order_id', $order->id)->delete();
             foreach ($validated['payments'] as $p) {
-                \App\Model\OrderPartialPayment::create([
+                \App\Models\OrderPartialPayment::create([
                     'order_id'    => $order->id,
                     'paid_with'   => $p['method'],
                     'paid_amount' => (float) $p['amount'],
@@ -370,6 +394,7 @@ class WaiterOrderController extends Controller
             'customer'           => $customer ?: ($order->is_guest ? 'Walk-in' : null),
             'placed_by'          => $placedBy,
             'order_note'         => $order->order_note,
+            'number_of_people'   => $order->number_of_people,
             'printed'            => $print['ok'],
             'print_skipped'      => $print['skipped'],
             'print_deferred'     => (bool) ($print['deferred'] ?? false),
@@ -814,6 +839,14 @@ class WaiterOrderController extends Controller
      */
     private function safelyPrintSupplementary(Order $order, array $newDetailIds, int $round): array
     {
+        // Mirror safelyPrintKot — when print_path=device the cloud
+        // skips its TCP attempt entirely and the waiter app prints
+        // the supplementary KOT over its own LAN connection.
+        $cfg = \App\Services\Printer\ReceiptPrinter::config();
+        if (($cfg['print_path'] ?? 'device') === 'device') {
+            return ['ok' => false, 'skipped' => true, 'deferred' => true, 'error' => null];
+        }
+
         try {
             $result = (new KitchenPrinter())->printSupplementary($order, $newDetailIds, $round);
         } catch (\Throwable $e) {
@@ -823,6 +856,7 @@ class WaiterOrderController extends Controller
             ]);
             $result = ['ok' => false, 'skipped' => false, 'error' => $e->getMessage()];
         }
+        $result['deferred'] = false;
 
         if ($result['ok']) {
             if ($order->print_failure_at !== null && $order->print_failure_handled_at === null) {
@@ -841,6 +875,32 @@ class WaiterOrderController extends Controller
         }
 
         return $result;
+    }
+
+    /**
+     * Header fields the Flutter `KotPaperStripView` needs to render
+     * the meta block — table number/zone, customer, placed_by, guests,
+     * order_type, order_note. Computed once and shipped alongside
+     * `items` in place / append / reprint responses so the device
+     * doesn't need a separate detail fetch before printing.
+     */
+    private function headerForDevice(Order $order, $admin): array
+    {
+        $order->loadMissing(['table:id,number,zone', 'customer:id,f_name,l_name']);
+        $customer = $order->customer
+            ? trim(($order->customer->f_name ?? '') . ' ' . ($order->customer->l_name ?? ''))
+            : null;
+        $placedBy = trim(($admin->f_name ?? '') . ' ' . ($admin->l_name ?? ''));
+        if ($placedBy === '') $placedBy = $admin->email ?? 'Staff';
+        return [
+            'order_type'       => $order->order_type,
+            'table_number'     => $order->table?->number,
+            'table_zone'       => $order->table?->zone,
+            'customer'         => $customer ?: ($order->is_guest ? 'Walk-in' : null),
+            'placed_by'        => $placedBy,
+            'order_note'       => $order->order_note,
+            'number_of_people' => $order->number_of_people,
+        ];
     }
 
     /**

@@ -39,10 +39,33 @@
                          "urgent" = pending/confirmed (must be sent to the
                          kitchen — drives the red pulse), "in flight" = food
                          is being cooked or waiting for the next operator
-                         action. One indexed query per page load. --}}
+                         action. Filter mirrors WaiterActiveOrdersController
+                         so the badge matches the count on the list page —
+                         dine-in orders that are paid disappear from the
+                         badge AND the list at the same time, take-away
+                         orders drop once they hit a terminal status. --}}
                     @php
-                        $activeUrgent  = \App\Model\Order::whereIn('order_status', ['pending', 'confirmed'])->count();
-                        $activeInFlight = \App\Model\Order::whereIn('order_status', ['cooking', 'done', 'processing', 'out_for_delivery'])->count();
+                        $terminalStatuses = ['completed', 'delivered', 'canceled', 'failed', 'refunded', 'refund_requested'];
+                        $branchId = auth('admin')->user()?->branch_id;
+                        $activeQ = function () use ($terminalStatuses) {
+                            return \App\Model\Order::query()
+                                ->where(function ($q) use ($terminalStatuses) {
+                                    $q->where(function ($qq) use ($terminalStatuses) {
+                                        // Dine-in: stay active until the bill is settled.
+                                        $qq->where('order_type', 'dine_in')
+                                           ->where('payment_status', '!=', 'paid')
+                                           ->whereNotIn('order_status', $terminalStatuses);
+                                    })->orWhere(function ($qq) use ($terminalStatuses) {
+                                        // Take-away / delivery / POS: active until terminal.
+                                        $qq->whereIn('order_type', ['pos', 'take_away', 'delivery'])
+                                           ->whereNotIn('order_status', $terminalStatuses);
+                                    });
+                                });
+                        };
+                        $base = $activeQ();
+                        if ($branchId) $base->where('branch_id', $branchId);
+                        $activeUrgent  = (clone $base)->whereIn('order_status', ['pending', 'confirmed'])->count();
+                        $activeInFlight = (clone $base)->whereIn('order_status', ['cooking', 'done', 'processing', 'out_for_delivery'])->count();
                         $activeTotal   = $activeUrgent + $activeInFlight;
                     @endphp
                     <li class="nav-item d-none d-sm-inline-block mr-2">
@@ -73,6 +96,45 @@
                             </a>
                         </li>
                     @endif
+
+                    {{-- Cash Collect — fast lane to the cashier surface.
+                         Badge shows "to do" count = pending submissions
+                         + waiters with cash on the floor. Green so it
+                         reads as cash, distinct from the orange New Sale
+                         and white-or-red Active Orders pills. --}}
+                    @php
+                        $ccBranch = auth('admin')->user()?->branch_id;
+                        $ccPending = \App\Models\CashHandover::query()
+                            ->where('status', 'pending')
+                            ->when($ccBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                            ->count();
+                        // Waiters currently holding cash on the floor — pulled
+                        // from the same query the Live drawers card uses.
+                        $ccLive = \App\Models\OrderPartialPayment::query()
+                            ->whereNull('handover_id')
+                            ->where('paid_with', 'cash')
+                            ->whereHas('order', function ($q) use ($ccBranch) {
+                                $q->where('payment_status', 'paid');
+                                if ($ccBranch) $q->where('branch_id', $ccBranch);
+                            })
+                            ->join('orders', 'orders.id', '=', 'order_partial_payments.order_id')
+                            ->distinct('orders.placed_by_admin_id')
+                            ->count('orders.placed_by_admin_id');
+                        $ccTotal = $ccPending + $ccLive;
+                    @endphp
+                    <li class="nav-item d-none d-sm-inline-block mr-2">
+                        <a href="{{ route('admin.cash-handovers.index') }}"
+                           class="lh-header-action lh-header-cash-collect {{ $ccTotal > 0 ? 'lh-cash-active' : '' }}"
+                           title="{{ translate('Cash Collect') }} — {{ $ccPending }} {{ translate('pending') }}, {{ $ccLive }} {{ translate('on the floor') }}">
+                            <i class="tio-money"></i>
+                            <span class="lh-header-label">{{ translate('Cash Collect') }}</span>
+                            @if($ccTotal > 0)
+                                <span class="lh-header-badge lh-header-badge-cash">{{ $ccTotal }}</span>
+                            @else
+                                <span class="lh-header-badge lh-header-badge-idle">0</span>
+                            @endif
+                        </a>
+                    </li>
 
                     <li class="nav-item d-none d-md-inline-block mr-2">
                         <button type="button"

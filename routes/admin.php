@@ -32,6 +32,8 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\QRCodeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReviewsController;
+use App\Http\Controllers\Admin\CashHandoverController;
+use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\PrintFailureController;
 use App\Http\Controllers\Admin\PrinterController;
 use App\Http\Controllers\Admin\SMSModuleController;
@@ -72,6 +74,25 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('{id}/retry',            [PrintFailureController::class, 'retry'])->whereNumber('id')->name('retry');
             Route::post('{id}/ack-printed',      [PrintFailureController::class, 'ackPrinted'])->whereNumber('id')->name('ack-printed');
             Route::post('{id}/mark-handled',     [PrintFailureController::class, 'markHandled'])->whereNumber('id')->name('mark-handled');
+        });
+
+        // One-off deploy helper — run `migrate --force` + cache clears
+        // from a logged-in admin browser when the host has no shell.
+        // Token-protected so a hijacked admin session alone can't fire it.
+        // REMOVE this trio (controller + blade + routes) after the deploy.
+        Route::group(['prefix' => 'maintenance', 'as' => 'maintenance.'], function () {
+            Route::get('/',    [MaintenanceController::class, 'index'])->name('index');
+            Route::post('run', [MaintenanceController::class, 'run'])->name('run');
+        });
+
+        // Cashier-facing handover surface — list of pending submissions
+        // from waiters, ack button to receive into the drawer.
+        Route::group(['prefix' => 'cash-handovers', 'as' => 'cash-handovers.'], function () {
+            Route::get('/',                       [CashHandoverController::class, 'index'])->name('index');
+            Route::get('pending-json',            [CashHandoverController::class, 'pendingJson'])->name('pending-json');
+            Route::post('{id}/receive',           [CashHandoverController::class, 'receive'])->whereNumber('id')->name('receive');
+            Route::post('{id}/dispute',           [CashHandoverController::class, 'dispute'])->whereNumber('id')->name('dispute');
+            Route::post('collect/{waiterId}',     [CashHandoverController::class, 'collectFromWaiter'])->whereNumber('waiterId')->name('collect');
         });
         Route::get('settings', [SystemController::class, 'settings'])->name('settings');
         Route::post('settings', [SystemController::class, 'settingsUpdate']);
@@ -512,6 +533,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('sale-report', [ReportController::class, 'saleReport'])->name('sale-report');
             Route::post('sale-report-filter', [ReportController::class, 'saleFilter'])->name('sale-report-filter');
             Route::get('export-sale-report', [ReportController::class, 'exportSaleReport'])->name('export-sale-report');
+            Route::get('day-end', [ReportController::class, 'dayEnd'])->name('day-end');
         });
 
         Route::group(['prefix' => 'customer', 'as' => 'customer.', 'middleware' => ['actch', 'module:user_management']], function () {

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Auth\WaiterAuthController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterActiveOrdersController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterConfigController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterCustomerController;
+use App\Http\Controllers\Api\V1\Waiter\WaiterHandoverController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterMenuController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterOrderController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterTableController;
@@ -104,6 +105,13 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             // Active orders + per-order details (Phase 2.5)
             Route::get('orders',              [WaiterActiveOrdersController::class, 'index']);
             Route::get('order/{id}',          [WaiterActiveOrdersController::class, 'show'])->whereNumber('id');
+
+            // Cash drawer + handover (Phase 2.8). GET /handover surfaces
+            // the live drawer (cash + tips not yet handed to cashier),
+            // POST /handover packages the drawer into a pending submission
+            // the cashier can ack from the admin panel.
+            Route::get('handover',            [WaiterHandoverController::class, 'index']);
+            Route::post('handover',           [WaiterHandoverController::class, 'submit']);
 
             // Device-side print plumbing (Phase 2.5.4). Config delivers
             // the printer settings (IP / port / width / print_path) the

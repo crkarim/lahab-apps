@@ -80,6 +80,27 @@
                                 </div>
                             </div>
 
+                            <div class="row g-3 mt-1">
+                                <div class="col-12 col-md-6">
+                                    <label for="printer-profile" class="form-label">{{ translate('Printer profile') }}</label>
+                                    <select id="printer-profile" name="profile" class="form-control">
+                                        @php($current = $settings['profile'] ?? 'XP-N160I')
+                                        <option value="XP-N160I" @selected($current === 'XP-N160I')>XP-N160I (Xprinter / generic 80mm — recommended fallback)</option>
+                                        <option value="RP326"    @selected($current === 'RP326')>RP326 (Rongta RP3xx series — closest to RP328)</option>
+                                        <option value="RP80USE"  @selected($current === 'RP80USE')>RP80USE (Rongta generic 80mm)</option>
+                                        <option value="TP806L"   @selected($current === 'TP806L')>TP806L (HPRT)</option>
+                                        <option value="ZKP8001"  @selected($current === 'ZKP8001')>ZKP8001 (ZKTeco)</option>
+                                        <option value="TM-P80"   @selected($current === 'TM-P80')>TM-P80 (Epson)</option>
+                                        <option value="CT-S651"  @selected($current === 'CT-S651')>CT-S651 (Citizen)</option>
+                                        <option value="NT-5890K" @selected($current === 'NT-5890K')>NT-5890K (58mm)</option>
+                                        <option value="default"  @selected($current === 'default')>default (basic ESC/POS)</option>
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        {{ translate('Controls which ESC/POS dialect the device uses. If your KOTs print as plain text without bold / big text, switch to a different profile until the layout looks right.') }}
+                                    </small>
+                                </div>
+                            </div>
+
                             <div class="d-flex gap-2 mt-4">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="tio-save mr-1"></i> {{ translate('Save settings') }}

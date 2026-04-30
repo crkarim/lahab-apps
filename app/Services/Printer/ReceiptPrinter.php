@@ -49,6 +49,12 @@ class ReceiptPrinter
         $val = is_array($raw) ? $raw : (json_decode((string) $raw, true) ?: []);
         $path = (string) ($val['print_path'] ?? 'device');
         if (!in_array($path, ['device', 'server'], true)) $path = 'device';
+        // Capability profile name resolved by esc_pos_utils on the
+        // device. `XP-N160I` is the most broadly compatible default for
+        // generic Chinese 80mm clones — `default` honours fewer style
+        // commands and tends to produce plain-text output on no-name
+        // printers. Any name from `capabilities.json` is valid.
+        $profile = (string) ($val['profile'] ?? 'XP-N160I');
         return [
             'ip'              => $val['ip']              ?? '',
             'port'            => (int) ($val['port']     ?? 9100),
@@ -56,6 +62,7 @@ class ReceiptPrinter
             'width_chars'     => (int) ($val['width_chars'] ?? 48),
             'timeout_seconds' => (int) ($val['timeout_seconds'] ?? 5),
             'print_path'      => $path,
+            'profile'         => $profile,
         ];
     }
 

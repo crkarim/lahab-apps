@@ -65,13 +65,28 @@
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span class="text-truncate sidebar--badge-container">
                                                 {{ translate('Active Orders') }}
-                                                {{-- Count of every order still needing the operator's
-                                                     attention — across dine-in, delivery, and
-                                                     take-away. Mirrors the All-tab count on the
-                                                     Active Orders page. --}}
-                                                <span class="badge badge-soft-success badge-pill ml-1">
-                                                    {{ \App\Model\Order::whereNotIn('order_status', ['completed', 'delivered', 'canceled', 'failed', 'refunded', 'refund_requested'])->count() }}
-                                                </span>
+                                                {{-- Active = same filter as the page itself uses:
+                                                     dine-in NOT paid + non-terminal status, OR
+                                                     take-away/delivery/pos with non-terminal status.
+                                                     Branch-scoped admins see their own branch only. --}}
+                                                @php
+                                                    $sbTerminal = ['completed', 'delivered', 'canceled', 'failed', 'refunded', 'refund_requested'];
+                                                    $sbBranch = auth('admin')->user()?->branch_id;
+                                                    $sbCount = \App\Model\Order::query()
+                                                        ->where(function ($q) use ($sbTerminal) {
+                                                            $q->where(function ($qq) use ($sbTerminal) {
+                                                                $qq->where('order_type', 'dine_in')
+                                                                   ->where('payment_status', '!=', 'paid')
+                                                                   ->whereNotIn('order_status', $sbTerminal);
+                                                            })->orWhere(function ($qq) use ($sbTerminal) {
+                                                                $qq->whereIn('order_type', ['pos', 'take_away', 'delivery'])
+                                                                   ->whereNotIn('order_status', $sbTerminal);
+                                                            });
+                                                        })
+                                                        ->when($sbBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                        ->count();
+                                                @endphp
+                                                <span class="badge badge-soft-success badge-pill ml-1">{{ $sbCount }}</span>
                                             </span>
                                         </a>
                                     </li>
@@ -83,6 +98,24 @@
                                                 <span class="badge badge-soft-info badge-pill ml-1">
                                                     {{ \App\Model\Order::whereIn('order_type', ['pos', 'dine_in'])->count() }}
                                                 </span>
+                                            </span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item {{ Request::is('admin/cash-handovers*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.cash-handovers.index') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate sidebar--badge-container">
+                                                {{ translate('Cash Collect') }}
+                                                @php
+                                                    $sbCashBranch = auth('admin')->user()?->branch_id;
+                                                    $pendingHandovers = \App\Models\CashHandover::query()
+                                                        ->where('status', 'pending')
+                                                        ->when($sbCashBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                        ->count();
+                                                @endphp
+                                                @if($pendingHandovers > 0)
+                                                    <span class="badge badge-soft-warning badge-pill ml-1">{{ $pendingHandovers }}</span>
+                                                @endif
                                             </span>
                                         </a>
                                     </li>
@@ -276,6 +309,12 @@
                                         <a class="nav-link" href="{{ route('admin.report.product-report') }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
                                             <span class="text-truncate">{{ translate('Products') }}</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item {{ Request::is('admin/report/day-end*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.report.day-end') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('Day-End Report') }}</span>
                                         </a>
                                     </li>
                                 </ul>

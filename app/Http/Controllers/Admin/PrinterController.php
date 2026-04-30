@@ -34,6 +34,7 @@ class PrinterController extends Controller
             'width_chars' => 'nullable|integer|min:24|max:64',
             'enabled'     => 'nullable|boolean',
             'print_path'  => 'nullable|in:device,server',
+            'profile'     => 'nullable|string|max:64',
         ]);
 
         if ($validator->fails()) {
@@ -47,6 +48,7 @@ class PrinterController extends Controller
             'width_chars'     => (int) $request->input('width_chars', 48),
             'enabled'         => (bool) $request->input('enabled', false),
             'print_path'      => (string) $request->input('print_path', 'device'),
+            'profile'         => trim((string) $request->input('profile', 'XP-N160I')) ?: 'XP-N160I',
             'timeout_seconds' => 5,
         ]);
 

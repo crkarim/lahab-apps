@@ -37,6 +37,7 @@ class WaiterConfigController extends Controller
                 'port'        => $cfg['port'],
                 'width_chars' => $cfg['width_chars'],
                 'print_path'  => $cfg['print_path'],
+                'profile'     => $cfg['profile'],
             ],
             'branch_id' => $admin->branch_id,
         ]);

@@ -136,6 +136,132 @@ class ReportController extends Controller
     }
 
     /**
+     * Day-End Report — close-of-day reconciliation surface for the
+     * cashier. Three sections: top-line summary (orders, gross, tips,
+     * net), per-method payment breakdown (cash / card / bKash / etc.
+     * — to match the drawer at close), and per-waiter sheet
+     * (orders + revenue + tips for tip distribution).
+     *
+     * Branch scoping: HQ admins (admins.branch_id IS NULL) can pick
+     * "all" or a specific branch via the dropdown. Branch-scoped admins
+     * see their own branch only.
+     *
+     * NOTE: report scopes "all sales today" — once Shifts ship, retro-fit
+     * by adding a `shift_id` filter and joining `orders.shift_id`.
+     */
+    public function dayEnd(Request $request): Renderable
+    {
+        $admin = auth('admin')->user();
+        $forcedBranch = $admin?->branch_id;
+
+        $date = $request->query('date')
+            ? Carbon::parse($request->query('date'))
+            : Carbon::today();
+        $branchId = $forcedBranch ?? $request->query('branch_id', 'all');
+
+        $start = (clone $date)->startOfDay();
+        $end   = (clone $date)->endOfDay();
+
+        $orders = Order::query()
+            ->with(['order_partial_payments', 'placedBy:id,f_name,l_name', 'branch:id,name'])
+            ->whereBetween('created_at', [$start, $end])
+            ->where('payment_status', 'paid')
+            ->when($branchId !== 'all', fn ($q) => $q->where('branch_id', $branchId))
+            ->get();
+
+        // Summary (top-line totals)
+        $orderCount = $orders->count();
+        $grossSales = $orders->sum(fn ($o) => (float) $o->order_amount);
+        $totalTax   = $orders->sum(fn ($o) => (float) ($o->total_tax_amount ?? 0));
+        $totalDiscount = $orders->sum(fn ($o) =>
+            (float) ($o->extra_discount ?? 0)
+            + (float) ($o->coupon_discount_amount ?? 0)
+            + (float) ($o->referral_discount ?? 0)
+        );
+        $totalTips  = $orders->sum(fn ($o) => (float) ($o->tip_amount ?? 0));
+
+        // Per-method payment breakdown (the cashier's reconciliation target).
+        // Sums OrderPartialPayment.paid_amount grouped by paid_with so the
+        // numbers match what's actually in the drawer / at the gateway.
+        $payments = [];
+        foreach ($orders as $o) {
+            foreach ($o->order_partial_payments as $p) {
+                $key = $p->paid_with ?: 'unknown';
+                $payments[$key] = ($payments[$key] ?? 0) + (float) $p->paid_amount;
+            }
+            // Orders without partial payment rows fall back to payment_method.
+            if ($o->order_partial_payments->isEmpty() && $o->payment_method) {
+                $payable = (float) $o->order_amount + (float) ($o->tip_amount ?? 0);
+                $payments[$o->payment_method] = ($payments[$o->payment_method] ?? 0) + $payable;
+            }
+        }
+        ksort($payments);
+
+        // Per-waiter sheet — tip distribution lives here.
+        $waiters = [];
+        foreach ($orders as $o) {
+            $waiterId = $o->placed_by_admin_id ?? 0;
+            $name = $o->placedBy
+                ? trim(($o->placedBy->f_name ?? '') . ' ' . ($o->placedBy->l_name ?? ''))
+                : 'Unassigned';
+            if (!isset($waiters[$waiterId])) {
+                $waiters[$waiterId] = ['name' => $name ?: 'Unassigned', 'orders' => 0, 'revenue' => 0, 'tips' => 0];
+            }
+            $waiters[$waiterId]['orders']++;
+            $waiters[$waiterId]['revenue'] += (float) $o->order_amount;
+            $waiters[$waiterId]['tips']    += (float) ($o->tip_amount ?? 0);
+        }
+        uasort($waiters, fn ($a, $b) => $b['revenue'] <=> $a['revenue']);
+
+        $branches = $forcedBranch
+            ? \App\Model\Branch::where('id', $forcedBranch)->get(['id', 'name'])
+            : \App\Model\Branch::orderBy('name')->get(['id', 'name']);
+
+        // Handover reconciliation — surfaces three signals at the bottom
+        // of the report:
+        //   - cash submitted by waiters today (sum of cash_handovers.total_cash + total_tips)
+        //   - cash received by cashier today (same, scoped to status=received)
+        //   - any handovers still pending (red flag — money in flight)
+        $handoverScope = \App\Models\CashHandover::query()
+            ->whereBetween('submitted_at', [$start, $end])
+            ->when($branchId !== 'all', fn ($q) => $q->where('branch_id', $branchId));
+        // total_tips is a slice of total_cash, not additive. Drawer
+        // figure is total_cash alone — that's the actual money.
+        $hSubmitted = (clone $handoverScope)->sum('total_cash');
+        $hReceived  = (clone $handoverScope)->where('status', 'received')->sum('total_cash');
+        $hPendingRows = (clone $handoverScope)
+            ->where('status', 'pending')
+            ->with('waiter:id,f_name,l_name')
+            ->orderByDesc('submitted_at')
+            ->get();
+        $hDisputedRows = (clone $handoverScope)
+            ->where('status', 'disputed')
+            ->with(['waiter:id,f_name,l_name', 'cashier:id,f_name,l_name'])
+            ->orderByDesc('updated_at')
+            ->get();
+
+        return view('admin-views.report.day-end', [
+            'date'           => $date->format('Y-m-d'),
+            'dateHuman'      => $date->format('d M Y'),
+            'branchId'       => $branchId,
+            'forcedBranch'   => $forcedBranch,
+            'branches'       => $branches,
+            'orderCount'     => $orderCount,
+            'grossSales'     => $grossSales,
+            'totalTax'       => $totalTax,
+            'totalDiscount'  => $totalDiscount,
+            'totalTips'      => $totalTips,
+            'netSales'       => $grossSales + $totalTips - $totalDiscount,
+            'payments'       => $payments,
+            'waiters'        => array_values($waiters),
+            'hSubmitted'     => (float) $hSubmitted,
+            'hReceived'      => (float) $hReceived,
+            'hPendingRows'   => $hPendingRows,
+            'hDisputedRows'  => $hDisputedRows,
+        ]);
+    }
+
+    /**
      * @param Request $request
      * @return JsonResponse
      */

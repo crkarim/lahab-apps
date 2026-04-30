@@ -455,6 +455,39 @@
             background: #f0f0f4;
             color: #8a8a92;
         }
+        /* Cash Collect pill — green, distinct from the orange brand
+           pills above. Goes solid green when there's something to do
+           so a cashier glancing at the header sees their queue. */
+        .lh-header-cash-collect {
+            background: #ffffff;
+            color: #1E8E3E;
+            border-color: #c5e6cf !important;
+        }
+        .lh-header-cash-collect:hover {
+            background: #f1faf2;
+            border-color: #1E8E3E !important;
+            color: #166D2E;
+        }
+        .lh-header-cash-collect.lh-cash-active {
+            background: #1E8E3E;
+            color: #fff;
+            border-color: #1E8E3E !important;
+            box-shadow: 0 4px 10px -4px rgba(30, 142, 62, 0.5);
+        }
+        .lh-header-cash-collect.lh-cash-active i { color: #fff; }
+        .lh-header-cash-collect.lh-cash-active:hover {
+            background: #166D2E;
+            color: #fff;
+        }
+        .lh-header-badge-cash {
+            background: #fff;
+            color: #1E8E3E;
+            font-weight: 800;
+        }
+        .lh-header-cash-collect:not(.lh-cash-active) .lh-header-badge-cash {
+            background: #1E8E3E;
+            color: #fff;
+        }
 
         @keyframes lh-badge-pop {
             0%, 100% { transform: scale(1); }
