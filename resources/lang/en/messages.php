@@ -3402,4 +3402,6 @@
   'Cash Collect' => 'Cash Collect',
   'Cash floating on the floor + waiter submissions awaiting your acknowledgement.' => 'Cash floating on the floor + waiter submissions awaiting your acknowledgement.',
   'No unsubmitted cash on the floor.' => 'No unsubmitted cash on the floor.',
+  'Kitchen Scan' => 'Kitchen Scan',
+  'Receive' => 'Receive',
 );

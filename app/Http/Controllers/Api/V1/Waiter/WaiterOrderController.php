@@ -233,6 +233,12 @@ class WaiterOrderController extends Controller
             // automatically appear in the report's payment breakdown.
             'payments.*.method'=> 'required|in:cash,card,wallet_payment,bkash,nagad,rocket',
             'payments.*.amount'=> 'required|numeric|min:0',
+            // Receipt delivery preference (Phase 2 closure):
+            //   print — auto-print on device only (default; current behaviour)
+            //   sms   — fire SMS to customer phone via the existing gateway
+            //   both  — print + SMS
+            //   none  — settle silently (no paper, no SMS)
+            'delivery'         => 'nullable|in:print,sms,both,none',
         ]);
 
         $tip      = (float) ($validated['tip_amount'] ?? 0);
@@ -297,6 +303,16 @@ class WaiterOrderController extends Controller
         });
 
         $order->refresh();
+
+        // Receipt delivery — print is auto-handled by the device when
+        // delivery=print|both. SMS we fire here using the existing
+        // admin-panel SMSModule (same gateway as OTP / order alerts).
+        $delivery = (string) ($validated['delivery'] ?? 'print');
+        $smsResult = null; // 'success' | 'error' | 'not_found' | 'no_phone' | null
+        if (in_array($delivery, ['sms', 'both'], true)) {
+            $smsResult = $this->fireReceiptSms($order);
+        }
+
         return response()->json([
             'success'        => true,
             'order_id'       => $order->id,
@@ -307,9 +323,52 @@ class WaiterOrderController extends Controller
             'payable'        => (float) $payable,
             'tendered'       => (float) $tendered,
             'change_amount'  => (float) $change,
+            'delivery'       => $delivery,
+            'sms_result'     => $smsResult,
             'receipt'        => $this->receiptPayload($order, $tip, $discount, $payable, $change, $validated['payments']),
             'message'        => 'Payment recorded.',
         ]);
+    }
+
+    /**
+     * Send the customer their receipt via SMS using the configured
+     * gateway. Mirrors `Admin\CheckoutController::sendReceiptSms` so
+     * messaging stays consistent across surfaces.
+     *
+     * Returns:
+     *   'success'   — gateway accepted the message
+     *   'error'     — gateway returned an error
+     *   'not_found' — no SMS gateway is configured
+     *   'no_phone'  — order has no customer phone to send to
+     */
+    private function fireReceiptSms(Order $order): string
+    {
+        $order->loadMissing('customer:id,phone,f_name,l_name');
+        $phone = $order->customer?->phone;
+        if (empty($phone)) return 'no_phone';
+
+        // Make sure we have a receipt_token — dine-in orders skip
+        // setting this at place-order time; mint on demand here so the
+        // SMS link works.
+        if (empty($order->receipt_token)) {
+            $order->forceFill(['receipt_token' => \Illuminate\Support\Str::random(32)])->save();
+        }
+
+        $name  = Helpers::get_business_settings('restaurant_name') ?: config('app.name');
+        $total = Helpers::set_symbol($order->order_amount + (float) ($order->tip_amount ?? 0));
+        $link  = route('receipt.show', ['token' => $order->receipt_token]);
+        $msg   = "Thanks for dining at {$name}! Total {$total}. Receipt: {$link}";
+
+        try {
+            $result = \App\CentralLogics\SMSModule::send($phone, $msg);
+            return in_array($result, ['success', 'error', 'not_found'], true) ? $result : 'error';
+        } catch (\Throwable $e) {
+            \Log::warning('Waiter checkout SMS error', [
+                'order_id' => $order->id,
+                'error'    => $e->getMessage(),
+            ]);
+            return 'error';
+        }
     }
 
     /**

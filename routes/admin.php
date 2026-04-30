@@ -33,6 +33,7 @@ use App\Http\Controllers\Admin\QRCodeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReviewsController;
 use App\Http\Controllers\Admin\CashHandoverController;
+use App\Http\Controllers\Admin\KitchenScanController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\PrintFailureController;
 use App\Http\Controllers\Admin\PrinterController;
@@ -87,6 +88,14 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // Cashier-facing handover surface — list of pending submissions
         // from waiters, ack button to receive into the drawer.
+        // Kitchen-side scan-to-ready surface (Phase 3a). Single
+        // page + endpoint — kitchen scans the printed KOT barcode,
+        // order flips to 'ready', waiter gets an FCM push.
+        Route::group(['prefix' => 'kitchen', 'as' => 'kitchen.'], function () {
+            Route::get('scan',  [KitchenScanController::class, 'index'])->name('scan.index');
+            Route::post('scan', [KitchenScanController::class, 'scan'])->name('scan');
+        });
+
         Route::group(['prefix' => 'cash-handovers', 'as' => 'cash-handovers.'], function () {
             Route::get('/',                       [CashHandoverController::class, 'index'])->name('index');
             Route::get('pending-json',            [CashHandoverController::class, 'pendingJson'])->name('pending-json');

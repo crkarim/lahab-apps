@@ -30,6 +30,7 @@ class Order extends Model
         'print_failure_at' => 'datetime',
         'print_failure_handled_at' => 'datetime',
         'kot_native_printed_at' => 'datetime',
+        'ready_at' => 'datetime',
         'delivery_address' => 'array',
         'table_id' => 'integer',
         'number_of_people' => 'integer',
@@ -67,6 +68,9 @@ class Order extends Model
         'kot_native_printed_by',
         // Waiter checkout (Phase 2.6).
         'tip_amount',
+        // Kitchen-ready audit (Phase 3a).
+        'ready_at',
+        'ready_by_admin_id',
     ];
 
     public function details(): HasMany

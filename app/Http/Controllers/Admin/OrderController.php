@@ -385,11 +385,28 @@ class OrderController extends Controller
             }
         }
 
+        $previousStatus = $order->getOriginal('order_status');
         $order->order_status = $request->order_status;
         if ($request->order_status == 'delivered') {
             $order->payment_status = 'paid';
         }
+        // Stamp ready audit fields when admin manually flips to ready
+        // (mirrors KitchenScanController's scan path).
+        if ($request->order_status === 'ready' && $previousStatus !== 'ready') {
+            $order->ready_at = now();
+            $order->ready_by_admin_id = auth('admin')->user()?->id;
+        }
         $order->save();
+
+        // Waiter notifications. `ready` → branch topic, `canceled` →
+        // per-waiter (only the placing waiter cares; they likely told
+        // the customer it was coming and need to apologize/refund).
+        // Skip on no-op transitions to avoid double pushes.
+        if ($request->order_status === 'ready' && $previousStatus !== 'ready') {
+            \App\CentralLogics\WaiterPushHelper::pushOrderReady($order);
+        } elseif ($request->order_status === 'canceled' && $previousStatus !== 'canceled') {
+            \App\CentralLogics\WaiterPushHelper::pushOrderCanceled($order);
+        }
 
         if ($request->order_status == 'out_for_delivery' && $order->delivery_man_id != null) {
             DeliveryHistory::updateOrInsert(

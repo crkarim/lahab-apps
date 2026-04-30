@@ -101,6 +101,24 @@
                                             </span>
                                         </a>
                                     </li>
+                                    <li class="nav-item {{ Request::is('admin/kitchen/scan*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.kitchen.scan.index') }}" target="_blank">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate sidebar--badge-container">
+                                                {{ translate('Kitchen Scan') }}
+                                                @php
+                                                    $sbKitchenBranch = auth('admin')->user()?->branch_id;
+                                                    $cookingCount = \App\Model\Order::query()
+                                                        ->where('order_status', 'cooking')
+                                                        ->when($sbKitchenBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                        ->count();
+                                                @endphp
+                                                @if($cookingCount > 0)
+                                                    <span class="badge badge-soft-warning badge-pill ml-1">{{ $cookingCount }}</span>
+                                                @endif
+                                            </span>
+                                        </a>
+                                    </li>
                                     <li class="nav-item {{ Request::is('admin/cash-handovers*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('admin.cash-handovers.index') }}">
                                             <span class="tio-circle nav-indicator-icon"></span>

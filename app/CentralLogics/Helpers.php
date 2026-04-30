@@ -409,6 +409,16 @@ class Helpers
 
     public static function send_push_notif_to_topic($data, $topic, $type, ?string $web_push_link = null, $isNotificationPayloadRemove = false)
     {
+        // Waiter-app event types must ride the loud kitchen-ready
+        // channel even when the app is in background/killed and FCM
+        // (not flutter_local_notifications) renders the toast — without
+        // an `android.notification.channel_id`, FCM falls back to the
+        // default channel which has soft sound and low importance.
+        // Channel id MUST match the one created in
+        // notification_helper.dart `_orderReadyChannelId`.
+        $waiterLoudTypes = ['order_ready', 'order_canceled', 'handover_received', 'handover_collected'];
+        $androidChannelId = in_array($type, $waiterLoudTypes, true) ? 'lahab_kot_ready' : null;
+
         $postData = [
             'message' => [
                 "topic" => $topic,
@@ -436,6 +446,16 @@ class Helpers
                 ],
             ]
         ];
+
+        if ($androidChannelId !== null) {
+            $postData['message']['android'] = [
+                'notification' => [
+                    'channel_id' => $androidChannelId,
+                    'sound'      => 'notification', // raw resource name
+                    'priority'   => 'PRIORITY_MAX',
+                ],
+            ];
+        }
 
         return self::sendNotificationToHttp($postData);
     }

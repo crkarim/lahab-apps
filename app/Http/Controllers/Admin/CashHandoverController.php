@@ -89,6 +89,11 @@ class CashHandoverController extends Controller
             'status'      => 'received',
         ]);
 
+        // Tell the placing waiter their cash was settled — closes the
+        // loop so they don't refresh the drawer wondering if the
+        // handshake completed.
+        \App\CentralLogics\WaiterPushHelper::pushHandoverReceived($handover->fresh());
+
         return back()->with('success', 'Handover received · ৳' . number_format($handover->total, 2) . ' added to drawer.');
     }
 
@@ -165,6 +170,10 @@ class CashHandoverController extends Controller
         if (!$handover) {
             return back()->with('error', 'Waiter has no unsubmitted cash on the floor.');
         }
+
+        // Push to the waiter — they may not have asked for collection,
+        // so without this they'd only learn about it on next refresh.
+        \App\CentralLogics\WaiterPushHelper::pushHandoverCollected($handover);
 
         $name = trim(($waiter->f_name ?? '') . ' ' . ($waiter->l_name ?? '')) ?: 'waiter';
         return back()->with('success',
