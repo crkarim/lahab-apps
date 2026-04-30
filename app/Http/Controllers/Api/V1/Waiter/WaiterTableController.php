@@ -48,16 +48,20 @@ class WaiterTableController extends Controller
             ->get(['id', 'table_id', 'order_status', 'placed_by_admin_id', 'created_at'])
             ->groupBy('table_id');
 
+        // Explicit int casts — older cPanel PDO drivers (no native_typing)
+        // return integer columns as strings, which then trips the Flutter
+        // model's `as num` cast. Cast at the boundary so the wire format
+        // is always strict-int regardless of driver behaviour.
         $payload = $tables->map(function ($t) use ($openOrders) {
             $rows = $openOrders->get($t->id);
             $row  = $rows?->first();
             return [
-                'id'         => $t->id,
-                'number'     => $t->number,
+                'id'         => (int) $t->id,
+                'number'     => (string) $t->number,
                 'zone'       => $t->zone,
-                'capacity'   => $t->capacity,
+                'capacity'   => $t->capacity !== null ? (int) $t->capacity : null,
                 'occupied'   => (bool) $row,
-                'order_id'   => $row?->id,
+                'order_id'   => $row ? (int) $row->id : null,
                 'order_age'  => $row?->created_at?->diffForHumans(),
                 'owner_name' => $row?->placedBy
                     ? trim(($row->placedBy->f_name ?? '') . ' ' . ($row->placedBy->l_name ?? ''))
@@ -67,7 +71,7 @@ class WaiterTableController extends Controller
         });
 
         return response()->json([
-            'branch_id'   => $admin->branch_id,
+            'branch_id'   => (int) $admin->branch_id,
             'branch_name' => $admin->branch?->name,
             'tables'      => $payload,
         ]);
