@@ -107,6 +107,14 @@ class LoginController extends Controller
         }
 
         if (auth('admin')->attempt(['email' => $request->email, 'password' => $request->password], $request->remember)) {
+            // Kitchen-only roles (Chef) jump straight to the scan
+            // surface — they don't have access to dashboard widgets
+            // anyway and would just bounce back to the same page.
+            $role = auth('admin')->user()->role;
+            if ($role && strcasecmp($role->name, 'Chef') === 0
+                && \Illuminate\Support\Facades\Route::has('admin.kitchen.scan.index')) {
+                return redirect()->route('admin.kitchen.scan.index');
+            }
             return redirect()->route('admin.dashboard');
         }
 

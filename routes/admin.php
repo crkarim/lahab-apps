@@ -92,7 +92,14 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // page + endpoint — kitchen scans the printed KOT barcode,
         // order flips to 'ready', waiter gets an FCM push.
         if (class_exists(KitchenScanController::class)) {
-            Route::group(['prefix' => 'kitchen', 'as' => 'kitchen.'], function () {
+            // `module:kitchen_management` lets us grant kitchen-only
+            // logins (Chef role) without exposing orders/settings.
+            // Master Admin role (id=1) bypasses this check anyway.
+            Route::group([
+                'prefix' => 'kitchen',
+                'as' => 'kitchen.',
+                'middleware' => 'module:kitchen_management',
+            ], function () {
                 Route::get('scan',         [KitchenScanController::class, 'index'])->name('scan.index');
                 Route::post('scan',        [KitchenScanController::class, 'scan'])->name('scan');
                 Route::get('cooking-json', [KitchenScanController::class, 'cookingJson'])->name('cooking-json');
