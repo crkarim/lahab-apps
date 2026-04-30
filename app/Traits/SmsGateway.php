@@ -92,7 +92,7 @@ trait  SmsGateway
         $config = self::get_settings('twilio');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = \App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp);
             $sid = $config['sid'];
             $token = $config['token'];
             try {
@@ -117,7 +117,7 @@ trait  SmsGateway
         $config = self::get_settings('nexmo');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = \App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp);
             try {
                 $ch = curl_init();
 
@@ -212,7 +212,7 @@ trait  SmsGateway
             $curl = curl_init();
             $from = $config['from'];
             $to = $receiver;
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = \App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp);
 
             try {
                 curl_setopt_array($curl, array(
@@ -246,7 +246,7 @@ trait  SmsGateway
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
             $receiver = str_replace("+", "", $receiver);
-            $message = urlencode(str_replace("#OTP#", $otp, $config['otp_template']));
+            $message = urlencode(\App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp));
             $client_id = $config['client_id'];
             $client_secret = $config['client_secret'];
             $sender_id = $config['sender_id'];
@@ -360,7 +360,7 @@ trait  SmsGateway
         if (isset($config) && $config['status'] == 1) {
             $curl = curl_init();
             $key = $config['api']['key'];
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = \App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp);
             curl_setopt_array($curl, array(
                 CURLOPT_URL => "https://www.019sms.co.il/api",
                 CURLOPT_RETURNTRANSFER => true,
@@ -443,7 +443,7 @@ trait  SmsGateway
         $config = self::get_settings('viatech');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = \App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp);
             $api_key = $config['api_key'];
             $sender_id = $config['sender_id'];
             $url = $config['api_url'];
@@ -480,7 +480,7 @@ trait  SmsGateway
         $response = 'error';
 
         if (isset($config) && $config['status'] == 1) {
-            $message = urlencode(urlencode(urlencode(str_replace("#OTP#", $otp, $config['otp_template']))));
+            $message = urlencode(urlencode(urlencode(\App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp))));
             $user = $config['user_name'];
             $password = $config['password'];
             $from = $config['from'];
@@ -501,7 +501,7 @@ trait  SmsGateway
         $config = self::get_settings('akandit_sms');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = \App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp);
             $username = $config['username'];
             $password = $config['password'];
             try {
@@ -541,7 +541,7 @@ trait  SmsGateway
         $config = self::get_settings('sms_to');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = \App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp);
             $sender_id = $config['sender_id'];
             $api_key = $config['api_key'];
 
@@ -583,7 +583,7 @@ trait  SmsGateway
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
             $receiver = str_replace("+", "", $receiver);
-            $message = str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = \App\CentralLogics\SMSModule::applyOtpTemplate($config['otp_template'], $otp);
             $api_key = $config['api_key'];
 
             $curl = curl_init();

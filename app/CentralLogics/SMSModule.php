@@ -66,7 +66,7 @@ class SMSModule
             // template so the link survives intact. OTP path keeps the
             // legacy substitution for backwards-compat with existing
             // admin-configured templates.
-            $message = $raw ? (string) $otp : str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = $raw ? (string) $otp : self::applyOtpTemplate($config['otp_template'], $otp);
             $sid = $config['sid'];
             $token = $config['token'];
             try {
@@ -91,7 +91,7 @@ class SMSModule
         $config = self::get_settings('nexmo');
         $response = 'error';
         if (isset($config) && $config['status'] == 1) {
-            $message = $raw ? (string) $otp : str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = $raw ? (string) $otp : self::applyOtpTemplate($config['otp_template'], $otp);
             try {
                 $ch = curl_init();
 
@@ -224,7 +224,7 @@ class SMSModule
             $receiver = str_replace("+", "", $receiver);
             // Free-text BD provider — receipts pass through unchanged
             // when $raw is true, so the receipt link stays clickable.
-            $message = $raw ? (string) $otp : str_replace("#OTP#", $otp, $config['otp_template']);
+            $message = $raw ? (string) $otp : self::applyOtpTemplate($config['otp_template'], $otp);
             $api_key = $config['api_key'];
 
             $curl = curl_init();
@@ -258,5 +258,32 @@ class SMSModule
             return json_decode($config->live_values, true);
         }
         return null;
+    }
+
+    /**
+     * Apply the configured `otp_template` while tolerating different
+     * placeholder formats — `#OTP#`, `{OTP}`, `{{OTP}}`, `%OTP%`, lower
+     * or upper case. If none is present in the template, append the
+     * OTP at the end as a last resort so the user still receives the
+     * code instead of a placeholder string.
+     *
+     * Public so the trait `App\Traits\SmsGateway` can reuse the same
+     * resolver — we want OTP and receipt SMS behaviour aligned across
+     * both stacks.
+     */
+    public static function applyOtpTemplate(?string $template, string $otp): string
+    {
+        if ($template === null || $template === '') return $otp;
+        // Longest patterns first — `{{OTP}}` must beat `{OTP}` so the
+        // double-brace form doesn't leave a stray brace pair behind.
+        $patterns = ['{{OTP}}', '{{otp}}', '#OTP#', '#otp#', '{OTP}', '{otp}', '%OTP%', '%otp%'];
+        foreach ($patterns as $p) {
+            if (strpos($template, $p) !== false) {
+                return str_replace($p, $otp, $template);
+            }
+        }
+        // No known placeholder — append the OTP so the message at least
+        // contains the code (better than a mute "Your OTP is" template).
+        return rtrim($template) . ' ' . $otp;
     }
 }
