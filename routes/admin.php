@@ -33,6 +33,7 @@ use App\Http\Controllers\Admin\QRCodeController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReviewsController;
 use App\Http\Controllers\Admin\CashHandoverController;
+use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\KitchenScanController;
 use App\Http\Controllers\Admin\ShiftController;
 use App\Http\Controllers\Admin\MaintenanceController;
@@ -126,6 +127,17 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::post('open',          [ShiftController::class, 'open'])->name('open');
                 Route::post('{id}/close',    [ShiftController::class, 'close'])->whereNumber('id')->name('close');
                 Route::post('{id}/payout',   [ShiftController::class, 'payout'])->whereNumber('id')->name('payout');
+            });
+        }
+
+        // HRM Phase 1 — Attendance ledger. Same class_exists guard so a
+        // stale composer classmap can't crash boot.
+        if (class_exists(AttendanceController::class)) {
+            Route::group(['prefix' => 'attendance', 'as' => 'attendance.'], function () {
+                Route::get('/',                 [AttendanceController::class, 'index'])->name('index');
+                Route::get('employee/{id}',     [AttendanceController::class, 'employee'])->whereNumber('id')->name('employee');
+                Route::post('clock-in',         [AttendanceController::class, 'clockIn'])->name('clock-in');
+                Route::post('clock-out',        [AttendanceController::class, 'clockOut'])->name('clock-out');
             });
         }
         Route::get('settings', [SystemController::class, 'settings'])->name('settings');

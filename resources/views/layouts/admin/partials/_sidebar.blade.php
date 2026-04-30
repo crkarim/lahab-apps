@@ -147,6 +147,34 @@
                                             </span>
                                         </a>
                                     </li>
+                                    {{-- HRM Phase 1 — Attendance ledger. Route::has-guarded
+                                         alongside the other recently-shipped admin surfaces. --}}
+                                    @if(Route::has('admin.attendance.index'))
+                                    <li class="nav-item {{ Request::is('admin/attendance*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.attendance.index') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate sidebar--badge-container">
+                                                {{ translate('Attendance') }}
+                                                @php
+                                                    $sbAttBranch = auth('admin')->user()?->branch_id;
+                                                    $onDuty = 0;
+                                                    try {
+                                                        $onDuty = \App\Models\AttendanceLog::query()
+                                                            ->whereNull('clock_out_at')
+                                                            ->when($sbAttBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                            ->count();
+                                                    } catch (\Throwable $e) {
+                                                        // Schema mid-migration.
+                                                    }
+                                                @endphp
+                                                @if($onDuty > 0)
+                                                    <span class="badge badge-soft-success badge-pill ml-1">{{ $onDuty }}</span>
+                                                @endif
+                                            </span>
+                                        </a>
+                                    </li>
+                                    @endif
+
                                     {{-- Shift sessions — open/close drawer + variance ledger.
                                          Route::has guard mirrors the Kitchen Scan pattern so a
                                          stale routes-cache doesn't crash the sidebar. --}}

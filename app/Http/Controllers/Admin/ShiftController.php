@@ -141,6 +141,23 @@ class ShiftController extends Controller
             'status'             => 'open',
         ]);
 
+        // HRM hook — opening a shift counts as clocking in for HR
+        // attribution. Skip if the cashier already has an open
+        // attendance row (e.g. they manually clocked earlier in the
+        // day) so we don't double-stamp.
+        try {
+            $alreadyClocked = \App\Models\AttendanceLog::openFor($admin->id);
+            if (!$alreadyClocked) {
+                \App\Models\AttendanceLog::create([
+                    'admin_id'    => $admin->id,
+                    'branch_id'   => $admin->branch_id,
+                    'clock_in_at' => now(),
+                    'shift_id'    => $shift->id,
+                    'method'      => 'shift_open',
+                ]);
+            }
+        } catch (\Throwable $e) { /* attendance table missing pre-migration — skip */ }
+
         return redirect()->route('admin.shifts.show', ['id' => $shift->id])
             ->with('success', 'Shift opened — drawer is now live.');
     }
@@ -182,6 +199,22 @@ class ShiftController extends Controller
             'notes'              => $validated['notes'] ?? $shift->notes,
             'status'             => 'closed',
         ])->save();
+
+        // HRM hook — closing the shift counts as clocking out for the
+        // attendance row created at open. Match by shift_id so we
+        // close the right one even if the cashier had additional
+        // manual clock cycles.
+        try {
+            $row = \App\Models\AttendanceLog::query()
+                ->where('shift_id', $shift->id)
+                ->whereNull('clock_out_at')
+                ->latest('clock_in_at')
+                ->first();
+            if ($row) {
+                $row->clock_out_at = now();
+                $row->save();
+            }
+        } catch (\Throwable $e) { /* attendance table missing — skip */ }
 
         $varianceTag = $variance == 0 ? 'No variance' : ($variance > 0 ? 'Surplus ' : 'Shortage ');
         return redirect()->route('admin.shifts.show', ['id' => $shift->id])
