@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Auth\KitchenLoginController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\WaiterAuthController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterActiveOrdersController;
+use App\Http\Controllers\Api\V1\Waiter\WaiterCashAccountController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterConfigController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterCustomerController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterHandoverController;
@@ -90,6 +91,9 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             Route::get('tables',     [WaiterTableController::class, 'index']);
             Route::get('categories', [WaiterMenuController::class, 'categories']);
             Route::get('products',   [WaiterMenuController::class, 'products']);
+
+            // Phase 8.5d — cash accounts list for the checkout picker.
+            Route::get('cash-accounts', [WaiterCashAccountController::class, 'index']);
 
             // Customer-first capture (mirror of admin POS phone-lookup flow).
             Route::post('customer/lookup',      [WaiterCustomerController::class, 'lookup']);

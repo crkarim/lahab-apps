@@ -233,6 +233,12 @@ class WaiterOrderController extends Controller
             // automatically appear in the report's payment breakdown.
             'payments.*.method'=> 'required|in:cash,card,wallet_payment,bkash,nagad,rocket',
             'payments.*.amount'=> 'required|numeric|min:0',
+            // Phase 8.5d — Specific cash account each payment lands in.
+            // Optional for back-compat with older app builds; when sent,
+            // the auto-post service uses it verbatim instead of the
+            // fuzzy method-string fallback. App calls
+            // GET /api/v1/waiter/cash-accounts to populate the picker.
+            'payments.*.cash_account_id' => 'nullable|integer|exists:cash_accounts,id',
             // Receipt delivery preference (Phase 2 closure):
             //   print — auto-print on device only (default; current behaviour)
             //   sms   — fire SMS to customer phone via the existing gateway
@@ -291,16 +297,39 @@ class WaiterOrderController extends Controller
 
             // Drop any prior partial-payment rows in case this is a
             // re-checkout after admin cleared an old failed attempt.
+            // Also drop any matching auto-posted ledger rows so the
+            // re-checkout doesn't double-post the same order.
             \App\Models\OrderPartialPayment::where('order_id', $order->id)->delete();
+            \App\Models\AccountTransaction::query()
+                ->whereIn('ref_type', ['pos_order', 'pos_order_change'])
+                ->where('ref_id', $order->id)
+                ->delete();
+
             foreach ($validated['payments'] as $p) {
                 \App\Models\OrderPartialPayment::create([
-                    'order_id'    => $order->id,
-                    'paid_with'   => $p['method'],
-                    'paid_amount' => (float) $p['amount'],
-                    'due_amount'  => 0,
+                    'order_id'        => $order->id,
+                    'paid_with'       => $p['method'],
+                    'paid_amount'     => (float) $p['amount'],
+                    'due_amount'      => 0,
+                    // Phase 8.5d — specific account, when picker was used.
+                    'cash_account_id' => isset($p['cash_account_id']) && (int) $p['cash_account_id'] > 0
+                        ? (int) $p['cash_account_id'] : null,
                 ]);
             }
         });
+
+        // Phase 8.4 + 8.5 — auto-post the order's payments + change row
+        // to the cash ledger. Idempotent + best-effort: if no account is
+        // mapped, the service logs a warning and the order itself stays
+        // settled. Wrap in try so a ledger hiccup never breaks checkout.
+        try {
+            \App\Services\Accounts\PostOrderPaymentToLedger::for($order->refresh());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Waiter checkout auto-post crashed', [
+                'order_id' => $order->id,
+                'error'    => $e->getMessage(),
+            ]);
+        }
 
         $order->refresh();
 
