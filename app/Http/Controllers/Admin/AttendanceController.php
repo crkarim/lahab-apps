@@ -186,4 +186,120 @@ class AttendanceController extends Controller
 
         return back()->with('success', 'Clocked out · ' . trim($target->f_name . ' ' . $target->l_name));
     }
+
+    /**
+     * Edit an existing attendance row — adjusts clock_in_at,
+     * clock_out_at, and notes. Used by branch managers correcting
+     * a forgotten clock or a wrong entry. Branch-scoped.
+     */
+    public function update(Request $request, int $id): RedirectResponse
+    {
+        $admin = auth('admin')->user();
+        if (!$admin) return back()->with('error', 'Not authenticated.');
+
+        $row = AttendanceLog::query()
+            ->when($admin->branch_id, fn ($q) => $q->where('branch_id', $admin->branch_id))
+            ->find($id);
+        if (!$row) return back()->with('error', 'Attendance row not found in your branch.');
+
+        $validated = $request->validate([
+            'clock_in_at'  => 'required|date',
+            'clock_out_at' => 'nullable|date|after:clock_in_at',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+
+        $row->clock_in_at  = $validated['clock_in_at'];
+        $row->clock_out_at = $validated['clock_out_at'] ?? null;
+        // Append edit note rather than overwriting so the audit trail
+        // survives — operators can see what was changed and why.
+        $editTag = '[edited by ' . trim(($admin->f_name ?? '') . ' ' . ($admin->l_name ?? '')) . ' @ ' . now()->format('d M H:i') . ']';
+        $newNote = $validated['notes'] ?? '';
+        $row->notes = trim(($row->notes ? $row->notes . ' | ' : '') . $editTag . ($newNote !== '' ? ' ' . $newNote : ''));
+        $row->save();
+
+        return back()->with('success', 'Attendance #' . $row->id . ' updated.');
+    }
+
+    /**
+     * Force-close an open row at a custom timestamp — for staff who
+     * forgot to clock out. Quicker than going through the full edit
+     * form when you just need to set the out time.
+     */
+    public function forceClose(Request $request, int $id): RedirectResponse
+    {
+        $admin = auth('admin')->user();
+        if (!$admin) return back()->with('error', 'Not authenticated.');
+
+        $row = AttendanceLog::query()
+            ->when($admin->branch_id, fn ($q) => $q->where('branch_id', $admin->branch_id))
+            ->find($id);
+        if (!$row) return back()->with('error', 'Attendance row not found.');
+        if ($row->clock_out_at) return back()->with('error', 'Row is already closed — use Edit instead.');
+
+        $validated = $request->validate([
+            'clock_out_at' => 'required|date|after:' . $row->clock_in_at,
+            'notes'        => 'nullable|string|max:255',
+        ]);
+
+        $row->clock_out_at = $validated['clock_out_at'];
+        $tag = '[force-closed by ' . trim(($admin->f_name ?? '') . ' ' . ($admin->l_name ?? '')) . ']';
+        $row->notes = trim(($row->notes ? $row->notes . ' | ' : '') . $tag . ($validated['notes'] ?? '' !== '' ? ' ' . ($validated['notes'] ?? '') : ''));
+        $row->save();
+
+        return back()->with('success', 'Force-closed attendance #' . $row->id);
+    }
+
+    /**
+     * Backfill a complete attendance row for a past day — both
+     * clock_in_at and clock_out_at supplied. Admin uses this to
+     * correct missed entries (staff worked but device was offline,
+     * etc.).
+     */
+    public function backdate(Request $request): RedirectResponse
+    {
+        $admin = auth('admin')->user();
+        if (!$admin) return back()->with('error', 'Not authenticated.');
+
+        $validated = $request->validate([
+            'admin_id'     => 'required|integer|exists:admins,id',
+            'clock_in_at'  => 'required|date',
+            'clock_out_at' => 'nullable|date|after:clock_in_at',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+
+        $target = Admin::find($validated['admin_id']);
+        if (!$target) return back()->with('error', 'Employee not found.');
+        if ($admin->branch_id && $target->branch_id !== $admin->branch_id) {
+            return back()->with('error', 'That employee is not in your branch.');
+        }
+
+        $tag = '[backdated by ' . trim(($admin->f_name ?? '') . ' ' . ($admin->l_name ?? '')) . ']';
+        $note = trim($tag . ' ' . ($validated['notes'] ?? ''));
+
+        AttendanceLog::create([
+            'admin_id'     => $target->id,
+            'branch_id'    => $target->branch_id,
+            'clock_in_at'  => $validated['clock_in_at'],
+            'clock_out_at' => $validated['clock_out_at'] ?? null,
+            'method'       => 'manual',
+            'notes'        => $note,
+        ]);
+
+        return back()->with('success', 'Backdated entry recorded for ' . trim($target->f_name . ' ' . $target->l_name));
+    }
+
+    /** Delete an attendance row entirely. Branch-scoped. */
+    public function destroy(int $id): RedirectResponse
+    {
+        $admin = auth('admin')->user();
+        if (!$admin) return back()->with('error', 'Not authenticated.');
+
+        $row = AttendanceLog::query()
+            ->when($admin->branch_id, fn ($q) => $q->where('branch_id', $admin->branch_id))
+            ->find($id);
+        if (!$row) return back()->with('error', 'Attendance row not found.');
+
+        $row->delete();
+        return back()->with('success', 'Attendance #' . $id . ' deleted.');
+    }
 }

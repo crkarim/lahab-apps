@@ -64,7 +64,10 @@
                         <table id="datatable" class="table table-borderless table-thead-bordered table-nowrap table-align-middle card-table">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>{{translate('SL')}}</th>
+                                    <th>{{ translate('SL') }}</th>
+                                    {{-- Employee ID column — what the biometric device's
+                                         User ID maps to. Empty cell = not yet enrolled. --}}
+                                    <th>{{ translate('Employee ID') }}</th>
                                     <th>{{translate('Name')}}</th>
                                     <th>{{translate('Contact_Info')}}</th>
                                     <th>{{translate('Role')}}</th>
@@ -78,6 +81,15 @@
                             @if($employee->role)
                                 <tr>
                                     <td>{{$employees->firstitem()+$k}}</td>
+                                    <td>
+                                        @if($employee->employee_code)
+                                            <span class="badge badge-soft-secondary" style="font-family:monospace; font-weight:700; font-size:12px;">
+                                                {{ $employee->employee_code }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted" style="font-size:11px;">— {{ translate('not set') }} —</span>
+                                        @endif
+                                    </td>
                                     <td class="text-capitalize">
                                         <div class="media align-items-center gap-3">
                                             <div class="avatar">
@@ -113,6 +125,13 @@
                                             title="{{translate('Edit')}}">
                                                 <i class="tio-edit"></i>
                                             </a>
+                                            @if(Route::has('admin.employee.schedule'))
+                                            <a href="{{ route('admin.employee.schedule', [$employee['id']]) }}"
+                                               class="btn btn-outline-warning btn-sm square-btn"
+                                               title="{{ translate('Work schedule') }}">
+                                                <i class="tio-time"></i>
+                                            </a>
+                                            @endif
                                             <a data-id="employee-{{$employee->id}}" data-message="{{translate('want_to_delete_this_employee?')}}"
                                                class="btn btn-outline-danger btn-sm delete square-btn form-alert"
                                                title="{{translate('delete')}}">

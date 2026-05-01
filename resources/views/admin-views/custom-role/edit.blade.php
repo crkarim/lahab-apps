@@ -3,6 +3,7 @@
 @section('title', translate('Edit Role'))
 
 @section('content')
+    @include('admin-views._partials.hrm_settings_nav', ['active' => 'roles'])
     <div class="content container-fluid">
         <div class="d-flex flex-wrap gap-2 align-items-center mb-4">
             <h2 class="h1 mb-0 d-flex align-items-center gap-2">

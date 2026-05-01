@@ -147,62 +147,10 @@
                                             </span>
                                         </a>
                                     </li>
-                                    {{-- HRM Phase 1 — Attendance ledger. Route::has-guarded
-                                         alongside the other recently-shipped admin surfaces. --}}
-                                    @if(Route::has('admin.attendance.index'))
-                                    <li class="nav-item {{ Request::is('admin/attendance*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('admin.attendance.index') }}">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate sidebar--badge-container">
-                                                {{ translate('Attendance') }}
-                                                @php
-                                                    $sbAttBranch = auth('admin')->user()?->branch_id;
-                                                    $onDuty = 0;
-                                                    try {
-                                                        $onDuty = \App\Models\AttendanceLog::query()
-                                                            ->whereNull('clock_out_at')
-                                                            ->when($sbAttBranch, fn ($q, $b) => $q->where('branch_id', $b))
-                                                            ->count();
-                                                    } catch (\Throwable $e) {
-                                                        // Schema mid-migration.
-                                                    }
-                                                @endphp
-                                                @if($onDuty > 0)
-                                                    <span class="badge badge-soft-success badge-pill ml-1">{{ $onDuty }}</span>
-                                                @endif
-                                            </span>
-                                        </a>
-                                    </li>
-                                    @endif
-
-                                    {{-- Shift sessions — open/close drawer + variance ledger.
-                                         Route::has guard mirrors the Kitchen Scan pattern so a
-                                         stale routes-cache doesn't crash the sidebar. --}}
-                                    @if(Route::has('admin.shifts.index'))
-                                    <li class="nav-item {{ Request::is('admin/shifts*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('admin.shifts.index') }}">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate sidebar--badge-container">
-                                                {{ translate('Shifts') }}
-                                                @php
-                                                    $sbShiftBranch = auth('admin')->user()?->branch_id;
-                                                    $openShifts = 0;
-                                                    try {
-                                                        $openShifts = \App\Models\Shift::query()
-                                                            ->where('status', 'open')
-                                                            ->when($sbShiftBranch, fn ($q, $b) => $q->where('branch_id', $b))
-                                                            ->count();
-                                                    } catch (\Throwable $e) {
-                                                        // Schema mid-migration — fail soft.
-                                                    }
-                                                @endphp
-                                                @if($openShifts > 0)
-                                                    <span class="badge badge-soft-success badge-pill ml-1">{{ $openShifts }}</span>
-                                                @endif
-                                            </span>
-                                        </a>
-                                    </li>
-                                    @endif
+                                    {{-- Attendance + Shifts moved to dedicated HRM group below.
+                                         Their links live there now — order-flow context only
+                                         keeps the operational items (active orders, KOT scan,
+                                         cash collect, online orders, offline payment). --}}
                                     <li class="nav-item {{ Request::is('admin/orders/list/*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('admin.orders.list', ['all']) }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
@@ -307,13 +255,13 @@
                         {{-- 5. People --}}
                         @if(Helpers::module_permission_check(MANAGEMENT_SECTION['user_management']))
                             <li class="navbar-vertical-aside-has-menu
-                                {{ Request::is('admin/customer*') || Request::is('admin/delivery-man*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') ? 'active' : '' }}">
+                                {{ Request::is('admin/customer*') || Request::is('admin/delivery-man*') ? 'active' : '' }}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('People') }}">
                                     <i class="tio-user nav-icon"></i>
                                     <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('People') }}</span>
                                 </a>
                                 <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                    style="display: {{ Request::is('admin/customer*') || Request::is('admin/delivery-man*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') ? 'block' : 'none' }};">
+                                    style="display: {{ Request::is('admin/customer*') || Request::is('admin/delivery-man*') ? 'block' : 'none' }};">
                                     <li class="nav-item {{ Request::is('admin/customer/list') || Request::is('admin/customer/view*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('admin.customer.list') }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
@@ -338,29 +286,227 @@
                                             <span class="text-truncate">{{ translate('Delivery Men') }}</span>
                                         </a>
                                     </li>
-                                    <li class="nav-item {{ Request::is('admin/kitchen*') ? 'active' : '' }}">
-                                        <a class="nav-link" href="{{ route('admin.kitchen.list') }}">
-                                            <span class="tio-circle nav-indicator-icon"></span>
-                                            <span class="text-truncate">{{ translate('Chef') }}</span>
-                                        </a>
-                                    </li>
-                                    @if(auth('admin')->user()?->admin_role_id == 1)
-                                        <li class="nav-item {{ Request::is('admin/employee*') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('admin.employee.list') }}">
-                                                <span class="tio-circle nav-indicator-icon"></span>
-                                                <span class="text-truncate">{{ translate('Employees') }}</span>
-                                            </a>
-                                        </li>
-                                        <li class="nav-item {{ Request::is('admin/custom-role*') ? 'active' : '' }}">
-                                            <a class="nav-link" href="{{ route('admin.custom-role.create') }}">
-                                                <span class="tio-circle nav-indicator-icon"></span>
-                                                <span class="text-truncate">{{ translate('Employee Roles') }}</span>
-                                            </a>
-                                        </li>
-                                    @endif
+                                    {{-- Chef + Employees + Employee Roles moved to the
+                                         dedicated HRM group below. People keeps only
+                                         customer-facing relationships (Customers, Wallet,
+                                         Loyalty, Delivery Men). --}}
                                 </ul>
                             </li>
                         @endif
+
+                        {{-- 5b. HRM — staff scheduling, attendance, payroll-prep.
+                             Operational links (Attendance + Shifts) need to be visible
+                             to anyone who needs to clock in / open a drawer, so the
+                             group itself is ungated. The sensitive items inside
+                             (Employees / Employee Roles) keep their existing
+                             Master-Admin-only check; Chef list keeps user_management. --}}
+                        <li class="navbar-vertical-aside-has-menu
+                            {{ Request::is('admin/attendance*') || Request::is('admin/shifts*') || Request::is('admin/payroll*') || Request::is('admin/payroll-runs*') || Request::is('admin/biometric*') || Request::is('admin/salary-advances*') || Request::is('admin/salary-components*') || Request::is('admin/leaves*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/org-chart*') || Request::is('admin/hrm-settings*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('HRM') }}">
+                                <i class="tio-id-card-outlined nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('HRM') }}</span>
+                            </a>
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ Request::is('admin/attendance*') || Request::is('admin/shifts*') || Request::is('admin/payroll*') || Request::is('admin/payroll-runs*') || Request::is('admin/biometric*') || Request::is('admin/salary-advances*') || Request::is('admin/salary-components*') || Request::is('admin/leaves*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/org-chart*') || Request::is('admin/hrm-settings*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') ? 'block' : 'none' }};">
+
+                                {{-- Attendance ledger — open to all admins so staff can self-clock. --}}
+                                @if(Route::has('admin.attendance.index'))
+                                <li class="nav-item {{ Request::is('admin/attendance*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.attendance.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate sidebar--badge-container">
+                                            {{ translate('Attendance') }}
+                                            @php
+                                                $sbAttBranch = auth('admin')->user()?->branch_id;
+                                                $onDuty = 0;
+                                                try {
+                                                    $onDuty = \App\Models\AttendanceLog::query()
+                                                        ->whereNull('clock_out_at')
+                                                        ->when($sbAttBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                        ->count();
+                                                } catch (\Throwable $e) { /* schema mid-migration */ }
+                                            @endphp
+                                            @if($onDuty > 0)
+                                                <span class="badge badge-soft-success badge-pill ml-1">{{ $onDuty }}</span>
+                                            @endif
+                                        </span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                {{-- Leave management — every admin can file
+                                     requests for themselves; managers see a
+                                     pending-approvals badge so leave doesn't
+                                     pile up unreviewed. --}}
+                                @if(Route::has('admin.leaves.index'))
+                                <li class="nav-item {{ Request::is('admin/leaves*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.leaves.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate sidebar--badge-container">
+                                            {{ translate('Leaves') }}
+                                            @php
+                                                $sbLvViewer = auth('admin')->user();
+                                                $sbLvBranch = $sbLvViewer?->branch_id;
+                                                $pendingLv  = 0;
+                                                try {
+                                                    $pendingLv = \App\Models\LeaveRequest::query()
+                                                        ->where('status', 'pending')
+                                                        ->where('admin_id', '!=', $sbLvViewer?->id)
+                                                        ->when($sbLvBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                        ->count();
+                                                } catch (\Throwable $e) { /* schema mid-migration */ }
+                                            @endphp
+                                            @if($pendingLv > 0)
+                                                <span class="badge badge-soft-warning badge-pill ml-1">{{ $pendingLv }}</span>
+                                            @endif
+                                        </span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                {{-- HRM Phase 6 — Org structure: Departments,
+                                     Designations, Org Chart. Departments + Org
+                                     Chart are open to all admins (read-only for
+                                     branch managers). Designations + HRM Settings
+                                     are Master-Admin-only. --}}
+                                @if(Route::has('admin.org-chart.index'))
+                                <li class="nav-item {{ Request::is('admin/org-chart*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.org-chart.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Org Chart') }}</span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                {{-- Departments / Designations / Salary Components /
+                                     Employee Roles all live as tabs inside the
+                                     "HRM Settings" hub at the bottom of this menu —
+                                     keeps the sidebar focused on daily-use items. --}}
+
+                                {{-- Payroll Estimate — read-only live computation.
+                                     Used to sanity-check before creating a real run. --}}
+                                @if(Route::has('admin.payroll.index') && auth('admin')->user()?->admin_role_id == 1)
+                                <li class="nav-item {{ Request::is('admin/payroll') || Request::is('admin/payroll/employee*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.payroll.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Payroll Estimate') }}</span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                {{-- Payroll Runs — actual locked records. Master Admin only. --}}
+                                @if(Route::has('admin.payroll-runs.index') && auth('admin')->user()?->admin_role_id == 1)
+                                <li class="nav-item {{ Request::is('admin/payroll-runs*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.payroll-runs.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate sidebar--badge-container">
+                                            {{ translate('Payroll Runs') }}
+                                            @php
+                                                $sbRunBranch = auth('admin')->user()?->branch_id;
+                                                $draftRuns = 0;
+                                                try {
+                                                    $draftRuns = \App\Models\PayrollRun::query()
+                                                        ->where('status', 'draft')
+                                                        ->when($sbRunBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                        ->count();
+                                                } catch (\Throwable $e) { /* schema mid-migration */ }
+                                            @endphp
+                                            @if($draftRuns > 0)
+                                                <span class="badge badge-soft-warning badge-pill ml-1">{{ $draftRuns }}</span>
+                                            @endif
+                                        </span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                {{-- Salary advances / loans. Master Admin only. --}}
+                                @if(Route::has('admin.salary-advances.index') && auth('admin')->user()?->admin_role_id == 1)
+                                <li class="nav-item {{ Request::is('admin/salary-advances*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.salary-advances.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate sidebar--badge-container">
+                                            {{ translate('Advances') }}
+                                            @php
+                                                $sbAdvBranch = auth('admin')->user()?->branch_id;
+                                                $activeAdv = 0;
+                                                try {
+                                                    $activeAdv = \App\Models\SalaryAdvance::query()
+                                                        ->where('status', 'active')
+                                                        ->when($sbAdvBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                        ->count();
+                                                } catch (\Throwable $e) { /* schema mid-migration */ }
+                                            @endphp
+                                            @if($activeAdv > 0)
+                                                <span class="badge badge-soft-warning badge-pill ml-1">{{ $activeAdv }}</span>
+                                            @endif
+                                        </span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                {{-- Biometric (ZKTeco) CSV import. Master Admin only since
+                                     a bad CSV could distort everyone's attendance. --}}
+                                @if(Route::has('admin.biometric.index') && auth('admin')->user()?->admin_role_id == 1)
+                                <li class="nav-item {{ Request::is('admin/biometric*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.biometric.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Biometric Import') }}</span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                {{-- Shift sessions — open/close drawer + variance ledger. --}}
+                                @if(Route::has('admin.shifts.index'))
+                                <li class="nav-item {{ Request::is('admin/shifts*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.shifts.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate sidebar--badge-container">
+                                            {{ translate('Shifts') }}
+                                            @php
+                                                $sbShiftBranch = auth('admin')->user()?->branch_id;
+                                                $openShifts = 0;
+                                                try {
+                                                    $openShifts = \App\Models\Shift::query()
+                                                        ->where('status', 'open')
+                                                        ->when($sbShiftBranch, fn ($q, $b) => $q->where('branch_id', $b))
+                                                        ->count();
+                                                } catch (\Throwable $e) { /* schema mid-migration */ }
+                                            @endphp
+                                            @if($openShifts > 0)
+                                                <span class="badge badge-soft-success badge-pill ml-1">{{ $openShifts }}</span>
+                                            @endif
+                                        </span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                {{-- Staff directory. Chef list (admin.kitchen.list)
+                                     route is preserved but no longer surfaced here —
+                                     chefs are just employees with Kitchen department.
+                                     Employee Roles moved to HRM Settings hub below. --}}
+                                @if(Helpers::module_permission_check(MANAGEMENT_SECTION['user_management']) && auth('admin')->user()?->admin_role_id == 1)
+                                    <li class="nav-item {{ Request::is('admin/employee*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.employee.list') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('Employees') }}</span>
+                                        </a>
+                                    </li>
+                                @endif
+
+                                {{-- HRM Settings hub — General + Departments +
+                                     Designations + Salary Components + Roles all
+                                     live behind one entry, accessed via tab nav
+                                     on the page itself. --}}
+                                @if(Route::has('admin.hrm-settings.index') && auth('admin')->user()?->admin_role_id == 1)
+                                    <li class="nav-item {{ Request::is('admin/hrm-settings*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/salary-components*') || Request::is('admin/custom-role*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.hrm-settings.index') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('HRM Settings') }}</span>
+                                        </a>
+                                    </li>
+                                @endif
+                            </ul>
+                        </li>
 
                         {{-- 6. Reports --}}
                         @if(Helpers::module_permission_check(MANAGEMENT_SECTION['report_and_analytics_management']))

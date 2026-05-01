@@ -61,13 +61,15 @@
     .lh-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 14px 16px; }
     .lh-att-row {
         display: grid;
-        grid-template-columns: 110px 110px 110px 1fr 90px;
+        grid-template-columns: 100px 90px 90px 110px 80px 100px;
         gap: 10px;
         padding: 9px 4px;
         border-bottom: 1px solid #F0F2F5;
         font-size: 13px;
         align-items: center;
     }
+    .lh-att-row .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+    .lh-att-row .row-actions .btn { padding: 2px 8px; font-size: 11px; font-weight: 700; }
     .lh-att-row:last-child { border-bottom: 0; }
     .lh-att-row .date { color: #6A6A70; font-weight: 600; }
     .lh-att-row .time { font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -82,6 +84,13 @@
         background: #F0F2F5; color: #6A6A70;
     }
     .lh-att-row .method-pill.shift { background: #FFF4E5; color: #E67E22; }
+    .lh-att-row .method-pill.bio   { background: #E6F2FF; color: #4794FF; }
+    .lh-att-row .flag-pill {
+        display: inline-block; padding: 1px 6px; border-radius: 4px;
+        font-size: 9px; font-weight: 800; letter-spacing: 0.6px; margin-left: 4px;
+    }
+    .lh-att-row .flag-pill.late, .lh-att-row .flag-pill.early { background: #FFEEEE; color: #C8281A; }
+    .lh-att-row .flag-pill.ot { background: #ECFFEF; color: #1E8E3E; }
     .lh-empty { padding: 22px; text-align: center; color: #6A6A70; font-size: 13px; }
 </style>
 
@@ -133,17 +142,48 @@
         </div>
     </div>
 
+    <div style="margin: 14px 0 8px;">
+        <button type="button" class="btn btn-light btn-sm" onclick="document.getElementById('lh-backdate-modal').classList.add('open')">
+            + {{ translate('Add past entry') }}
+        </button>
+    </div>
+
     <div class="lh-card">
         @forelse($rows as $r)
+            @php
+                $late  = $r->lateMinutes();
+                $early = $r->earlyMinutes();
+                $ot    = $r->overtimeMinutes();
+            @endphp
             <div class="lh-att-row">
                 <div class="date">{{ optional($r->clock_in_at)->format('d M (D)') }}</div>
-                <div class="time">{{ optional($r->clock_in_at)->format('H:i') }}</div>
-                <div class="time {{ $r->isOpen() ? 'muted' : '' }}">{{ $r->clock_out_at ? $r->clock_out_at->format('H:i') : '— · ·' }}</div>
-                <div class="duration">{{ $minutesToHHMM($r->workedMinutes()) }} {{ $r->isOpen() ? '(open)' : '' }}</div>
+                <div class="time">
+                    {{ optional($r->clock_in_at)->format('H:i') }}
+                    @if($late > 0)<span class="flag-pill late">+{{ $late }}m</span>@endif
+                </div>
+                <div class="time {{ $r->isOpen() ? 'muted' : '' }}">
+                    {{ $r->clock_out_at ? $r->clock_out_at->format('H:i') : '— · ·' }}
+                    @if($early > 0)<span class="flag-pill early">−{{ $early }}m</span>@endif
+                </div>
+                <div class="duration">
+                    {{ $minutesToHHMM($r->workedMinutes()) }} {{ $r->isOpen() ? '(open)' : '' }}
+                    @if($ot > 0)<span class="flag-pill ot">OT {{ $ot }}m</span>@endif
+                </div>
                 <div>
-                    <span class="method-pill {{ $r->method === 'shift_open' ? 'shift' : '' }}">
-                        {{ $r->method === 'shift_open' ? 'SHIFT' : 'MANUAL' }}
-                    </span>
+                    @php $methodClass = $r->method === 'shift_open' ? 'shift' : ($r->method === 'biometric' ? 'bio' : ''); @endphp
+                    @php $methodLabel = ['shift_open' => 'SHIFT', 'biometric' => 'BIO'][$r->method] ?? 'MANUAL'; @endphp
+                    <span class="method-pill {{ $methodClass }}">{{ $methodLabel }}</span>
+                </div>
+                <div class="row-actions">
+                    <button type="button" class="btn btn-light"
+                        onclick="lhAttEdit({{ $r->id }}, '{{ optional($r->clock_in_at)->format('Y-m-d\\TH:i') }}', '{{ optional($r->clock_out_at)->format('Y-m-d\\TH:i') }}')">
+                        ✎
+                    </button>
+                    <form method="POST" action="{{ route('admin.attendance.destroy', ['id' => $r->id]) }}"
+                          style="display:inline;" onsubmit="return confirm('{{ translate('Delete this attendance row? Cannot be undone.') }}')">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn btn-light" style="color:#E84D4F;">✕</button>
+                    </form>
                 </div>
             </div>
         @empty
@@ -151,4 +191,62 @@
         @endforelse
     </div>
 </div>
+
+{{-- Edit + backdate modals --}}
+<style>
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1050; }
+    .modal-overlay.open { display: flex; }
+    .modal-card { background: #fff; border-radius: 14px; max-width: 460px; width: 92%; padding: 22px 24px; }
+    .modal-card h2 { font-size: 18px; font-weight: 800; margin: 0 0 4px; color: #1A1A1A; }
+    .modal-card p  { color: #6A6A70; font-size: 13px; margin: 0 0 14px; }
+    .modal-card label { font-size: 12px; font-weight: 700; color: #6A6A70; }
+    .modal-card input { width: 100%; border: 1px solid #E5E7EB; border-radius: 8px; padding: 9px 12px; font-size: 14px; margin-top: 4px; }
+    .modal-card .actions { display: flex; gap: 8px; margin-top: 16px; }
+</style>
+
+<div class="modal-overlay" id="lh-edit-modal" onclick="if(event.target===this) this.classList.remove('open')">
+    <form method="POST" id="lh-edit-form" class="modal-card">
+        @csrf
+        <h2>{{ translate('Edit attendance') }}</h2>
+        <p>{{ translate('Adjust the times for this row. Leave Clock-out blank to leave the row open.') }}</p>
+        <label>{{ translate('Clock-in') }}</label>
+        <input type="datetime-local" name="clock_in_at" id="lh-edit-in" required>
+        <label style="display:block; margin-top:10px;">{{ translate('Clock-out') }}</label>
+        <input type="datetime-local" name="clock_out_at" id="lh-edit-out">
+        <label style="display:block; margin-top:10px;">{{ translate('Notes (optional)') }}</label>
+        <input type="text" name="notes" maxlength="500" placeholder="{{ translate('Reason for the edit') }}">
+        <div class="actions">
+            <button type="button" class="btn btn-light" style="flex:1;" onclick="document.getElementById('lh-edit-modal').classList.remove('open')">{{ translate('Cancel') }}</button>
+            <button type="submit" class="btn btn-primary" style="flex:1;">{{ translate('Save') }}</button>
+        </div>
+    </form>
+</div>
+
+<div class="modal-overlay" id="lh-backdate-modal" onclick="if(event.target===this) this.classList.remove('open')">
+    <form method="POST" action="{{ route('admin.attendance.backdate') }}" class="modal-card">
+        @csrf
+        <input type="hidden" name="admin_id" value="{{ $employee->id }}">
+        <h2>{{ translate('Add past attendance') }} · {{ trim(($employee->f_name ?? '') . ' ' . ($employee->l_name ?? '')) }}</h2>
+        <p>{{ translate('Backfill an entry for a past day.') }}</p>
+        <label>{{ translate('Clock-in') }}</label>
+        <input type="datetime-local" name="clock_in_at" required>
+        <label style="display:block; margin-top:10px;">{{ translate('Clock-out (optional)') }}</label>
+        <input type="datetime-local" name="clock_out_at">
+        <label style="display:block; margin-top:10px;">{{ translate('Notes (optional)') }}</label>
+        <input type="text" name="notes" maxlength="500" placeholder="{{ translate('e.g. Device offline yesterday') }}">
+        <div class="actions">
+            <button type="button" class="btn btn-light" style="flex:1;" onclick="document.getElementById('lh-backdate-modal').classList.remove('open')">{{ translate('Cancel') }}</button>
+            <button type="submit" class="btn btn-primary" style="flex:1;">{{ translate('Save') }}</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function lhAttEdit(rowId, inAt, outAt) {
+    document.getElementById('lh-edit-form').action = '{{ url('admin/attendance') }}/' + rowId + '/update';
+    document.getElementById('lh-edit-in').value = inAt || '';
+    document.getElementById('lh-edit-out').value = outAt || '';
+    document.getElementById('lh-edit-modal').classList.add('open');
+}
+</script>
 @endsection

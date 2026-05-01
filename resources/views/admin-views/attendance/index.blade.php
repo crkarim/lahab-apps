@@ -60,13 +60,15 @@
 
     .lh-att-row {
         display: grid;
-        grid-template-columns: 1fr 110px 110px 130px 100px;
+        grid-template-columns: 1fr 90px 90px 110px 80px 100px;
         gap: 10px;
         padding: 10px 4px;
         border-bottom: 1px solid #F0F2F5;
         align-items: center;
         font-size: 13px;
     }
+    .lh-att-row .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+    .lh-att-row .row-actions .btn { padding: 2px 8px; font-size: 11px; font-weight: 700; }
     .lh-att-row:last-child { border-bottom: 0; }
     .lh-att-row .who strong {
         color: #1A1A1A; font-weight: 700;
@@ -95,6 +97,20 @@
         color: #6A6A70;
     }
     .lh-att-row .method-pill.shift { background: #FFF4E5; color: #E67E22; }
+    .lh-att-row .method-pill.bio   { background: #E6F2FF; color: #4794FF; }
+
+    .lh-att-row .flag-pill {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.6px;
+        margin-left: 4px;
+    }
+    .lh-att-row .flag-pill.late  { background: #FFEEEE; color: #C8281A; }
+    .lh-att-row .flag-pill.early { background: #FFEEEE; color: #C8281A; }
+    .lh-att-row .flag-pill.ot    { background: #ECFFEF; color: #1E8E3E; }
 
     .modal-overlay {
         position: fixed; inset: 0;
@@ -171,6 +187,9 @@
             <button type="button" class="btn btn-light" onclick="document.getElementById('lh-manual-modal').classList.add('open')">
                 {{ translate('Clock someone else') }}
             </button>
+            <button type="button" class="btn btn-light" onclick="document.getElementById('lh-backdate-modal').classList.add('open')">
+                {{ translate('Add past entry') }}
+            </button>
         </div>
     </div>
 
@@ -178,18 +197,34 @@
     <div class="lh-card">
         <h3>{{ translate('On duty') }} <span class="count">· {{ $openRows->count() }}</span></h3>
         @forelse($openRows as $r)
+            @php $late = $r->lateMinutes(); @endphp
             <div class="lh-att-row">
                 <div class="who">
                     <strong>{{ trim(($r->employee->f_name ?? '') . ' ' . ($r->employee->l_name ?? '')) ?: translate('Unknown') }}</strong>
                     <small>{{ $r->employee->designation ?: translate('Staff') }}</small>
                 </div>
-                <div class="time">{{ optional($r->clock_in_at)->format('H:i') }}</div>
+                <div class="time">
+                    {{ optional($r->clock_in_at)->format('H:i') }}
+                    @if($late > 0)
+                        <span class="flag-pill late" title="{{ translate('Arrived late') }}">+{{ $late }}m</span>
+                    @endif
+                </div>
                 <div class="time" style="color:#6A6A70;">— · ·</div>
                 <div class="duration live">{{ $minutesToHHMM($r->workedMinutes()) }}</div>
                 <div>
-                    <span class="method-pill {{ $r->method === 'shift_open' ? 'shift' : '' }}">
-                        {{ $r->method === 'shift_open' ? 'SHIFT' : 'MANUAL' }}
-                    </span>
+                    @php $methodClass = $r->method === 'shift_open' ? 'shift' : ($r->method === 'biometric' ? 'bio' : ''); @endphp
+                    @php $methodLabel = ['shift_open' => 'SHIFT', 'biometric' => 'BIO'][$r->method] ?? 'MANUAL'; @endphp
+                    <span class="method-pill {{ $methodClass }}">{{ $methodLabel }}</span>
+                </div>
+                <div class="row-actions">
+                    <button type="button" class="btn btn-light"
+                        onclick="lhAttEdit({{ $r->id }}, '{{ optional($r->clock_in_at)->format('Y-m-d\\TH:i') }}', '', '{{ addslashes($r->notes ?? '') }}')">
+                        ✎
+                    </button>
+                    <button type="button" class="btn btn-light"
+                        onclick="lhAttForceClose({{ $r->id }}, '{{ optional($r->clock_in_at)->format('Y-m-d\\TH:i') }}', '{{ addslashes(trim(($r->employee->f_name ?? '') . ' ' . ($r->employee->l_name ?? ''))) }}')">
+                        🔒
+                    </button>
                 </div>
             </div>
         @empty
@@ -201,16 +236,43 @@
     <div class="lh-card">
         <h3>{{ translate('Closed today') }} <span class="count">· {{ $closedToday->count() }}</span></h3>
         @forelse($closedToday as $r)
+            @php
+                $late  = $r->lateMinutes();
+                $early = $r->earlyMinutes();
+                $ot    = $r->overtimeMinutes();
+            @endphp
             <div class="lh-att-row">
                 <div class="who">
                     <strong>{{ trim(($r->employee->f_name ?? '') . ' ' . ($r->employee->l_name ?? '')) ?: translate('Unknown') }}</strong>
                     <small>{{ $r->employee->designation ?: translate('Staff') }}</small>
                 </div>
-                <div class="time">{{ optional($r->clock_in_at)->format('H:i') }}</div>
-                <div class="time">{{ optional($r->clock_out_at)->format('H:i') }}</div>
-                <div class="duration">{{ $minutesToHHMM($r->workedMinutes()) }}</div>
+                <div class="time">
+                    {{ optional($r->clock_in_at)->format('H:i') }}
+                    @if($late > 0)<span class="flag-pill late" title="{{ translate('Arrived late') }}">+{{ $late }}m</span>@endif
+                </div>
+                <div class="time">
+                    {{ optional($r->clock_out_at)->format('H:i') }}
+                    @if($early > 0)<span class="flag-pill early" title="{{ translate('Left early') }}">−{{ $early }}m</span>@endif
+                </div>
+                <div class="duration">
+                    {{ $minutesToHHMM($r->workedMinutes()) }}
+                    @if($ot > 0)<span class="flag-pill ot" title="{{ translate('Overtime') }}">OT {{ $ot }}m</span>@endif
+                </div>
                 <div>
-                    <a href="{{ route('admin.attendance.employee', ['id' => $r->admin_id]) }}" style="font-size:11px; color:#6A6A70;">{{ translate('History') }} →</a>
+                    @php $methodClass = $r->method === 'shift_open' ? 'shift' : ($r->method === 'biometric' ? 'bio' : ''); @endphp
+                    @php $methodLabel = ['shift_open' => 'SHIFT', 'biometric' => 'BIO'][$r->method] ?? 'MANUAL'; @endphp
+                    <span class="method-pill {{ $methodClass }}">{{ $methodLabel }}</span>
+                </div>
+                <div class="row-actions">
+                    <button type="button" class="btn btn-light"
+                        onclick="lhAttEdit({{ $r->id }}, '{{ optional($r->clock_in_at)->format('Y-m-d\\TH:i') }}', '{{ optional($r->clock_out_at)->format('Y-m-d\\TH:i') }}', '{{ addslashes($r->notes ?? '') }}')">
+                        ✎
+                    </button>
+                    <form method="POST" action="{{ route('admin.attendance.destroy', ['id' => $r->id]) }}"
+                          style="display:inline;" onsubmit="return confirm('{{ translate('Delete this attendance row? Cannot be undone.') }}')">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn btn-light" style="color:#E84D4F;">✕</button>
+                    </form>
                 </div>
             </div>
         @empty
@@ -271,4 +333,91 @@
         </div>
     </div>
 </div>
+
+{{-- Edit attendance modal — adjusts in/out times + notes on existing row --}}
+<div class="modal-overlay" id="lh-edit-modal" onclick="if(event.target===this) this.classList.remove('open')">
+    <form method="POST" id="lh-edit-form" class="modal-card">
+        @csrf
+        <h2>{{ translate('Edit attendance') }}</h2>
+        <p>{{ translate('Adjust the times for this row. Leave Clock-out blank to leave the row open.') }}</p>
+        <label>{{ translate('Clock-in') }}</label>
+        <input type="datetime-local" name="clock_in_at" id="lh-edit-in" required>
+        <label style="display:block; margin-top:10px;">{{ translate('Clock-out') }}</label>
+        <input type="datetime-local" name="clock_out_at" id="lh-edit-out">
+        <label style="display:block; margin-top:10px;">{{ translate('Notes (optional)') }}</label>
+        <input type="text" name="notes" id="lh-edit-notes" maxlength="500" placeholder="{{ translate('Reason for the edit') }}">
+        <div class="actions">
+            <button type="button" class="btn btn-light" style="flex:1;" onclick="document.getElementById('lh-edit-modal').classList.remove('open')">{{ translate('Cancel') }}</button>
+            <button type="submit" class="btn btn-primary" style="flex:1;">{{ translate('Save') }}</button>
+        </div>
+    </form>
+</div>
+
+{{-- Force-close modal — set clock_out_at on an open row --}}
+<div class="modal-overlay" id="lh-fc-modal" onclick="if(event.target===this) this.classList.remove('open')">
+    <form method="POST" id="lh-fc-form" class="modal-card">
+        @csrf
+        <h2>{{ translate('Force-close shift') }}</h2>
+        <p id="lh-fc-blurb"></p>
+        <label>{{ translate('Clock-out time') }}</label>
+        <input type="datetime-local" name="clock_out_at" id="lh-fc-out" required>
+        <label style="display:block; margin-top:10px;">{{ translate('Notes (optional)') }}</label>
+        <input type="text" name="notes" maxlength="255" placeholder="{{ translate('e.g. forgot to clock out') }}">
+        <div class="actions">
+            <button type="button" class="btn btn-light" style="flex:1;" onclick="document.getElementById('lh-fc-modal').classList.remove('open')">{{ translate('Cancel') }}</button>
+            <button type="submit" class="btn btn-warning" style="flex:1;">{{ translate('Close') }}</button>
+        </div>
+    </form>
+</div>
+
+{{-- Add past entry (backdate) modal --}}
+<div class="modal-overlay" id="lh-backdate-modal" onclick="if(event.target===this) this.classList.remove('open')">
+    <form method="POST" action="{{ route('admin.attendance.backdate') }}" class="modal-card">
+        @csrf
+        <h2>{{ translate('Add past attendance') }}</h2>
+        <p>{{ translate('Backfill an entry for a past day. Use this when staff worked but the device was offline or they forgot to clock.') }}</p>
+        <label>{{ translate('Employee') }}</label>
+        <select name="admin_id" required>
+            <option value="" disabled selected>— {{ translate('select') }} —</option>
+            @foreach($eligibleStaff as $s)
+                <option value="{{ $s->id }}">{{ trim(($s->f_name ?? '') . ' ' . ($s->l_name ?? '')) }}{{ $s->designation ? ' · ' . $s->designation : '' }}</option>
+            @endforeach
+        </select>
+        <div class="form-row" style="margin-top:10px;">
+            <div class="col-md-6 form-group">
+                <label>{{ translate('Clock-in') }}</label>
+                <input type="datetime-local" name="clock_in_at" required>
+            </div>
+            <div class="col-md-6 form-group">
+                <label>{{ translate('Clock-out') }}</label>
+                <input type="datetime-local" name="clock_out_at">
+            </div>
+        </div>
+        <label>{{ translate('Notes (optional)') }}</label>
+        <input type="text" name="notes" maxlength="500" placeholder="{{ translate('e.g. Device offline yesterday') }}">
+        <div class="actions">
+            <button type="button" class="btn btn-light" style="flex:1;" onclick="document.getElementById('lh-backdate-modal').classList.remove('open')">{{ translate('Cancel') }}</button>
+            <button type="submit" class="btn btn-primary" style="flex:1;">{{ translate('Save') }}</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function lhAttEdit(rowId, inAt, outAt, notes) {
+    document.getElementById('lh-edit-form').action = '{{ url('admin/attendance') }}/' + rowId + '/update';
+    document.getElementById('lh-edit-in').value = inAt || '';
+    document.getElementById('lh-edit-out').value = outAt || '';
+    document.getElementById('lh-edit-notes').value = ''; // notes append, don't prefill
+    document.getElementById('lh-edit-modal').classList.add('open');
+}
+function lhAttForceClose(rowId, inAt, name) {
+    document.getElementById('lh-fc-form').action = '{{ url('admin/attendance') }}/' + rowId + '/force-close';
+    document.getElementById('lh-fc-blurb').textContent = '{{ translate("Set the clock-out time for") }} ' + (name || 'this row') + '. {{ translate("Started") }}: ' + (inAt || '—');
+    // Default to NOW so a single click closes the row at the current moment.
+    var now = new Date();
+    var local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('lh-fc-out').value = local;
+    document.getElementById('lh-fc-modal').classList.add('open');
+}
+</script>
 @endsection

@@ -72,4 +72,74 @@ class AttendanceLog extends Model
             ->latest('clock_in_at')
             ->first();
     }
+
+    /**
+     * Lazy-cache the schedule row used for this attendance row's
+     * date — avoids 3 separate queries when you call lateMinutes(),
+     * earlyMinutes(), and overtimeMinutes() in succession.
+     */
+    private ?WorkSchedule $_schedCache = null;
+    private bool $_schedCached = false;
+
+    public function schedule(): ?WorkSchedule
+    {
+        if ($this->_schedCached) return $this->_schedCache;
+        $this->_schedCached = true;
+        if (!$this->clock_in_at) return $this->_schedCache = null;
+        return $this->_schedCache = WorkSchedule::forAdminOnDate($this->admin_id, $this->clock_in_at);
+    }
+
+    /**
+     * Minutes late = how far the clock-in was past the scheduled
+     * start, beyond the grace window. Returns 0 if on time, no
+     * schedule, or off-day.
+     */
+    public function lateMinutes(): int
+    {
+        $sched = $this->schedule();
+        if (!$sched || $sched->is_off_day) return 0;
+        $start = $sched->startOn($this->clock_in_at);
+        if (!$start) return 0;
+        $tolerance = $start->copy()->addMinutes((int) $sched->grace_minutes);
+        if ($this->clock_in_at->lessThanOrEqualTo($tolerance)) return 0;
+        return max(0, (int) $start->diffInMinutes($this->clock_in_at));
+    }
+
+    /**
+     * Minutes left early = how far the clock-out was BEFORE the
+     * scheduled end. Returns 0 if punched out on time, still open,
+     * no schedule, or off-day.
+     */
+    public function earlyMinutes(): int
+    {
+        $sched = $this->schedule();
+        if (!$sched || $sched->is_off_day) return 0;
+        if (!$this->clock_out_at) return 0;
+        $end = $sched->endOn($this->clock_in_at);
+        if (!$end) return 0;
+        $tolerance = $end->copy()->subMinutes((int) $sched->grace_minutes);
+        if ($this->clock_out_at->greaterThanOrEqualTo($tolerance)) return 0;
+        return max(0, (int) $this->clock_out_at->diffInMinutes($end));
+    }
+
+    /**
+     * Overtime minutes = time worked past the scheduled end. On an
+     * off-day, ALL worked minutes count as overtime (BD Labour Act
+     * Sec 108 — overtime at 2× ordinary wage).
+     */
+    public function overtimeMinutes(): int
+    {
+        $sched = $this->schedule();
+        if (!$sched) return 0;
+        if (!$this->clock_out_at) return 0;
+
+        if ($sched->is_off_day) {
+            // Off-day work = all worked minutes are OT.
+            return $this->workedMinutes();
+        }
+        $end = $sched->endOn($this->clock_in_at);
+        if (!$end) return 0;
+        if ($this->clock_out_at->lessThanOrEqualTo($end)) return 0;
+        return max(0, (int) $end->diffInMinutes($this->clock_out_at));
+    }
 }

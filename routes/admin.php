@@ -34,8 +34,19 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReviewsController;
 use App\Http\Controllers\Admin\CashHandoverController;
 use App\Http\Controllers\Admin\AttendanceController;
+use App\Http\Controllers\Admin\BiometricImportController;
+use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\DesignationController;
+use App\Http\Controllers\Admin\HrmSettingController;
 use App\Http\Controllers\Admin\KitchenScanController;
+use App\Http\Controllers\Admin\LeaveController;
+use App\Http\Controllers\Admin\OrgChartController;
+use App\Http\Controllers\Admin\PayrollController;
+use App\Http\Controllers\Admin\PayrollRunController;
+use App\Http\Controllers\Admin\SalaryAdvanceController;
+use App\Http\Controllers\Admin\SalaryComponentController;
 use App\Http\Controllers\Admin\ShiftController;
+use App\Http\Controllers\Admin\WorkScheduleController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\PrintFailureController;
 use App\Http\Controllers\Admin\PrinterController;
@@ -138,7 +149,106 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('employee/{id}',     [AttendanceController::class, 'employee'])->whereNumber('id')->name('employee');
                 Route::post('clock-in',         [AttendanceController::class, 'clockIn'])->name('clock-in');
                 Route::post('clock-out',        [AttendanceController::class, 'clockOut'])->name('clock-out');
+                // Editing surface — admin adjusts forgotten clocks,
+                // backfills missed days, deletes bad rows.
+                Route::post('{id}/update',      [AttendanceController::class, 'update'])->whereNumber('id')->name('update');
+                Route::post('{id}/force-close', [AttendanceController::class, 'forceClose'])->whereNumber('id')->name('force-close');
+                Route::post('backdate',         [AttendanceController::class, 'backdate'])->name('backdate');
+                Route::delete('{id}',           [AttendanceController::class, 'destroy'])->whereNumber('id')->name('destroy');
             });
+        }
+
+        // HRM Phase 3 — Payroll prep view (read-only computation).
+        if (class_exists(PayrollController::class)) {
+            Route::group(['prefix' => 'payroll', 'as' => 'payroll.'], function () {
+                Route::get('/',              [PayrollController::class, 'index'])->name('index');
+                Route::get('employee/{id}',  [PayrollController::class, 'employee'])->whereNumber('id')->name('employee');
+            });
+        }
+
+        // Biometric (ZKTeco etc.) attendance import. Manual CSV upload
+        // for now; later we can add a scheduled-job pull from the
+        // device's network share.
+        if (class_exists(BiometricImportController::class)) {
+            Route::group(['prefix' => 'biometric', 'as' => 'biometric.'], function () {
+                Route::get('/',        [BiometricImportController::class, 'index'])->name('index');
+                Route::post('import',  [BiometricImportController::class, 'import'])->name('import');
+                Route::get('sample',   [BiometricImportController::class, 'sample'])->name('sample');
+            });
+        }
+
+        // HRM Phase 4.2 — Salary advances / loans.
+        if (class_exists(SalaryAdvanceController::class)) {
+            Route::group(['prefix' => 'salary-advances', 'as' => 'salary-advances.'], function () {
+                Route::get('/',                 [SalaryAdvanceController::class, 'index'])->name('index');
+                Route::post('/',                [SalaryAdvanceController::class, 'store'])->name('store');
+                Route::post('{id}/cancel',      [SalaryAdvanceController::class, 'cancel'])->whereNumber('id')->name('cancel');
+                Route::post('{id}/recover',     [SalaryAdvanceController::class, 'recover'])->whereNumber('id')->name('recover');
+            });
+        }
+
+        // HRM Phase 4.3 — Payroll Runs.
+        if (class_exists(PayrollRunController::class)) {
+            Route::group(['prefix' => 'payroll-runs', 'as' => 'payroll-runs.'], function () {
+                Route::get('/',                       [PayrollRunController::class, 'index'])->name('index');
+                Route::post('/',                      [PayrollRunController::class, 'store'])->name('store');
+                Route::get('{id}',                    [PayrollRunController::class, 'show'])->whereNumber('id')->name('show');
+                Route::post('{id}/lock',              [PayrollRunController::class, 'lock'])->whereNumber('id')->name('lock');
+                Route::delete('{id}',                 [PayrollRunController::class, 'destroy'])->whereNumber('id')->name('destroy');
+                Route::post('payslip/{id}/mark-paid', [PayrollRunController::class, 'markPayslipPaid'])->whereNumber('id')->name('payslip.mark-paid');
+            });
+        }
+
+        // HRM Phase 5.2 — Leave management.
+        if (class_exists(LeaveController::class)) {
+            Route::group(['prefix' => 'leaves', 'as' => 'leaves.'], function () {
+                Route::get('/',                [LeaveController::class, 'index'])->name('index');
+                Route::post('/',               [LeaveController::class, 'store'])->name('store');
+                Route::post('{id}/approve',    [LeaveController::class, 'approve'])->whereNumber('id')->name('approve');
+                Route::post('{id}/reject',     [LeaveController::class, 'reject'])->whereNumber('id')->name('reject');
+                Route::post('{id}/cancel',     [LeaveController::class, 'cancel'])->whereNumber('id')->name('cancel');
+            });
+        }
+
+        // HRM Phase 6.1 — Departments + Designations master data.
+        if (class_exists(DepartmentController::class)) {
+            Route::group(['prefix' => 'departments', 'as' => 'departments.'], function () {
+                Route::get('/',         [DepartmentController::class, 'index'])->name('index');
+                Route::post('/',        [DepartmentController::class, 'store'])->name('store');
+                Route::post('{id}',     [DepartmentController::class, 'update'])->whereNumber('id')->name('update');
+                Route::delete('{id}',   [DepartmentController::class, 'destroy'])->whereNumber('id')->name('destroy');
+            });
+        }
+        if (class_exists(DesignationController::class)) {
+            Route::group(['prefix' => 'designations', 'as' => 'designations.'], function () {
+                Route::get('/',         [DesignationController::class, 'index'])->name('index');
+                Route::post('/',        [DesignationController::class, 'store'])->name('store');
+                Route::post('{id}',     [DesignationController::class, 'update'])->whereNumber('id')->name('update');
+                Route::delete('{id}',   [DesignationController::class, 'destroy'])->whereNumber('id')->name('destroy');
+            });
+        }
+
+        // HRM Phase 6.7 — Salary components catalogue + distribution rules.
+        if (class_exists(SalaryComponentController::class)) {
+            Route::group(['prefix' => 'salary-components', 'as' => 'salary-components.'], function () {
+                Route::get('/',          [SalaryComponentController::class, 'index'])->name('index');
+                Route::post('/',         [SalaryComponentController::class, 'store'])->name('store');
+                Route::post('bulk',      [SalaryComponentController::class, 'bulkUpdate'])->name('bulk-update');
+                Route::delete('{id}',    [SalaryComponentController::class, 'destroy'])->whereNumber('id')->name('destroy');
+            });
+        }
+
+        // HRM Phase 6 — Tunable HR settings (Master Admin only at sidebar level).
+        if (class_exists(HrmSettingController::class)) {
+            Route::group(['prefix' => 'hrm-settings', 'as' => 'hrm-settings.'], function () {
+                Route::get('/',         [HrmSettingController::class, 'index'])->name('index');
+                Route::post('/',        [HrmSettingController::class, 'update'])->name('update');
+            });
+        }
+
+        // HRM Phase 6.2 — Org chart (read-only tree).
+        if (class_exists(OrgChartController::class)) {
+            Route::get('org-chart', [OrgChartController::class, 'index'])->name('org-chart.index');
         }
         Route::get('settings', [SystemController::class, 'settings'])->name('settings');
         Route::post('settings', [SystemController::class, 'settingsUpdate']);
@@ -166,6 +276,12 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('status/{id}/{status}', [EmployeeController::class, 'status'])->name('status');
             Route::delete('delete', [EmployeeController::class, 'delete'])->name('delete');
             Route::get('excel-export', [EmployeeController::class, 'exportExcel'])->name('excel-export');
+            // HRM Phase 5.1 — per-employee weekly work schedule.
+            if (class_exists(WorkScheduleController::class)) {
+                Route::get('schedule/{id}',                [WorkScheduleController::class, 'edit'])->whereNumber('id')->name('schedule');
+                Route::post('schedule/{id}',               [WorkScheduleController::class, 'update'])->whereNumber('id');
+                Route::post('schedule/{id}/apply-default', [WorkScheduleController::class, 'applyDefault'])->whereNumber('id')->name('schedule.apply-default');
+            }
         });
 
         Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos_management']], function () {
