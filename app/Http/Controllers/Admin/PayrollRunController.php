@@ -272,10 +272,12 @@ class PayrollRunController extends Controller
         if ($payslip->isPaid()) return back()->with('error', 'Payslip is already marked paid.');
 
         $validated = $request->validate([
-            'paid_method'    => 'nullable|in:cash,bank,mobile,cheque',
-            'paid_reference' => 'nullable|string|max:80',
-            'paid_at'        => 'nullable|date',
-            'notes'          => 'nullable|string|max:500',
+            'paid_method'          => 'nullable|in:cash,bank,mobile,cheque',
+            'paid_reference'       => 'nullable|string|max:80',
+            'paid_at'              => 'nullable|date',
+            'notes'                => 'nullable|string|max:500',
+            // Phase 8.5c — exact cash account the salary was paid from.
+            'paid_from_account_id' => 'nullable|integer|exists:cash_accounts,id',
         ]);
 
         $method = $validated['paid_method'] ?? 'cash';
@@ -287,12 +289,23 @@ class PayrollRunController extends Controller
         }
 
         $payslip->forceFill([
-            'paid_at'          => $validated['paid_at'] ?? now(),
-            'paid_method'      => $method,
-            'paid_reference'   => $validated['paid_reference'] ?? null,
-            'paid_by_admin_id' => $admin?->id,
-            'notes'            => $validated['notes'] ?? $payslip->notes,
+            'paid_at'              => $validated['paid_at'] ?? now(),
+            'paid_method'          => $method,
+            'paid_reference'       => $validated['paid_reference'] ?? null,
+            'paid_by_admin_id'     => $admin?->id,
+            'paid_from_account_id' => $validated['paid_from_account_id'] ?? null,
+            'notes'                => $validated['notes'] ?? $payslip->notes,
         ])->save();
+
+        // Phase 8.5c — post the OUT row to the chosen account.
+        try {
+            \App\Services\Accounts\PostHrmPaymentToLedger::forPayslip($payslip);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Payslip auto-post crashed', [
+                'payslip_id' => $payslip->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
 
         // Bubble up to run.status if every slip in the run is now paid.
         $run = $payslip->run;

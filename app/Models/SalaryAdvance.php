@@ -34,6 +34,10 @@ class SalaryAdvance extends Model
         'recorded_by_admin_id',
         'recovered_by_run_id',
         'notes',
+        // Phase 8.5c — cash account the advance came out of. OUT to
+        // this account on store; IN to it (or a chosen one) on
+        // manual recovery.
+        'source_account_id',
     ];
 
     protected $casts = [

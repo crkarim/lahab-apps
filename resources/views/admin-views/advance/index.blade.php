@@ -246,6 +246,22 @@
         <label>{{ translate('Date taken') }}</label>
         <input type="date" name="taken_at" value="{{ now()->toDateString() }}">
 
+        @if($cashAccountsForPicker->count() > 0)
+        <label style="display:block; margin-top:10px;">{{ translate('Cash came from') }}</label>
+        <select name="source_account_id">
+            <option value="">— {{ translate('not posted to ledger') }} —</option>
+            @foreach($cashAccountsForPicker as $a)
+                @php
+                    $emoji = match($a->type) { 'cash' => '💵', 'bank' => '🏦', 'mfs' => '📱', 'cheque' => '🧾', default => '•' };
+                @endphp
+                <option value="{{ $a->id }}">{{ $emoji }} {{ $a->name }}@if($a->account_number) · {{ $a->account_number }}@endif</option>
+            @endforeach
+        </select>
+        <small style="color:#6A6A70; font-size:11px; display:block; margin-top:2px;">
+            {{ translate('Posts an OUT row to this account so the till/bank balance reflects the cash that left.') }}
+        </small>
+        @endif
+
         <label style="display:block; margin-top:10px;">{{ translate('Reason') }}</label>
         <input type="text" name="reason" maxlength="255" placeholder="{{ translate('e.g. Medical emergency, festival') }}">
 
@@ -271,6 +287,20 @@
         </p>
         <label>{{ translate('Amount returned (Tk)') }}</label>
         <input type="number" name="amount" step="0.01" min="0.01" required>
+
+        @if($cashAccountsForPicker->count() > 0)
+        <label style="display:block; margin-top:10px;">{{ translate('Cash returned to') }}</label>
+        <select name="destination_account_id">
+            <option value="">— {{ translate('default: same as source') }} —</option>
+            @foreach($cashAccountsForPicker as $a)
+                @php
+                    $emoji = match($a->type) { 'cash' => '💵', 'bank' => '🏦', 'mfs' => '📱', 'cheque' => '🧾', default => '•' };
+                @endphp
+                <option value="{{ $a->id }}">{{ $emoji }} {{ $a->name }}</option>
+            @endforeach
+        </select>
+        @endif
+
         <label style="display:block; margin-top:10px;">{{ translate('Notes (optional)') }}</label>
         <input type="text" name="notes" maxlength="255">
         <div class="actions">

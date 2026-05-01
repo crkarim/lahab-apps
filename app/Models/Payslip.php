@@ -34,6 +34,12 @@ class Payslip extends Model
         'employee_snapshot_json',
         'paid_at',
         'paid_method',
+        'paid_reference',
+        'paid_by_admin_id',
+        // Phase 8.5c — cash account the payslip's net was paid from.
+        // Auto-post writes an OUT row tagged ref_type='payslip' to this
+        // account when "Mark paid" runs.
+        'paid_from_account_id',
         'notes',
     ];
 

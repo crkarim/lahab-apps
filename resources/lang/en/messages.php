@@ -3781,4 +3781,12 @@
   'auto-select' => 'Auto-select',
   'Specific account' => 'Specific account',
   'Walk_in' => 'Walk in',
+  'default: same as source' => 'Default: same as source',
+  'Cash returned to' => 'Cash returned to',
+  'Today\'s roster — opening a cashier shift auto-clocks-in. Waiters and chefs use the manual clock below.' => 'Today s roster — opening a cashier shift auto-clocks-in. Waiters and chefs use the manual clock below.',
+  'Posts an OUT row to this account so the till/bank balance reflects the cash that left.' => 'Posts an OUT row to this account so the till/bank balance reflects the cash that left.',
+  'Handed to Rider' => 'Handed to Rider',
+  'Active advance balances will be reduced by' => 'Active advance balances will be reduced by',
+  'Posts an OUT row to this account so the source\'s balance reflects the salary disbursed.' => 'Posts an OUT row to this account so the source s balance reflects the salary disbursed.',
+  'not posted to ledger' => 'Not posted to ledger',
 );

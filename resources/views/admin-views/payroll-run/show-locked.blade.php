@@ -222,6 +222,32 @@
             <option value="cheque">{{ translate('Cheque') }}</option>
         </select>
 
+        @php
+            try {
+                $payAccounts = \App\Models\CashAccount::query()
+                    ->where('is_active', true)
+                    ->when($run->branch_id, fn ($q) => $q->where(function ($qq) use ($run) {
+                        $qq->whereNull('branch_id')->orWhere('branch_id', $run->branch_id);
+                    }))
+                    ->orderBy('sort_order')->orderBy('name')->get();
+            } catch (\Throwable $e) { $payAccounts = collect(); }
+        @endphp
+        @if($payAccounts->count() > 0)
+        <label style="display:block; margin-top:10px;">{{ translate('Paid from account') }}</label>
+        <select name="paid_from_account_id" id="lh-pay-from-account">
+            <option value="">— {{ translate('not posted to ledger') }} —</option>
+            @foreach($payAccounts as $a)
+                @php
+                    $emoji = match($a->type) { 'cash' => '💵', 'bank' => '🏦', 'mfs' => '📱', 'cheque' => '🧾', default => '•' };
+                @endphp
+                <option value="{{ $a->id }}" data-type="{{ $a->type }}">{{ $emoji }} {{ $a->name }}@if($a->account_number) · {{ $a->account_number }}@endif</option>
+            @endforeach
+        </select>
+        <small style="color:#6A6A70; font-size:11px; display:block; margin-top:2px;">
+            {{ translate('Posts an OUT row to this account so the source\'s balance reflects the salary disbursed.') }}
+        </small>
+        @endif
+
         <div id="lh-pay-employee-detail" style="margin-top:8px; font-size:11px; color:#1A1A1A; background:#F4F6F8; padding:8px 12px; border-radius:6px; display:none;">
             <strong>{{ translate('On record') }}:</strong> <span id="lh-pay-detail-text">—</span>
         </div>
