@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Model\Admin;
+use App\Model\Branch;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -57,6 +58,11 @@ class Payslip extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'admin_id');
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 
     public function isPaid(): bool { return $this->paid_at !== null; }

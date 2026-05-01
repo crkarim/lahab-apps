@@ -3,16 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\PaySlipEmail;
 use App\Model\Admin;
+use App\Model\BusinessSetting;
 use App\Models\PayrollRun;
 use App\Models\Payslip;
 use App\Models\SalaryAdvance;
 use App\Services\Payroll\PayrollSummariser;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * HRM Phase 4.3 — Payroll Runs.
@@ -298,5 +304,208 @@ class PayrollRunController extends Controller
         }
 
         return back()->with('success', 'Marked paid · ' . strtoupper($method) . ($validated['paid_reference'] ?? null ? ' · ref ' . $validated['paid_reference'] : ''));
+    }
+
+    /**
+     * HRM Phase 7b — Stream the pay slip PDF for download.
+     * Uses the frozen snapshot, so the PDF reflects payroll-run state
+     * at lock time, not the live admin record.
+     */
+    public function downloadPayslipPdf(int $id): Response
+    {
+        $admin    = auth('admin')->user();
+        $branchId = $admin?->branch_id;
+
+        $payslip = Payslip::query()
+            ->with(['run', 'branch'])
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->find($id);
+        if (!$payslip) abort(404, 'Payslip not found.');
+
+        $companyName = optional(BusinessSetting::where('key', 'restaurant_name')->first())->value ?? 'Lahab';
+        $branchName  = $payslip->branch?->name ?? '';
+
+        $pdf = Pdf::loadView('admin-views.payroll-run.payslip-pdf', [
+            'payslip'     => $payslip,
+            'run'         => $payslip->run,
+            'companyName' => $companyName,
+            'branchName'  => $branchName,
+        ])->setPaper('a4', 'portrait');
+
+        $snap   = $payslip->employee_snapshot_json ?? [];
+        $name   = trim(($snap['f_name'] ?? '') . ' ' . ($snap['l_name'] ?? '')) ?: 'employee';
+        $period = optional($payslip->run?->period_from)->format('M_Y') ?: 'period';
+        $filename = 'PaySlip_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $name) . '_' . $period . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Send the pay slip PDF to the employee's email on file.
+     * Idempotent for the user — they get one email per click; we don't
+     * track sends so HR can resend if the employee asks.
+     */
+    public function emailPayslip(int $id): RedirectResponse
+    {
+        $admin    = auth('admin')->user();
+        $branchId = $admin?->branch_id;
+
+        $payslip = Payslip::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->find($id);
+        if (!$payslip) return back()->with('error', 'Payslip not found.');
+
+        $employee = Admin::find($payslip->admin_id);
+        if (!$employee || empty($employee->email)) {
+            return back()->with('error', 'Employee has no email address on file.');
+        }
+
+        try {
+            Mail::to($employee->email)->send(new PaySlipEmail($payslip));
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Email failed: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Pay slip emailed to ' . $employee->email);
+    }
+
+    /**
+     * Bank-batch CSV export for a payroll run. Rows grouped by payment
+     * method (BANK, MOBILE, CHEQUE, CASH) with a header per group so
+     * the company can copy each section into the bank's upload format.
+     *
+     * Pulls from the *snapshot* (line_items_json + employee_snapshot_json)
+     * for amounts, but uses the *current* admin record for bank/wallet
+     * info — bank details may have been corrected after the run was
+     * locked, and what matters for disbursement is where the money
+     * goes today, not what was on file weeks ago.
+     */
+    public function exportBankCsv(int $runId): StreamedResponse
+    {
+        $admin    = auth('admin')->user();
+        $branchId = $admin?->branch_id;
+
+        $run = PayrollRun::query()
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->find($runId);
+        if (!$run) abort(404, 'Payroll run not found.');
+
+        $payslips = Payslip::query()
+            ->where('run_id', $run->id)
+            ->orderBy('id')
+            ->get();
+
+        // Resolve current bank info per employee in one query.
+        $adminIds = $payslips->pluck('admin_id')->unique()->all();
+        $admins   = Admin::query()->whereIn('id', $adminIds)->get()->keyBy('id');
+
+        // Bucket by payment method.
+        $buckets = ['bank' => [], 'mobile' => [], 'cheque' => [], 'cash' => []];
+        foreach ($payslips as $ps) {
+            $emp    = $admins->get($ps->admin_id);
+            $method = $emp?->payment_method ?: 'cash';
+            $buckets[$method][] = ['payslip' => $ps, 'admin' => $emp];
+        }
+
+        $period   = optional($run->period_from)->format('Y-m-d') . '_' . optional($run->period_to)->format('Y-m-d');
+        $filename = 'PayrollRun_' . $run->id . '_' . $period . '_bank.csv';
+
+        $callback = function () use ($buckets, $run) {
+            $out = fopen('php://output', 'w');
+
+            $writeHeader = function ($title, array $cols) use ($out) {
+                fputcsv($out, []);
+                fputcsv($out, ['# ' . $title]);
+                fputcsv($out, $cols);
+            };
+
+            // Bank section — what most BD banks consume.
+            if (!empty($buckets['bank'])) {
+                $writeHeader('BANK TRANSFER', [
+                    'SL', 'Employee', 'Code', 'Bank', 'Branch', 'Account Name', 'Account Number', 'Routing', 'Net Amount (Tk)', 'Reference',
+                ]);
+                $sl = 1;
+                foreach ($buckets['bank'] as $row) {
+                    $ps   = $row['payslip'];
+                    $emp  = $row['admin'];
+                    $snap = $ps->employee_snapshot_json ?? [];
+                    fputcsv($out, [
+                        $sl++,
+                        trim(($snap['f_name'] ?? '') . ' ' . ($snap['l_name'] ?? '')),
+                        $snap['employee_code'] ?? '',
+                        $emp?->bank_name ?? '',
+                        $emp?->bank_branch ?? '',
+                        $emp?->bank_account_name ?? '',
+                        $emp?->bank_account_number ?? '',
+                        $emp?->bank_routing_number ?? '',
+                        number_format((float) $ps->net, 2, '.', ''),
+                        $ps->paid_reference ?? '',
+                    ]);
+                }
+            }
+
+            if (!empty($buckets['mobile'])) {
+                $writeHeader('MOBILE MONEY (bKash / Nagad / Rocket / Upay)', [
+                    'SL', 'Employee', 'Code', 'Provider', 'Wallet Number', 'Net Amount (Tk)', 'Reference',
+                ]);
+                $sl = 1;
+                foreach ($buckets['mobile'] as $row) {
+                    $ps   = $row['payslip'];
+                    $emp  = $row['admin'];
+                    $snap = $ps->employee_snapshot_json ?? [];
+                    fputcsv($out, [
+                        $sl++,
+                        trim(($snap['f_name'] ?? '') . ' ' . ($snap['l_name'] ?? '')),
+                        $snap['employee_code'] ?? '',
+                        strtoupper($emp?->mobile_provider ?? ''),
+                        $emp?->mobile_wallet_number ?? '',
+                        number_format((float) $ps->net, 2, '.', ''),
+                        $ps->paid_reference ?? '',
+                    ]);
+                }
+            }
+
+            if (!empty($buckets['cheque'])) {
+                $writeHeader('CHEQUE', [
+                    'SL', 'Employee', 'Code', 'Net Amount (Tk)', 'Cheque Number / Reference',
+                ]);
+                $sl = 1;
+                foreach ($buckets['cheque'] as $row) {
+                    $ps   = $row['payslip'];
+                    $snap = $ps->employee_snapshot_json ?? [];
+                    fputcsv($out, [
+                        $sl++,
+                        trim(($snap['f_name'] ?? '') . ' ' . ($snap['l_name'] ?? '')),
+                        $snap['employee_code'] ?? '',
+                        number_format((float) $ps->net, 2, '.', ''),
+                        $ps->paid_reference ?? '',
+                    ]);
+                }
+            }
+
+            if (!empty($buckets['cash'])) {
+                $writeHeader('CASH', [
+                    'SL', 'Employee', 'Code', 'Net Amount (Tk)',
+                ]);
+                $sl = 1;
+                foreach ($buckets['cash'] as $row) {
+                    $ps   = $row['payslip'];
+                    $snap = $ps->employee_snapshot_json ?? [];
+                    fputcsv($out, [
+                        $sl++,
+                        trim(($snap['f_name'] ?? '') . ' ' . ($snap['l_name'] ?? '')),
+                        $snap['employee_code'] ?? '',
+                        number_format((float) $ps->net, 2, '.', ''),
+                    ]);
+                }
+            }
+
+            fclose($out);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type'        => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 }

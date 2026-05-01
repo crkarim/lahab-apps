@@ -196,6 +196,10 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::post('{id}/lock',              [PayrollRunController::class, 'lock'])->whereNumber('id')->name('lock');
                 Route::delete('{id}',                 [PayrollRunController::class, 'destroy'])->whereNumber('id')->name('destroy');
                 Route::post('payslip/{id}/mark-paid', [PayrollRunController::class, 'markPayslipPaid'])->whereNumber('id')->name('payslip.mark-paid');
+                // HRM Phase 7b — pay slip PDF download + email + bank CSV export.
+                Route::get('payslip/{id}/pdf',          [PayrollRunController::class, 'downloadPayslipPdf'])->whereNumber('id')->name('payslip.pdf');
+                Route::post('payslip/{id}/email',       [PayrollRunController::class, 'emailPayslip'])->whereNumber('id')->name('payslip.email');
+                Route::get('{id}/bank-csv',             [PayrollRunController::class, 'exportBankCsv'])->whereNumber('id')->name('bank-csv');
             });
         }
 

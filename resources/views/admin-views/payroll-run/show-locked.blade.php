@@ -54,7 +54,7 @@
 
     <div class="lh-banner {{ $run->isPaid() ? 'paid' : '' }}">
         <span class="lh-badge {{ $run->status }}">{{ strtoupper($run->status) }}</span>
-        <div>
+        <div style="flex:1;">
             <h1>{{ translate('Run') }} #{{ $run->id }} · {{ optional($run->period_from)->format('d M') }} → {{ optional($run->period_to)->format('d M Y') }}</h1>
             <p>
                 @if($run->locked_at)
@@ -65,6 +65,14 @@
                 @if($run->branch) · {{ $run->branch->name }}@endif
             </p>
         </div>
+        {{-- Phase 7b — Bank-batch CSV. Groups payslips by payment method
+             so HR can paste each section into the bank's upload format. --}}
+        <a href="{{ route('admin.payroll-runs.bank-csv', ['id' => $run->id]) }}"
+           class="btn btn-light"
+           style="font-size:12px; font-weight:700; white-space:nowrap;"
+           title="{{ translate('Download bank-batch CSV — groups by Bank / Mobile / Cheque / Cash') }}">
+            📥 {{ translate('Bank file (CSV)') }}
+        </a>
     </div>
 
     <div class="lh-totals">
@@ -102,12 +110,19 @@
                     <th class="num" style="text-align:right;">{{ translate('Deduct.') }}</th>
                     <th class="num" style="text-align:right;">{{ translate('Advance') }}</th>
                     <th class="num" style="text-align:right;">{{ translate('Net') }}</th>
+                    <th>{{ translate('Slip') }}</th>
                     <th>{{ translate('Paid') }}</th>
                 </tr>
             </thead>
             <tbody>
             @foreach($payslips as $p)
-                @php $snap = $p->employee_snapshot_json ?? []; @endphp
+                @php
+                    $snap = $p->employee_snapshot_json ?? [];
+                    // Resolve once per row so Slip + Paid columns share it
+                    // (avoid double Admin::find lookups).
+                    $emp = \App\Model\Admin::find($p->admin_id);
+                    $defaultMethod = $emp?->payment_method ?? 'cash';
+                @endphp
                 <tr>
                     <td class="who">
                         <strong>{{ trim(($snap['f_name'] ?? '') . ' ' . ($snap['l_name'] ?? '')) }}</strong>
@@ -128,6 +143,26 @@
                     </td>
                     <td class="num net">{{ $sym($p->net) }}</td>
                     <td>
+                        {{-- Phase 7b — pay slip PDF + email per row.
+                             Email button only renders if employee has an
+                             email address on file; otherwise the controller
+                             returns a clear error, but better to hide it. --}}
+                        <a href="{{ route('admin.payroll-runs.payslip.pdf', ['id' => $p->id]) }}"
+                           target="_blank"
+                           class="btn btn-light btn-sm"
+                           style="padding:3px 8px; font-size:11px;"
+                           title="{{ translate('Download PDF') }}">📄</a>
+                        @if(!empty($emp?->email))
+                            <form method="POST"
+                                  action="{{ route('admin.payroll-runs.payslip.email', ['id' => $p->id]) }}"
+                                  style="display:inline;"
+                                  onsubmit="return confirm('{{ translate('Email this pay slip to') }} {{ $emp->email }}?')">
+                                @csrf
+                                <button type="submit" class="btn btn-light btn-sm" style="padding:3px 8px; font-size:11px;" title="{{ translate('Email to') }} {{ $emp->email }}">✉️</button>
+                            </form>
+                        @endif
+                    </td>
+                    <td>
                         @if($p->paid_at)
                             <span class="paid-pill">PAID</span>
                             <small style="display:block; color:#6A6A70; font-size:10px;">
@@ -138,11 +173,6 @@
                             </small>
                         @else
                             @php
-                                // Each unpaid row pre-fills the modal with the
-                                // employee's preferred payment method so HR doesn't
-                                // re-pick it for every row.
-                                $emp = \App\Model\Admin::find($p->admin_id);
-                                $defaultMethod = $emp?->payment_method ?? 'cash';
                                 $payeeLabel = trim(($snap['f_name'] ?? '') . ' ' . ($snap['l_name'] ?? '')) ?: ('#' . $p->id);
                             @endphp
                             <button type="button" class="btn btn-success btn-sm"
@@ -167,7 +197,7 @@
 
     <div style="margin-top:14px; font-size:11px; color:#6A6A70; line-height:1.6;">
         <strong>{{ translate('Frozen snapshot') }}:</strong>
-        {{ translate('Numbers above were captured at lock time and won\'t change even if attendance, salary structure, or tip flow change later. Pay slip PDF/email + bank-batch CSV export are next.') }}
+        {{ translate('Numbers above were captured at lock time and won\'t change even if attendance, salary structure, or tip flow change later. Use the bank file for batch disbursement, then mark each row paid + email the pay slip.') }}
     </div>
 </div>
 
