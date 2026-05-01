@@ -194,18 +194,51 @@
                 <p style="font-size:12px; color:#6A6A70; margin:0 0 10px;">
                     {{ translate('Count the cash in the drawer right now and enter it below. The system records the variance vs the expected total above.') }}
                 </p>
-                <form method="POST" action="{{ route('admin.shifts.close', ['id' => $shift->id]) }}" class="lh-form">
+                <form method="POST" action="{{ route('admin.shifts.close', ['id' => $shift->id]) }}" class="lh-form" id="lh-close-shift-form">
                     @csrf
                     <label>{{ translate('Counted cash (Tk)') }}</label>
-                    <input type="number" name="actual_cash" step="0.01" min="0" required value="{{ number_format($expectedCash, 2, '.', '') }}" />
+                    <input type="number" name="actual_cash" id="lh-actual-cash" step="0.01" min="0" required value="{{ number_format($expectedCash, 2, '.', '') }}"
+                           data-expected="{{ $expectedCash }}" />
+
+                    {{-- Phase 8.5 — variance reason. Required if counted ≠
+                         expected; the controller rejects the close otherwise.
+                         Surface dynamically when the cashier types a value
+                         that differs from the expected so they don't bounce
+                         off a server-side validation error. --}}
+                    <div id="lh-variance-reason-wrap" style="display:none; margin-top:10px;">
+                        <label style="color:#C82626;">{{ translate('Variance reason') }} <span>*</span></label>
+                        <textarea name="variance_reason" id="lh-variance-reason" rows="2"
+                                  placeholder="{{ translate('e.g. Tk 200 short — paid customer refund at 22:00, no receipt; or Tk 50 surplus — change rounding') }}"></textarea>
+                        <small style="color:#6A6A70; font-size:11px; display:block; margin-top:4px;">
+                            {{ translate('Posts to the cash ledger as a Drawer shortage / surplus row against the till you opened with.') }}
+                        </small>
+                    </div>
+
                     <label style="display:block; margin-top:10px;">{{ translate('Notes (optional)') }}</label>
-                    <textarea name="notes" rows="2" placeholder="{{ translate('e.g. 200 short — refunded to customer at 22:00') }}"></textarea>
+                    <textarea name="notes" rows="2" placeholder="{{ translate('Anything else worth recording about this shift.') }}"></textarea>
                     <div class="submit-row">
                         <button type="submit" class="btn btn-warning" onclick="return confirm('{{ translate('Close this shift? Cannot be reopened.') }}')">
                             {{ translate('Close shift') }}
                         </button>
                     </div>
                 </form>
+                <script>
+                    (function () {
+                        var input = document.getElementById('lh-actual-cash');
+                        var wrap  = document.getElementById('lh-variance-reason-wrap');
+                        if (!input || !wrap) return;
+                        var expected = parseFloat(input.getAttribute('data-expected')) || 0;
+                        function checkVariance() {
+                            var actual = parseFloat(input.value) || 0;
+                            var diff = Math.abs(actual - expected);
+                            wrap.style.display = diff > 0.005 ? 'block' : 'none';
+                            var ta = document.getElementById('lh-variance-reason');
+                            if (ta) ta.required = diff > 0.005;
+                        }
+                        input.addEventListener('input', checkVariance);
+                        checkVariance();
+                    })();
+                </script>
             </div>
             @endif
         </div>

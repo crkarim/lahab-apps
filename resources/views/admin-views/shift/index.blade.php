@@ -182,12 +182,42 @@
 </div>
 
 {{-- Open shift modal --}}
+@php
+    // Phase 8.5 — list cash-type accounts visible to this admin so the
+    // cashier can pick the till they're opening (defaults to the
+    // branch's first cash account on submit if left blank).
+    $shiftAdmin = auth('admin')->user();
+    try {
+        $shiftCashAccounts = \App\Models\CashAccount::query()
+            ->where('is_active', true)->where('type', 'cash')
+            ->when($shiftAdmin?->branch_id, fn ($q) => $q->where(function ($qq) use ($shiftAdmin) {
+                $qq->whereNull('branch_id')->orWhere('branch_id', $shiftAdmin->branch_id);
+            }))
+            ->orderBy('sort_order')->orderBy('name')->get();
+    } catch (\Throwable $e) { $shiftCashAccounts = collect(); }
+@endphp
 <div class="modal-overlay" id="lh-open-modal" onclick="if(event.target===this) this.classList.remove('open')">
     <form method="POST" action="{{ route('admin.shifts.open') }}" class="modal-card">
         @csrf
         <h2>{{ translate('Open shift') }}</h2>
         <p>{{ translate('Declare the opening cash you brought to the till. Leave blank if starting empty.') }}</p>
-        <label>{{ translate('Opening cash (Tk)') }}</label>
+
+        @if($shiftCashAccounts->count() > 0)
+            <label>{{ translate('Till / cash account') }}</label>
+            <select name="cash_account_id">
+                <option value="">— {{ translate('default for my branch') }} —</option>
+                @foreach($shiftCashAccounts as $a)
+                    <option value="{{ $a->id }}">
+                        {{ $a->name }}@if($a->branch_id) (branch){{ ' ' }}@else (HQ){{ ' ' }}@endif
+                    </option>
+                @endforeach
+            </select>
+            <small style="color:#6A6A70; font-size:11px; display:block; margin-top:4px;">
+                {{ translate('The cash variance at close will reconcile against this account. Manage tills at /admin/cash-accounts.') }}
+            </small>
+        @endif
+
+        <label style="display:block; margin-top:10px;">{{ translate('Opening cash (Tk)') }}</label>
         <input type="number" name="opening_cash" value="0" step="0.01" min="0" />
         <label style="display:block; margin-top:10px;">{{ translate('Notes (optional)') }}</label>
         <textarea name="notes" rows="2" placeholder="{{ translate('e.g. Brought 500 from previous shift') }}"></textarea>

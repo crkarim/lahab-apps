@@ -25,6 +25,9 @@ class Shift extends Model
 
     protected $fillable = [
         'branch_id',
+        // Phase 8.5 — the cash account (till) this shift opens against.
+        // Variance posts to this account at close.
+        'cash_account_id',
         'opened_by_admin_id',
         'opened_at',
         'opening_cash',
@@ -33,6 +36,7 @@ class Shift extends Model
         'expected_cash',
         'actual_cash',
         'variance',
+        'variance_reason',
         'notes',
         'status',
     ];
@@ -45,6 +49,11 @@ class Shift extends Model
         'actual_cash'   => 'decimal:2',
         'variance'      => 'decimal:2',
     ];
+
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(CashAccount::class, 'cash_account_id');
+    }
 
     public function branch(): BelongsTo
     {

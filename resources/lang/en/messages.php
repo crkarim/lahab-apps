@@ -3774,4 +3774,11 @@
   'Closing = opening + in − out − charges. If closing differs from your counted cash / bank statement, post an adjustment transaction with a clear reason — never edit balances directly.' => 'Closing = opening + in − out − charges. If closing differs from your counted cash / bank statement, post an adjustment transaction with a clear reason — never edit balances directly.',
   'Delete this transaction? Pair will also be removed if it\'s a transfer.' => 'Delete this transaction? Pair will also be removed if it s a transfer.',
   'movement(s) this day' => 'Movement(s) this day',
+  'Till / cash account' => 'Till / cash account',
+  'default for my branch' => 'Default for my branch',
+  'The cash variance at close will reconcile against this account. Manage tills at /admin/cash-accounts.' => 'The cash variance at close will reconcile against this account. Manage tills at /admin/cash-accounts.',
+  'Pick the exact bank/bKash account where the customer is paying. Leave on auto-select to use the first matching active account.' => 'Pick the exact bank/bKash account where the customer is paying. Leave on auto-select to use the first matching active account.',
+  'auto-select' => 'Auto-select',
+  'Specific account' => 'Specific account',
+  'Walk_in' => 'Walk in',
 );

@@ -69,16 +69,50 @@
                                     <i class="tio-credit-card"></i> {{ translate('Payment') }}
                                 </div>
 
+                                @php
+                                    // Phase 8.5 — load active cash accounts for
+                                    // this branch to drive the per-row picker.
+                                    try {
+                                        $coAccounts = \App\Models\CashAccount::query()
+                                            ->where('is_active', true)
+                                            ->when($order->branch_id, fn ($q) => $q->where(function ($qq) use ($order) {
+                                                $qq->whereNull('branch_id')->orWhere('branch_id', $order->branch_id);
+                                            }))
+                                            ->orderBy('sort_order')->orderBy('name')->get();
+                                    } catch (\Throwable $e) { $coAccounts = collect(); }
+                                @endphp
                                 <div id="co-payments">
                                     <div class="lh-co-payment-row co-payment-row">
                                         <div class="lh-co-method-wrap">
-                                            <select name="payments[0][method]" class="form-control lh-co-method co-method">
-                                                <option value="cash">💵 {{ translate('Cash') }}</option>
-                                                <option value="card">💳 {{ translate('Card') }}</option>
-                                                @foreach($offline_methods ?? [] as $m)
-                                                    <option value="offline:{{ $m->id }}">📱 {{ $m->method_name }}</option>
-                                                @endforeach
+                                            {{-- Single dropdown that lists every specific cash account.
+                                                 Replaces the old generic Cash / Card / offline:N picker.
+                                                 The submitted method is derived server-side from the
+                                                 picked account's type, so existing reports that read
+                                                 paid_with still get sensible values. --}}
+                                            <select name="payments[0][cash_account_id]" class="form-control lh-co-method co-method">
+                                                @if($coAccounts->isEmpty())
+                                                    {{-- pre-migration fallback: keep the old picker --}}
+                                                    <option value="" data-method="cash">💵 {{ translate('Cash') }}</option>
+                                                    <option value="" data-method="card">💳 {{ translate('Card') }}</option>
+                                                    @foreach($offline_methods ?? [] as $m)
+                                                        <option value="" data-method="offline:{{ $m->id }}">📱 {{ $m->method_name }}</option>
+                                                    @endforeach
+                                                @else
+                                                    @foreach($coAccounts as $acc)
+                                                        @php
+                                                            $emoji = match($acc->type) {
+                                                                'cash' => '💵', 'bank' => '🏦', 'mfs' => '📱', 'cheque' => '🧾', default => '•',
+                                                            };
+                                                        @endphp
+                                                        <option value="{{ $acc->id }}" data-method="{{ $acc->type }}">
+                                                            {{ $emoji }} {{ $acc->name }}@if($acc->account_number) · {{ $acc->account_number }}@endif
+                                                        </option>
+                                                    @endforeach
+                                                @endif
                                             </select>
+                                            {{-- Mirrored hidden field — server reads this for the
+                                                 paid_with string when the dropdown only carries an id. --}}
+                                            <input type="hidden" name="payments[0][method]" value="">
                                         </div>
                                         <div class="lh-co-amount-wrap">
                                             <input type="number" step="0.01" min="0" name="payments[0][amount]"
@@ -514,15 +548,37 @@
         $(this).closest('.lh-co-receipt-chip').addClass('active');
     });
 
+    // Phase 8.5 — keep the hidden method field in sync with whichever
+    // option is selected (data-method attribute). Server uses the method
+    // for the legacy paid_with column; cash_account_id is what auto-post
+    // actually keys off when set.
+    function lhSyncMethodFor($row) {
+        var $sel = $row.find('select.co-method');
+        var $hidden = $row.find('input[type=hidden][name$="[method]"]');
+        var sel = $sel[0]; if (!sel) return;
+        var opt = sel.options[sel.selectedIndex];
+        var m = opt ? (opt.getAttribute('data-method') || '') : '';
+        $hidden.val(m);
+    }
+    $(document).on('change', 'select.co-method', function () {
+        lhSyncMethodFor($(this).closest('.co-payment-row'));
+    });
+    // Initial sync for the pre-existing first row.
+    $(document).ready(function () {
+        $('#co-payments .co-payment-row').each(function () { lhSyncMethodFor($(this)); });
+    });
+
     let rowIdx = 0;
     $(document).on('click', '.co-add-row', function () {
         rowIdx += 1;
         const tmpl = $('#co-payments .co-payment-row').first().clone();
-        tmpl.find('select').attr('name', 'payments[' + rowIdx + '][method]');
-        tmpl.find('input').attr('name', 'payments[' + rowIdx + '][amount]').val('0');
+        tmpl.find('select.co-method').attr('name', 'payments[' + rowIdx + '][cash_account_id]');
+        tmpl.find('input[type=hidden][name$="[method]"]').attr('name', 'payments[' + rowIdx + '][method]');
+        tmpl.find('input.co-amount').attr('name', 'payments[' + rowIdx + '][amount]').val('0');
         tmpl.find('.co-remove-row').show();
         tmpl.find('.co-add-row').hide();
         $('#co-payments').append(tmpl);
+        lhSyncMethodFor(tmpl);
     });
 
     $(document).on('click', '.co-remove-row', function () {

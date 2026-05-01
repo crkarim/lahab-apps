@@ -128,12 +128,36 @@ class ShiftController extends Controller
         }
 
         $validated = $request->validate([
-            'opening_cash' => 'nullable|numeric|min:0',
-            'notes'        => 'nullable|string|max:500',
+            'opening_cash'    => 'nullable|numeric|min:0',
+            'notes'           => 'nullable|string|max:500',
+            // Phase 8.5 — the cash account (till) this shift opens against.
+            'cash_account_id' => 'nullable|integer|exists:cash_accounts,id',
         ]);
+
+        // Pick a sensible default till if the cashier didn't choose one:
+        // first cash-type account in their branch, else first HQ-wide cash.
+        $accountId = $validated['cash_account_id'] ?? null;
+        if (!$accountId) {
+            try {
+                $defaultAcc = \App\Models\CashAccount::query()
+                    ->where('is_active', true)
+                    ->where('type', 'cash')
+                    ->where('branch_id', $admin->branch_id)
+                    ->orderBy('sort_order')
+                    ->first()
+                    ?? \App\Models\CashAccount::query()
+                        ->where('is_active', true)
+                        ->where('type', 'cash')
+                        ->whereNull('branch_id')
+                        ->orderBy('sort_order')
+                        ->first();
+                $accountId = $defaultAcc?->id;
+            } catch (\Throwable $e) { /* pre-migration */ }
+        }
 
         $shift = Shift::create([
             'branch_id'          => $admin->branch_id,
+            'cash_account_id'    => $accountId,
             'opened_by_admin_id' => $admin->id,
             'opened_at'          => now(),
             'opening_cash'       => (float) ($validated['opening_cash'] ?? 0),
@@ -182,13 +206,21 @@ class ShiftController extends Controller
         }
 
         $validated = $request->validate([
-            'actual_cash' => 'required|numeric|min:0',
-            'notes'       => 'nullable|string|max:1000',
+            'actual_cash'     => 'required|numeric|min:0',
+            'notes'           => 'nullable|string|max:1000',
+            'variance_reason' => 'nullable|string|max:500',
         ]);
 
         $expected = $shift->computeExpectedCash();
         $actual   = (float) $validated['actual_cash'];
         $variance = round($actual - $expected, 2);
+
+        // Phase 8.5 — when the actual count doesn't match expected, the
+        // cashier MUST give a reason. Keeps the audit trail honest and
+        // forces investigation when drawer money goes missing.
+        if (abs($variance) > 0.005 && empty(trim((string) ($validated['variance_reason'] ?? '')))) {
+            return back()->with('error', 'Variance of ' . \App\CentralLogics\Helpers::set_symbol(abs($variance)) . ' detected — please record the reason (short reimbursement, missed payout, miscount, etc.).')->withInput();
+        }
 
         $shift->forceFill([
             'closed_by_admin_id' => $admin->id,
@@ -196,9 +228,46 @@ class ShiftController extends Controller
             'expected_cash'      => $expected,
             'actual_cash'        => $actual,
             'variance'           => $variance,
+            'variance_reason'    => $validated['variance_reason'] ?? null,
             'notes'              => $validated['notes'] ?? $shift->notes,
             'status'             => 'closed',
         ])->save();
+
+        // Phase 8.5 — post the variance into the cash ledger so the
+        // till's current_balance reconciles to the counted cash. Skipped
+        // when shift has no cash_account_id (legacy rows from before the
+        // migration) or when variance is exactly zero.
+        if ($shift->cash_account_id && abs($variance) > 0.005) {
+            try {
+                \Illuminate\Support\Facades\DB::transaction(function () use ($shift, $variance, $validated, $admin) {
+                    $reason = trim((string) ($validated['variance_reason'] ?? ''));
+                    $isShort = $variance < 0;
+                    $absAmount = abs($variance);
+
+                    \App\Models\AccountTransaction::create([
+                        'txn_no'              => \App\Models\AccountTransaction::nextTxnNo(),
+                        'account_id'          => $shift->cash_account_id,
+                        'direction'           => $isShort ? 'out' : 'in',
+                        'amount'              => $absAmount,
+                        'charge'              => 0,
+                        'ref_type'            => 'shift',
+                        'ref_id'              => $shift->id,
+                        'branch_id'           => $shift->branch_id,
+                        'description'         => 'Drawer ' . ($isShort ? 'shortage' : 'surplus')
+                            . ' on shift #' . $shift->id . ' close · ' . $reason,
+                        'transacted_at'       => now(),
+                        'recorded_by_admin_id' => $admin->id,
+                    ]);
+                    \App\Models\CashAccount::find($shift->cash_account_id)?->recomputeBalance();
+                });
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Shift close: variance ledger post failed', [
+                    'shift_id' => $shift->id,
+                    'variance' => $variance,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
+        }
 
         // HRM hook — closing the shift counts as clocking out for the
         // attendance row created at open. Match by shift_id so we

@@ -35,8 +35,21 @@ class CheckoutController extends Controller
             return back();
         }
 
+        // Phase 8.5 — accept either method (legacy form) OR cash_account_id
+        // (new picker). When only account_id is sent, derive method from
+        // the account's type so the legacy paid_with column stays
+        // populated for existing reports.
         $payments = collect($request->input('payments', []))
-            ->filter(fn ($p) => isset($p['method']) && (float) ($p['amount'] ?? 0) > 0)
+            ->filter(fn ($p) => (float) ($p['amount'] ?? 0) > 0
+                && (isset($p['method']) && $p['method'] !== ''
+                    || isset($p['cash_account_id']) && (int) $p['cash_account_id'] > 0))
+            ->map(function ($p) {
+                if ((empty($p['method']) || $p['method'] === '') && !empty($p['cash_account_id'])) {
+                    $acc = \App\Models\CashAccount::find((int) $p['cash_account_id']);
+                    $p['method'] = $acc?->type ?? 'cash';
+                }
+                return $p;
+            })
             ->values();
 
         // Already-paid orders: skip payment recording, just handle receipt delivery.
@@ -103,11 +116,19 @@ class CheckoutController extends Controller
             }
 
             foreach ($payments as $p) {
+                // Phase 8.5 — capture cash_account_id when sent. Falls
+                // through to fuzzy match in auto-post otherwise. The
+                // legacy 'method' string is what existing reports read,
+                // so we keep populating it from the picker's data-method.
+                $accountId = isset($p['cash_account_id']) && (int) $p['cash_account_id'] > 0
+                    ? (int) $p['cash_account_id'] : null;
+
                 OrderPartialPayment::create([
-                    'order_id'    => $order->id,
-                    'paid_with'   => (string) $p['method'],
-                    'paid_amount' => (float) $p['amount'],
-                    'due_amount'  => 0,
+                    'order_id'        => $order->id,
+                    'paid_with'       => (string) $p['method'],
+                    'paid_amount'     => (float) $p['amount'],
+                    'due_amount'      => 0,
+                    'cash_account_id' => $accountId,
                 ]);
             }
 

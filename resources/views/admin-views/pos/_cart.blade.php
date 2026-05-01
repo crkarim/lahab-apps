@@ -258,6 +258,50 @@
             </ul>
         </div>
 
+        {{-- Phase 8.5 — Specific cash account picker.
+             Loads the active accounts in the viewer's branch scope.
+             JS filters to the relevant subset based on the chosen
+             payment method (cash → cash-type accounts, card → bank-type,
+             etc.). Auto-selects when only one option matches so the
+             cashier doesn't have to tap twice. --}}
+        @php
+            $branchId = auth('admin')->user()?->branch_id;
+            $isMaster = (int) (auth('admin')->user()?->admin_role_id ?? 0) === 1;
+            try {
+                $posCashAccounts = \App\Models\CashAccount::query()
+                    ->where('is_active', true)
+                    ->when(!$isMaster && $branchId, fn ($q) => $q->where(function ($qq) use ($branchId) {
+                        $qq->whereNull('branch_id')->orWhere('branch_id', $branchId);
+                    }))
+                    ->orderBy('sort_order')->orderBy('name')->get();
+            } catch (\Throwable $e) {
+                $posCashAccounts = collect(); // pre-migration fallback
+            }
+        @endphp
+        @if($posCashAccounts->count() > 0)
+        <div class="pos-paid-by" id="pos-account-picker-wrap" style="margin-top:10px;">
+            <div class="pos-label">{{ translate('Specific account') }}</div>
+            <select name="cash_account_id" id="pos-cash-account-id" class="form-control" style="font-size:13px;">
+                <option value="">— {{ translate('auto-select') }} —</option>
+                @foreach($posCashAccounts as $acc)
+                    @php
+                        $emoji = match($acc->type) {
+                            'cash' => '💵', 'bank' => '🏦', 'mfs' => '📱', 'cheque' => '🧾', default => '•',
+                        };
+                    @endphp
+                    <option value="{{ $acc->id }}"
+                            data-type="{{ $acc->type }}"
+                            data-provider="{{ strtolower($acc->provider ?? '') }}">
+                        {{ $emoji }} {{ strtoupper($acc->type) }} · {{ $acc->name }}@if($acc->account_number) · {{ $acc->account_number }}@endif
+                    </option>
+                @endforeach
+            </select>
+            <small style="color:#6A6A70; font-size:11px; display:block; margin-top:4px;">
+                {{ translate('Pick the exact bank/bKash account where the customer is paying. Leave on auto-select to use the first matching active account.') }}
+            </small>
+        </div>
+        @endif
+
         {{-- Wallet panels — visibility controlled by JS --}}
         <div class="customer-wallet-info-card d-none">
             <p class="mb-0 fs-13">
@@ -329,6 +373,50 @@
 
 <script>
     "use strict";
+
+    // Phase 8.5 — Filter the cash-account picker by the selected
+    // payment method. cash → type=cash, card → type=bank, no specific
+    // method (pay_after_eating / cash_on_delivery / wallet) → hide picker.
+    // When exactly one account matches, auto-select it so the cashier
+    // doesn't have to interact with the dropdown.
+    function lhFilterPosAccounts() {
+        var wrap = document.getElementById('pos-account-picker-wrap');
+        var sel  = document.getElementById('pos-cash-account-id');
+        if (!wrap || !sel) return;
+
+        var method = ($('input[name="type"]:checked').val() || '').toLowerCase();
+        // Methods that don't move money to a specific account at place-order
+        // time → hide picker.
+        if (method === 'pay_after_eating' || method === 'cash_on_delivery' || method === 'wallet_payment') {
+            wrap.style.display = 'none';
+            sel.value = '';
+            return;
+        }
+        wrap.style.display = '';
+
+        var allowedTypes = method === 'cash' ? ['cash'] : (method === 'card' ? ['bank'] : ['mfs']);
+        var firstMatchValue = '';
+        var matchCount = 0;
+        Array.from(sel.options).forEach(function (opt) {
+            if (!opt.value) { opt.hidden = false; return; } // keep "auto-select"
+            var t = opt.getAttribute('data-type');
+            var ok = allowedTypes.indexOf(t) !== -1;
+            opt.hidden = !ok;
+            if (ok) {
+                matchCount++;
+                if (!firstMatchValue) firstMatchValue = opt.value;
+            }
+        });
+        // Single match → preselect for the cashier; multiple → leave on auto.
+        if (matchCount === 1) sel.value = firstMatchValue;
+        else if (sel.value) {
+            // If currently-selected option is now hidden, fall back to auto.
+            var current = sel.options[sel.selectedIndex];
+            if (current && current.hidden) sel.value = '';
+        }
+    }
+    $(document).on('change', 'input[name="type"]', lhFilterPosAccounts);
+    $(document).ready(lhFilterPosAccounts);
 
     function calculateAmountDifference() {
         let paidAmountStr = $('#paid-amount').val().replace(/[^0-9.]/g, '');

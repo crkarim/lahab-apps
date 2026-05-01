@@ -729,11 +729,18 @@ class POSController extends Controller
                     $paidAmount  = $requestedPaid > 0 ? $requestedPaid : $orderAmount;
                     $changeAmount = max(0, $paidAmount - $orderAmount);
 
+                    // Phase 8.5 — capture the specific cash account the cashier
+                    // picked. Falls through to fuzzy match in the auto-post if
+                    // null (e.g. legacy form / API that doesn't send it yet).
+                    $pickedAccountId = $request->filled('cash_account_id')
+                        ? (int) $request->cash_account_id : null;
+
                     OrderPartialPayment::create([
-                        'order_id'    => $order->id,
-                        'paid_with'   => $paymentMethod,
-                        'paid_amount' => $paidAmount,
-                        'due_amount'  => 0,
+                        'order_id'        => $order->id,
+                        'paid_with'       => $paymentMethod,
+                        'paid_amount'     => $paidAmount,
+                        'due_amount'      => 0,
+                        'cash_account_id' => $pickedAccountId,
                     ]);
 
                     $order->payment_status      = 'paid';

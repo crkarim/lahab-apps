@@ -26,11 +26,20 @@ class OrderPartialPayment extends Model
         // cashier. NULL forever for card / bKash / gateway methods —
         // those don't flow through the cashier's drawer.
         'handover_id',
+        // Phase 8.5 — exact cash account this payment lands in, picked
+        // by the cashier at checkout. Auto-post uses this verbatim
+        // instead of guessing from the paid_with string.
+        'cash_account_id',
     ];
 
     public function handover(): BelongsTo
     {
         return $this->belongsTo(CashHandover::class, 'handover_id');
+    }
+
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\CashAccount::class, 'cash_account_id');
     }
 
     public function order(): BelongsTo
