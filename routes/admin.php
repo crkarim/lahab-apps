@@ -101,8 +101,9 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // Token-protected so a hijacked admin session alone can't fire it.
         // REMOVE this trio (controller + blade + routes) after the deploy.
         Route::group(['prefix' => 'maintenance', 'as' => 'maintenance.'], function () {
-            Route::get('/',    [MaintenanceController::class, 'index'])->name('index');
-            Route::post('run', [MaintenanceController::class, 'run'])->name('run');
+            Route::get('/',                [MaintenanceController::class, 'index'])->name('index');
+            Route::post('run',             [MaintenanceController::class, 'run'])->name('run');
+            Route::post('reset-test-data', [MaintenanceController::class, 'resetTestData'])->name('reset-test-data');
         });
 
         // Cashier-facing handover surface — list of pending submissions

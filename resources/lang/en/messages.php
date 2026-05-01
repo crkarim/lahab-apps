@@ -3875,4 +3875,5 @@
   'row(s)' => 'Row(s)',
   'Total outflows' => 'Total outflows',
   'Net cash position today' => 'Net cash position today',
+  'No_orders_yet' => 'No orders yet',
 );
