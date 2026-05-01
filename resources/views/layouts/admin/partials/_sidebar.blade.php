@@ -513,13 +513,13 @@
                              Master Admin sees everything. Categories + suppliers
                              come in Phase 8.4. --}}
                         <li class="navbar-vertical-aside-has-menu
-                            {{ Request::is('admin/cash-accounts*') || Request::is('admin/account-transactions*') || Request::is('admin/daily-fund*') ? 'active' : '' }}">
+                            {{ Request::is('admin/cash-accounts*') || Request::is('admin/account-transactions*') || Request::is('admin/daily-fund*') || Request::is('admin/expenses*') || Request::is('admin/suppliers*') || Request::is('admin/expense-categories*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('Accounts') }}">
                                 <i class="tio-cash-register nav-icon"></i>
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Accounts') }}</span>
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                style="display: {{ Request::is('admin/cash-accounts*') || Request::is('admin/account-transactions*') || Request::is('admin/daily-fund*') ? 'block' : 'none' }};">
+                                style="display: {{ Request::is('admin/cash-accounts*') || Request::is('admin/account-transactions*') || Request::is('admin/daily-fund*') || Request::is('admin/expenses*') || Request::is('admin/suppliers*') || Request::is('admin/expense-categories*') ? 'block' : 'none' }};">
 
                                 @if(Route::has('admin.daily-fund.index'))
                                 <li class="nav-item {{ Request::is('admin/daily-fund*') ? 'active' : '' }}">
@@ -544,6 +544,52 @@
                                     <a class="nav-link" href="{{ route('admin.cash-accounts.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
                                         <span class="text-truncate">{{ translate('Cash Accounts') }}</span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                {{-- Phase 8.6 — Bills & supplier master.
+                                     Open to all admins (branch-scoped); each branch
+                                     manages its own bills + sees consolidated
+                                     suppliers (HQ-wide + their branch). --}}
+                                @if(Route::has('admin.expenses.index'))
+                                <li class="nav-item {{ Request::is('admin/expenses*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.expenses.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate sidebar--badge-container">
+                                            {{ translate('Bills') }}
+                                            @php
+                                                $sbBranchId = auth('admin')->user()?->branch_id;
+                                                $unpaidBills = 0;
+                                                try {
+                                                    $unpaidBills = \App\Models\Expense::query()
+                                                        ->whereIn('status', ['pending', 'partial'])
+                                                        ->when($sbBranchId, fn ($q, $b) => $q->where('branch_id', $b))
+                                                        ->count();
+                                                } catch (\Throwable $e) { /* schema mid-migration */ }
+                                            @endphp
+                                            @if($unpaidBills > 0)
+                                                <span class="badge badge-soft-warning badge-pill ml-1">{{ $unpaidBills }}</span>
+                                            @endif
+                                        </span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                @if(Route::has('admin.suppliers.index'))
+                                <li class="nav-item {{ Request::is('admin/suppliers*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.suppliers.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Suppliers') }}</span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                @if(Route::has('admin.expense-categories.index') && auth('admin')->user()?->admin_role_id == 1)
+                                <li class="nav-item {{ Request::is('admin/expense-categories*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.expense-categories.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Expense Categories') }}</span>
                                     </a>
                                 </li>
                                 @endif

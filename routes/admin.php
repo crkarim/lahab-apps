@@ -39,6 +39,9 @@ use App\Http\Controllers\Admin\BiometricImportController;
 use App\Http\Controllers\Admin\CashAccountController;
 use App\Http\Controllers\Admin\DailyFundReportController;
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\ExpenseCategoryController;
+use App\Http\Controllers\Admin\ExpenseController;
+use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\DesignationController;
 use App\Http\Controllers\Admin\HrmSettingController;
 use App\Http\Controllers\Admin\KitchenScanController;
@@ -283,6 +286,34 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // Accounts Phase 8.3 — Daily fund report.
         if (class_exists(DailyFundReportController::class)) {
             Route::get('daily-fund', [DailyFundReportController::class, 'index'])->name('daily-fund.index');
+        }
+
+        // Accounts Phase 8.6 — Suppliers + expense categories + bills.
+        if (class_exists(SupplierController::class)) {
+            Route::group(['prefix' => 'suppliers', 'as' => 'suppliers.'], function () {
+                Route::get('/',         [SupplierController::class, 'index'])->name('index');
+                Route::post('/',        [SupplierController::class, 'store'])->name('store');
+                Route::post('{id}',     [SupplierController::class, 'update'])->whereNumber('id')->name('update');
+                Route::delete('{id}',   [SupplierController::class, 'destroy'])->whereNumber('id')->name('destroy');
+            });
+        }
+        if (class_exists(ExpenseCategoryController::class)) {
+            Route::group(['prefix' => 'expense-categories', 'as' => 'expense-categories.'], function () {
+                Route::get('/',         [ExpenseCategoryController::class, 'index'])->name('index');
+                Route::post('/',        [ExpenseCategoryController::class, 'store'])->name('store');
+                Route::post('{id}',     [ExpenseCategoryController::class, 'update'])->whereNumber('id')->name('update');
+                Route::delete('{id}',   [ExpenseCategoryController::class, 'destroy'])->whereNumber('id')->name('destroy');
+            });
+        }
+        if (class_exists(ExpenseController::class)) {
+            Route::group(['prefix' => 'expenses', 'as' => 'expenses.'], function () {
+                Route::get('/',                  [ExpenseController::class, 'index'])->name('index');
+                Route::get('create',             [ExpenseController::class, 'create'])->name('create');
+                Route::post('/',                 [ExpenseController::class, 'store'])->name('store');
+                Route::get('{id}',               [ExpenseController::class, 'show'])->whereNumber('id')->name('show');
+                Route::post('{id}/payments',     [ExpenseController::class, 'addPayment'])->whereNumber('id')->name('payments.add');
+                Route::post('{id}/cancel',       [ExpenseController::class, 'cancel'])->whereNumber('id')->name('cancel');
+            });
         }
         Route::get('settings', [SystemController::class, 'settings'])->name('settings');
         Route::post('settings', [SystemController::class, 'settingsUpdate']);

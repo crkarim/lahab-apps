@@ -73,41 +73,133 @@
 
     <div class="row g-3">
 
-        {{-- Payment breakdown --}}
+        {{-- Inflows by specific cash account (Phase 8.5).
+             Replaces the old per-method breakdown so EBL vs DBBL,
+             bKash A vs bKash B show separately. Legacy rows that
+             don't have a cash_account_id picked yet still show under
+             a fallback "By method (legacy)" sub-section so nothing
+             gets hidden. --}}
         <div class="col-12 col-lg-6">
             <div class="card h-100">
                 <div class="card-header py-2">
                     <h5 class="card-title mb-0 d-flex align-items-center gap-2">
                         <i class="tio-money" style="color:#1E8E3E"></i>
-                        {{ translate('Payment breakdown') }}
+                        {{ translate('Inflows by account') }}
                     </h5>
                 </div>
                 <div class="card-body p-0">
-                    @if(empty($payments))
+                    @if(empty($accountInflows) && empty($methodInflows))
                         <div class="p-4 text-center text-muted">{{ translate('No payments captured for this date.') }}</div>
                     @else
                         <table class="table table-borderless mb-0">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>{{ translate('Method') }}</th>
+                                    <th>{{ translate('Account') }}</th>
                                     <th class="text-right">{{ translate('Total') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($payments as $method => $sum)
+                                @foreach($accountInflows as $accId => $sum)
+                                    @php
+                                        $acc = $accountsById[$accId] ?? null;
+                                        $emoji = $acc ? match($acc->type) {
+                                            'cash' => '💵', 'bank' => '🏦', 'mfs' => '📱', 'cheque' => '🧾', default => '•',
+                                        } : '•';
+                                    @endphp
                                     <tr>
                                         <td>
-                                            <strong>{{ ucwords(str_replace('_', ' ', $method)) }}</strong>
+                                            <strong>{{ $emoji }} {{ $acc?->name ?: 'Account #' . $accId }}</strong>
+                                            @if($acc && $acc->account_number)
+                                                <small style="color:#6A6A70; font-family:monospace; margin-left:6px;">{{ $acc->account_number }}</small>
+                                            @endif
                                         </td>
-                                        <td class="text-right" style="font-variant-numeric: tabular-nums; font-weight:700;">
+                                        <td class="text-right" style="font-variant-numeric: tabular-nums; font-weight:700; color:#1E8E3E;">
                                             {{ \App\CentralLogics\Helpers::set_symbol($sum) }}
                                         </td>
                                     </tr>
                                 @endforeach
+                                @if(!empty($methodInflows))
+                                    <tr style="background:#FFF8E1;">
+                                        <td colspan="2" style="font-size:11px; color:#6A4A0A; font-style:italic; padding:6px 16px;">
+                                            ⚠ {{ translate('By method (legacy — these payments don\'t have a specific cash account picked)') }}
+                                        </td>
+                                    </tr>
+                                    @foreach($methodInflows as $method => $sum)
+                                        <tr>
+                                            <td>
+                                                <em>{{ ucwords(str_replace('_', ' ', $method)) }}</em>
+                                            </td>
+                                            <td class="text-right" style="font-variant-numeric: tabular-nums; font-weight:700;">
+                                                {{ \App\CentralLogics\Helpers::set_symbol($sum) }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endif
                                 <tr style="border-top:2px solid #1a1a1a;">
-                                    <td><strong>{{ translate('Drawer total') }}</strong></td>
+                                    <td><strong>{{ translate('Total inflows') }}</strong></td>
+                                    <td class="text-right" style="font-variant-numeric: tabular-nums; font-weight:900; font-size:16px; color:#1E8E3E;">
+                                        {{ \App\CentralLogics\Helpers::set_symbol($totalInflowsAccountSide) }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        {{-- Outflows panel — Phase 8.5+8.6. Pulls every OUT row from
+             the ledger today, grouped by ref_type. Mirrors the inflow
+             panel layout so the cashier can read the day's net cash
+             movement at a glance. Net row + link to Daily Fund Report
+             at the bottom for the full per-account ledger drill-down. --}}
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0 d-flex align-items-center gap-2">
+                        <i class="tio-edit" style="color:#C82626"></i>
+                        {{ translate('Outflows today') }}
+                    </h5>
+                    @if(Route::has('admin.daily-fund.index'))
+                        <a href="{{ route('admin.daily-fund.index', ['date' => $date]) }}"
+                           class="btn btn-light btn-sm" style="font-size:11px; font-weight:700;">
+                            {{ translate('Full ledger →') }}
+                        </a>
+                    @endif
+                </div>
+                <div class="card-body p-0">
+                    @if(empty($outflows))
+                        <div class="p-4 text-center text-muted">{{ translate('No outflows recorded for this date.') }}</div>
+                    @else
+                        <table class="table table-borderless mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>{{ translate('Category') }}</th>
+                                    <th class="text-right">{{ translate('Total') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($outflows as $row)
+                                    <tr>
+                                        <td>
+                                            <strong>{{ $row['label'] }}</strong>
+                                            <small style="color:#6A6A70; margin-left:6px;">({{ $row['count'] }} {{ translate('row(s)') }})</small>
+                                        </td>
+                                        <td class="text-right" style="font-variant-numeric: tabular-nums; font-weight:700; color:#C82626;">
+                                            − {{ \App\CentralLogics\Helpers::set_symbol($row['amount']) }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                <tr style="border-top:2px solid #1a1a1a;">
+                                    <td><strong>{{ translate('Total outflows') }}</strong></td>
+                                    <td class="text-right" style="font-variant-numeric: tabular-nums; font-weight:900; font-size:16px; color:#C82626;">
+                                        − {{ \App\CentralLogics\Helpers::set_symbol($outflowsTotal) }}
+                                    </td>
+                                </tr>
+                                <tr style="background:#1A1A1A; color:#fff;">
+                                    <td><strong>{{ translate('Net cash position today') }}</strong></td>
                                     <td class="text-right" style="font-variant-numeric: tabular-nums; font-weight:900; font-size:16px;">
-                                        {{ \App\CentralLogics\Helpers::set_symbol(array_sum($payments)) }}
+                                        {{ \App\CentralLogics\Helpers::set_symbol($totalInflowsAccountSide - $outflowsTotal) }}
                                     </td>
                                 </tr>
                             </tbody>

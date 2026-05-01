@@ -180,22 +180,78 @@ class ReportController extends Controller
         );
         $totalTips  = $orders->sum(fn ($o) => (float) ($o->tip_amount ?? 0));
 
-        // Per-method payment breakdown (the cashier's reconciliation target).
-        // Sums OrderPartialPayment.paid_amount grouped by paid_with so the
-        // numbers match what's actually in the drawer / at the gateway.
-        $payments = [];
+        // Per-account payment breakdown — Phase 8.5 split. Group inflows
+        // by cash_account_id so EBL vs DBBL show separately. Falls back
+        // to the legacy paid_with string for rows that don't have an
+        // account picked yet (older sales / API entries).
+        $accountInflows = []; // [keyLabel => total]
+        $methodInflows  = []; // [legacyMethod => total] for unmatched rows
+        $accountIdsTouched = [];
         foreach ($orders as $o) {
             foreach ($o->order_partial_payments as $p) {
-                $key = $p->paid_with ?: 'unknown';
-                $payments[$key] = ($payments[$key] ?? 0) + (float) $p->paid_amount;
+                $amt = (float) $p->paid_amount;
+                if (!empty($p->cash_account_id)) {
+                    $accountIdsTouched[(int) $p->cash_account_id] = true;
+                    $key = (int) $p->cash_account_id;
+                    $accountInflows[$key] = ($accountInflows[$key] ?? 0) + $amt;
+                } else {
+                    $key = $p->paid_with ?: 'unknown';
+                    $methodInflows[$key] = ($methodInflows[$key] ?? 0) + $amt;
+                }
             }
             // Orders without partial payment rows fall back to payment_method.
             if ($o->order_partial_payments->isEmpty() && $o->payment_method) {
                 $payable = (float) $o->order_amount + (float) ($o->tip_amount ?? 0);
-                $payments[$o->payment_method] = ($payments[$o->payment_method] ?? 0) + $payable;
+                $methodInflows[$o->payment_method] = ($methodInflows[$o->payment_method] ?? 0) + $payable;
             }
         }
-        ksort($payments);
+        ksort($methodInflows);
+
+        // Resolve account ids → CashAccount rows for display labels.
+        $accountsById = [];
+        if (!empty($accountIdsTouched)) {
+            try {
+                $accountsById = \App\Models\CashAccount::query()
+                    ->whereIn('id', array_keys($accountIdsTouched))
+                    ->get(['id', 'name', 'type', 'color', 'account_number'])
+                    ->keyBy('id');
+            } catch (\Throwable $e) { /* pre-migration */ }
+        }
+
+        // Outflows panel — sum every OUT row in the ledger today, grouped
+        // by ref_type so the cashier sees where cash left during the day
+        // (supplier bills, payslip payouts, salary advances, drawer
+        // shortages, manual adjustments). Phase 8.5 + 8.6 + 8.5c sources.
+        $outflows = [];
+        $outflowsTotal = 0;
+        try {
+            $rows = \App\Models\AccountTransaction::query()
+                ->where('direction', 'out')
+                ->whereBetween('transacted_at', [$start, $end])
+                ->when($branchId !== 'all', fn ($q) => $q->where('branch_id', $branchId))
+                ->select('ref_type', \DB::raw('COALESCE(SUM(amount), 0) AS amt'), \DB::raw('COUNT(*) AS row_count'))
+                ->groupBy('ref_type')
+                ->get();
+            $labels = [
+                'expense_payment'         => 'Supplier bills',
+                'salary_advance'          => 'Salary advances given',
+                'salary_advance_recovery' => 'Advance recoveries (in)', // shouldn't appear since out-only
+                'payslip'                 => 'Salaries paid',
+                'shift'                   => 'Drawer shortages',
+                'pos_order_change'        => 'Change returned to customers',
+                ''                        => 'Manual cash-out',
+            ];
+            foreach ($rows as $r) {
+                $key = (string) ($r->ref_type ?? '');
+                $outflows[] = [
+                    'label' => $labels[$key] ?? ('Other (' . ($key ?: 'manual') . ')'),
+                    'count' => (int) $r->row_count,
+                    'amount' => (float) $r->amt,
+                ];
+                $outflowsTotal += (float) $r->amt;
+            }
+            usort($outflows, fn ($a, $b) => $b['amount'] <=> $a['amount']);
+        } catch (\Throwable $e) { /* pre-migration */ }
 
         // Per-waiter sheet — tip distribution lives here.
         $waiters = [];
@@ -241,23 +297,28 @@ class ReportController extends Controller
             ->get();
 
         return view('admin-views.report.day-end', [
-            'date'           => $date->format('Y-m-d'),
-            'dateHuman'      => $date->format('d M Y'),
-            'branchId'       => $branchId,
-            'forcedBranch'   => $forcedBranch,
-            'branches'       => $branches,
-            'orderCount'     => $orderCount,
-            'grossSales'     => $grossSales,
-            'totalTax'       => $totalTax,
-            'totalDiscount'  => $totalDiscount,
-            'totalTips'      => $totalTips,
-            'netSales'       => $grossSales + $totalTips - $totalDiscount,
-            'payments'       => $payments,
-            'waiters'        => array_values($waiters),
-            'hSubmitted'     => (float) $hSubmitted,
-            'hReceived'      => (float) $hReceived,
-            'hPendingRows'   => $hPendingRows,
-            'hDisputedRows'  => $hDisputedRows,
+            'date'              => $date->format('Y-m-d'),
+            'dateHuman'         => $date->format('d M Y'),
+            'branchId'          => $branchId,
+            'forcedBranch'      => $forcedBranch,
+            'branches'          => $branches,
+            'orderCount'        => $orderCount,
+            'grossSales'        => $grossSales,
+            'totalTax'          => $totalTax,
+            'totalDiscount'     => $totalDiscount,
+            'totalTips'         => $totalTips,
+            'netSales'          => $grossSales + $totalTips - $totalDiscount,
+            'accountInflows'    => $accountInflows,
+            'methodInflows'     => $methodInflows,
+            'accountsById'      => $accountsById,
+            'totalInflowsAccountSide' => array_sum($accountInflows) + array_sum($methodInflows),
+            'outflows'          => $outflows,
+            'outflowsTotal'     => $outflowsTotal,
+            'waiters'           => array_values($waiters),
+            'hSubmitted'        => (float) $hSubmitted,
+            'hReceived'         => (float) $hReceived,
+            'hPendingRows'      => $hPendingRows,
+            'hDisputedRows'     => $hDisputedRows,
         ]);
     }
 
