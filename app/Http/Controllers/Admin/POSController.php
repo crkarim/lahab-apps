@@ -794,6 +794,21 @@ class POSController extends Controller
                     }
                 }
 
+                // Phase 8.4 — Auto-post the order's payments to the cash
+                // ledger. Idempotent + best-effort: if no cash account is
+                // mapped to the payment method (e.g. no bKash account set
+                // up yet), the service logs a warning and the order itself
+                // still completes. Wrap in try so a ledger hiccup never
+                // breaks the POS flow.
+                try {
+                    \App\Services\Accounts\PostOrderPaymentToLedger::for($order);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('POS auto-post crashed', [
+                        'order_id' => $order->id,
+                        'error'    => $e->getMessage(),
+                    ]);
+                }
+
                 session()->forget('cart');
                 // last_order session value removed — its only consumer
                 // (the legacy #print-invoice modal) was retired in favour

@@ -128,6 +128,18 @@ class CheckoutController extends Controller
 
         $order->refresh();
 
+        // Phase 8.4 — Auto-post the (newly added) payments to the cash
+        // ledger. Idempotent: only the rows we just created post; if the
+        // service has already seen this method on this order it skips.
+        try {
+            \App\Services\Accounts\PostOrderPaymentToLedger::for($order);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Checkout auto-post crashed', [
+                'order_id' => $order->id,
+                'error'    => $e->getMessage(),
+            ]);
+        }
+
         $smsResult = null;
         if (in_array($delivery, ['sms', 'both'])) {
             $smsResult = $this->sendReceiptSms($order, $phone);

@@ -398,6 +398,21 @@ class OrderController extends Controller
         }
         $order->save();
 
+        // Phase 8.4 — Cash-on-delivery / delivered paths flip payment_status
+        // to paid here. Auto-post any newly-recorded payments to the ledger.
+        // Idempotent: paths that already posted at place-order time are
+        // skipped by the service.
+        if ($order->payment_status === 'paid') {
+            try {
+                \App\Services\Accounts\PostOrderPaymentToLedger::for($order);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Order status auto-post crashed', [
+                    'order_id' => $order->id,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
+        }
+
         // Waiter notifications. `ready` → branch topic, `canceled` →
         // per-waiter (only the placing waiter cares; they likely told
         // the customer it was coming and need to apologize/refund).
@@ -944,6 +959,18 @@ class OrderController extends Controller
             $order->order_status = 'confirmed';
             $order->payment_status = 'paid';
             $order->save();
+
+            // Phase 8.4 — Offline-payment approval marks the order paid;
+            // auto-post into the ledger. The service is idempotent so a
+            // re-approval of an already-posted order is a no-op.
+            try {
+                \App\Services\Accounts\PostOrderPaymentToLedger::for($order);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Offline-payment auto-post crashed', [
+                    'order_id' => $order->id,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
 
             $message = Helpers::order_status_update_message('confirmed');
             $local = $order->is_guest == 0 ? ($order->customer ? $order->customer->language_code : 'en') : 'en';;
