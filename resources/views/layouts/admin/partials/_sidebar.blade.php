@@ -508,6 +508,48 @@
                             </ul>
                         </li>
 
+                        {{-- 5c. Accounts — cash ledger, transactions, daily fund.
+                             Open to all admins (each branch sees its own scope);
+                             Master Admin sees everything. Categories + suppliers
+                             come in Phase 8.4. --}}
+                        <li class="navbar-vertical-aside-has-menu
+                            {{ Request::is('admin/cash-accounts*') || Request::is('admin/account-transactions*') || Request::is('admin/daily-fund*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('Accounts') }}">
+                                <i class="tio-cash-register nav-icon"></i>
+                                <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Accounts') }}</span>
+                            </a>
+                            <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
+                                style="display: {{ Request::is('admin/cash-accounts*') || Request::is('admin/account-transactions*') || Request::is('admin/daily-fund*') ? 'block' : 'none' }};">
+
+                                @if(Route::has('admin.daily-fund.index'))
+                                <li class="nav-item {{ Request::is('admin/daily-fund*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.daily-fund.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Daily Fund Report') }}</span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                @if(Route::has('admin.account-transactions.index'))
+                                <li class="nav-item {{ Request::is('admin/account-transactions*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.account-transactions.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Transactions') }}</span>
+                                    </a>
+                                </li>
+                                @endif
+
+                                @if(Route::has('admin.cash-accounts.index'))
+                                <li class="nav-item {{ Request::is('admin/cash-accounts*') ? 'active' : '' }}">
+                                    <a class="nav-link" href="{{ route('admin.cash-accounts.index') }}">
+                                        <span class="tio-circle nav-indicator-icon"></span>
+                                        <span class="text-truncate">{{ translate('Cash Accounts') }}</span>
+                                    </a>
+                                </li>
+                                @endif
+                            </ul>
+                        </li>
+
                         {{-- 6. Reports --}}
                         @if(Helpers::module_permission_check(MANAGEMENT_SECTION['report_and_analytics_management']))
                             <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/report*') ? 'active' : '' }}">

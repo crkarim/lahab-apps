@@ -34,7 +34,10 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReviewsController;
 use App\Http\Controllers\Admin\CashHandoverController;
 use App\Http\Controllers\Admin\AttendanceController;
+use App\Http\Controllers\Admin\AccountTransactionController;
 use App\Http\Controllers\Admin\BiometricImportController;
+use App\Http\Controllers\Admin\CashAccountController;
+use App\Http\Controllers\Admin\DailyFundReportController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\DesignationController;
 use App\Http\Controllers\Admin\HrmSettingController;
@@ -253,6 +256,33 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // HRM Phase 6.2 — Org chart (read-only tree).
         if (class_exists(OrgChartController::class)) {
             Route::get('org-chart', [OrgChartController::class, 'index'])->name('org-chart.index');
+        }
+
+        // Accounts Phase 8.1 — Cash accounts (wallets).
+        if (class_exists(CashAccountController::class)) {
+            Route::group(['prefix' => 'cash-accounts', 'as' => 'cash-accounts.'], function () {
+                Route::get('/',                  [CashAccountController::class, 'index'])->name('index');
+                Route::post('/',                 [CashAccountController::class, 'store'])->name('store');
+                Route::post('{id}',              [CashAccountController::class, 'update'])->whereNumber('id')->name('update');
+                Route::post('{id}/recompute',    [CashAccountController::class, 'recompute'])->whereNumber('id')->name('recompute');
+                Route::delete('{id}',            [CashAccountController::class, 'destroy'])->whereNumber('id')->name('destroy');
+            });
+        }
+
+        // Accounts Phase 8.2 — Manual transaction entry.
+        if (class_exists(AccountTransactionController::class)) {
+            Route::group(['prefix' => 'account-transactions', 'as' => 'account-transactions.'], function () {
+                Route::get('/',          [AccountTransactionController::class, 'index'])->name('index');
+                Route::get('create',     [AccountTransactionController::class, 'create'])->name('create');
+                Route::post('/',         [AccountTransactionController::class, 'store'])->name('store');
+                Route::post('transfer',  [AccountTransactionController::class, 'storeTransfer'])->name('transfer');
+                Route::delete('{id}',    [AccountTransactionController::class, 'destroy'])->whereNumber('id')->name('destroy');
+            });
+        }
+
+        // Accounts Phase 8.3 — Daily fund report.
+        if (class_exists(DailyFundReportController::class)) {
+            Route::get('daily-fund', [DailyFundReportController::class, 'index'])->name('daily-fund.index');
         }
         Route::get('settings', [SystemController::class, 'settings'])->name('settings');
         Route::post('settings', [SystemController::class, 'settingsUpdate']);
