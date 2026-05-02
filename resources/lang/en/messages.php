@@ -3876,4 +3876,12 @@
   'Total outflows' => 'Total outflows',
   'Net cash position today' => 'Net cash position today',
   'No_orders_yet' => 'No orders yet',
+  'hrm_management' => 'Hrm management',
+  'accounts_management' => 'Accounts management',
+  'hrm_attendance' => 'Hrm attendance',
+  'hrm_employees' => 'Hrm employees',
+  'hrm_payroll' => 'Hrm payroll',
+  'hrm_settings' => 'Hrm settings',
+  'accounts_daily_ops' => 'Accounts daily ops',
+  'accounts_bills' => 'Accounts bills',
 );

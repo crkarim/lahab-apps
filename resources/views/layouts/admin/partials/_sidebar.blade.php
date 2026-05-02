@@ -295,22 +295,34 @@
                         @endif
 
                         {{-- 5b. HRM — staff scheduling, attendance, payroll-prep.
-                             Operational links (Attendance + Shifts) need to be visible
-                             to anyone who needs to clock in / open a drawer, so the
-                             group itself is ungated. The sensitive items inside
-                             (Employees / Employee Roles) keep their existing
-                             Master-Admin-only check; Chef list keeps user_management. --}}
+                             Gated via the new `hrm_management` module key so
+                             Master Admin can grant per-role access from the
+                             Employee Role form. Master Admin always sees it
+                             (the helper short-circuits on admin_role_id == 1).
+                             Sensitive items inside (Employees / Roles / HRM
+                             Settings hub) keep their additional Master-only
+                             check on top. --}}
+                        @php
+                            // HRM group visible if ANY of the four sub-modules is granted.
+                            // Master Admin always passes via the helper short-circuit.
+                            $hrmAttendance = Helpers::module_permission_check(MANAGEMENT_SECTION['hrm_attendance']);
+                            $hrmEmployees  = Helpers::module_permission_check(MANAGEMENT_SECTION['hrm_employees']);
+                            $hrmPayroll    = Helpers::module_permission_check(MANAGEMENT_SECTION['hrm_payroll']);
+                            $hrmSettings   = Helpers::module_permission_check(MANAGEMENT_SECTION['hrm_settings']);
+                            $hrmAny        = $hrmAttendance || $hrmEmployees || $hrmPayroll || $hrmSettings;
+                        @endphp
+                        @if($hrmAny)
                         <li class="navbar-vertical-aside-has-menu
                             {{ Request::is('admin/attendance*') || Request::is('admin/shifts*') || Request::is('admin/payroll*') || Request::is('admin/payroll-runs*') || Request::is('admin/biometric*') || Request::is('admin/salary-advances*') || Request::is('admin/salary-components*') || Request::is('admin/leaves*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/org-chart*') || Request::is('admin/hrm-settings*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('HRM') }}">
-                                <i class="tio-id-card-outlined nav-icon"></i>
+                                <i class="tio-briefcase-outlined nav-icon"></i>
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('HRM') }}</span>
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{ Request::is('admin/attendance*') || Request::is('admin/shifts*') || Request::is('admin/payroll*') || Request::is('admin/payroll-runs*') || Request::is('admin/biometric*') || Request::is('admin/salary-advances*') || Request::is('admin/salary-components*') || Request::is('admin/leaves*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/org-chart*') || Request::is('admin/hrm-settings*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') ? 'block' : 'none' }};">
 
                                 {{-- Attendance ledger — open to all admins so staff can self-clock. --}}
-                                @if(Route::has('admin.attendance.index'))
+                                @if(Route::has('admin.attendance.index') && $hrmAttendance)
                                 <li class="nav-item {{ Request::is('admin/attendance*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.attendance.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -338,7 +350,7 @@
                                      requests for themselves; managers see a
                                      pending-approvals badge so leave doesn't
                                      pile up unreviewed. --}}
-                                @if(Route::has('admin.leaves.index'))
+                                @if(Route::has('admin.leaves.index') && $hrmAttendance)
                                 <li class="nav-item {{ Request::is('admin/leaves*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.leaves.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -369,7 +381,7 @@
                                      Chart are open to all admins (read-only for
                                      branch managers). Designations + HRM Settings
                                      are Master-Admin-only. --}}
-                                @if(Route::has('admin.org-chart.index'))
+                                @if(Route::has('admin.org-chart.index') && $hrmEmployees)
                                 <li class="nav-item {{ Request::is('admin/org-chart*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.org-chart.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -385,7 +397,7 @@
 
                                 {{-- Payroll Estimate — read-only live computation.
                                      Used to sanity-check before creating a real run. --}}
-                                @if(Route::has('admin.payroll.index') && auth('admin')->user()?->admin_role_id == 1)
+                                @if(Route::has('admin.payroll.index') && $hrmPayroll)
                                 <li class="nav-item {{ Request::is('admin/payroll') || Request::is('admin/payroll/employee*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.payroll.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -395,7 +407,7 @@
                                 @endif
 
                                 {{-- Payroll Runs — actual locked records. Master Admin only. --}}
-                                @if(Route::has('admin.payroll-runs.index') && auth('admin')->user()?->admin_role_id == 1)
+                                @if(Route::has('admin.payroll-runs.index') && $hrmPayroll)
                                 <li class="nav-item {{ Request::is('admin/payroll-runs*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.payroll-runs.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -420,7 +432,7 @@
                                 @endif
 
                                 {{-- Salary advances / loans. Master Admin only. --}}
-                                @if(Route::has('admin.salary-advances.index') && auth('admin')->user()?->admin_role_id == 1)
+                                @if(Route::has('admin.salary-advances.index') && $hrmPayroll)
                                 <li class="nav-item {{ Request::is('admin/salary-advances*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.salary-advances.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -446,7 +458,7 @@
 
                                 {{-- Biometric (ZKTeco) CSV import. Master Admin only since
                                      a bad CSV could distort everyone's attendance. --}}
-                                @if(Route::has('admin.biometric.index') && auth('admin')->user()?->admin_role_id == 1)
+                                @if(Route::has('admin.biometric.index') && $hrmPayroll)
                                 <li class="nav-item {{ Request::is('admin/biometric*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.biometric.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -456,7 +468,7 @@
                                 @endif
 
                                 {{-- Shift sessions — open/close drawer + variance ledger. --}}
-                                @if(Route::has('admin.shifts.index'))
+                                @if(Route::has('admin.shifts.index') && $hrmAttendance)
                                 <li class="nav-item {{ Request::is('admin/shifts*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.shifts.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -484,7 +496,7 @@
                                      route is preserved but no longer surfaced here —
                                      chefs are just employees with Kitchen department.
                                      Employee Roles moved to HRM Settings hub below. --}}
-                                @if(Helpers::module_permission_check(MANAGEMENT_SECTION['user_management']) && auth('admin')->user()?->admin_role_id == 1)
+                                @if($hrmEmployees)
                                     <li class="nav-item {{ Request::is('admin/employee*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('admin.employee.list') }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
@@ -497,7 +509,7 @@
                                      Designations + Salary Components + Roles all
                                      live behind one entry, accessed via tab nav
                                      on the page itself. --}}
-                                @if(Route::has('admin.hrm-settings.index') && auth('admin')->user()?->admin_role_id == 1)
+                                @if(Route::has('admin.hrm-settings.index') && $hrmSettings)
                                     <li class="nav-item {{ Request::is('admin/hrm-settings*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/salary-components*') || Request::is('admin/custom-role*') ? 'active' : '' }}">
                                         <a class="nav-link" href="{{ route('admin.hrm-settings.index') }}">
                                             <span class="tio-circle nav-indicator-icon"></span>
@@ -507,21 +519,29 @@
                                 @endif
                             </ul>
                         </li>
+                        @endif
 
-                        {{-- 5c. Accounts — cash ledger, transactions, daily fund.
-                             Open to all admins (each branch sees its own scope);
-                             Master Admin sees everything. Categories + suppliers
-                             come in Phase 8.4. --}}
+                        {{-- 5c. Accounts — cash ledger, transactions, daily fund,
+                             suppliers, bills, expense categories. Gated via the
+                             new `accounts_management` module key so Master Admin
+                             can grant per-role access from the Employee Role form. --}}
+                        @php
+                            // Accounts group visible if either sub-module is granted.
+                            $accountsDailyOps = Helpers::module_permission_check(MANAGEMENT_SECTION['accounts_daily_ops']);
+                            $accountsBills    = Helpers::module_permission_check(MANAGEMENT_SECTION['accounts_bills']);
+                            $accountsAny      = $accountsDailyOps || $accountsBills;
+                        @endphp
+                        @if($accountsAny)
                         <li class="navbar-vertical-aside-has-menu
                             {{ Request::is('admin/cash-accounts*') || Request::is('admin/account-transactions*') || Request::is('admin/daily-fund*') || Request::is('admin/expenses*') || Request::is('admin/suppliers*') || Request::is('admin/expense-categories*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('Accounts') }}">
-                                <i class="tio-cash-register nav-icon"></i>
+                                <i class="tio-money nav-icon"></i>
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Accounts') }}</span>
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
                                 style="display: {{ Request::is('admin/cash-accounts*') || Request::is('admin/account-transactions*') || Request::is('admin/daily-fund*') || Request::is('admin/expenses*') || Request::is('admin/suppliers*') || Request::is('admin/expense-categories*') ? 'block' : 'none' }};">
 
-                                @if(Route::has('admin.daily-fund.index'))
+                                @if(Route::has('admin.daily-fund.index') && $accountsDailyOps)
                                 <li class="nav-item {{ Request::is('admin/daily-fund*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.daily-fund.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -530,7 +550,7 @@
                                 </li>
                                 @endif
 
-                                @if(Route::has('admin.account-transactions.index'))
+                                @if(Route::has('admin.account-transactions.index') && $accountsDailyOps)
                                 <li class="nav-item {{ Request::is('admin/account-transactions*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.account-transactions.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -539,7 +559,7 @@
                                 </li>
                                 @endif
 
-                                @if(Route::has('admin.cash-accounts.index'))
+                                @if(Route::has('admin.cash-accounts.index') && $accountsDailyOps)
                                 <li class="nav-item {{ Request::is('admin/cash-accounts*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.cash-accounts.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -552,7 +572,7 @@
                                      Open to all admins (branch-scoped); each branch
                                      manages its own bills + sees consolidated
                                      suppliers (HQ-wide + their branch). --}}
-                                @if(Route::has('admin.expenses.index'))
+                                @if(Route::has('admin.expenses.index') && $accountsBills)
                                 <li class="nav-item {{ Request::is('admin/expenses*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.expenses.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -576,7 +596,7 @@
                                 </li>
                                 @endif
 
-                                @if(Route::has('admin.suppliers.index'))
+                                @if(Route::has('admin.suppliers.index') && $accountsBills)
                                 <li class="nav-item {{ Request::is('admin/suppliers*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.suppliers.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -585,7 +605,7 @@
                                 </li>
                                 @endif
 
-                                @if(Route::has('admin.expense-categories.index') && auth('admin')->user()?->admin_role_id == 1)
+                                @if(Route::has('admin.expense-categories.index') && $accountsBills)
                                 <li class="nav-item {{ Request::is('admin/expense-categories*') ? 'active' : '' }}">
                                     <a class="nav-link" href="{{ route('admin.expense-categories.index') }}">
                                         <span class="tio-circle nav-indicator-icon"></span>
@@ -595,6 +615,7 @@
                                 @endif
                             </ul>
                         </li>
+                        @endif
 
                         {{-- 6. Reports --}}
                         @if(Helpers::module_permission_check(MANAGEMENT_SECTION['report_and_analytics_management']))

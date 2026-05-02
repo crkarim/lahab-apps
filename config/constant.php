@@ -32,6 +32,22 @@ defined('MANAGEMENT_SECTION') || define('MANAGEMENT_SECTION', [
     'user_management' => 'user_management',
     'table_management' => 'table_management',
     'system_management' => 'system_management',
+    // Phase 5-7 — HRM module split into four buckets by sensitivity.
+    // Daily ops (anyone who clocks in / files leave): attendance,
+    // shifts, leaves.
+    'hrm_attendance' => 'hrm_attendance',
+    // Employees + org chart — view & edit the staff directory.
+    'hrm_employees' => 'hrm_employees',
+    // Money flows: payroll estimate, runs, advances, biometric import.
+    'hrm_payroll' => 'hrm_payroll',
+    // Compliance / config: HRM settings hub (Depts, Designations, Salary
+    // Components, Roles, gratuity / OT defaults).
+    'hrm_settings' => 'hrm_settings',
+    // Phase 8 — Accounts module split into two buckets.
+    // Daily ops: cash accounts, transactions ledger, daily fund report.
+    'accounts_daily_ops' => 'accounts_daily_ops',
+    // Bills: suppliers, expense bills, expense categories.
+    'accounts_bills' => 'accounts_bills',
 ]);
 
 defined('CACHE_BUSINESS_SETTINGS_TABLE') || define('CACHE_BUSINESS_SETTINGS_TABLE', 'cache_business_settings_table');

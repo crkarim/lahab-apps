@@ -139,7 +139,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // Class-existence guarded so a stale composer classmap can't
         // 500 the entire admin (same pattern as Kitchen Scan).
         if (class_exists(ShiftController::class)) {
-            Route::group(['prefix' => 'shifts', 'as' => 'shifts.'], function () {
+            Route::group(['prefix' => 'shifts', 'as' => 'shifts.', 'middleware' => ['module:hrm_attendance']], function () {
                 Route::get('/',              [ShiftController::class, 'index'])->name('index');
                 Route::get('{id}',           [ShiftController::class, 'show'])->whereNumber('id')->name('show');
                 Route::post('open',          [ShiftController::class, 'open'])->name('open');
@@ -151,7 +151,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // HRM Phase 1 — Attendance ledger. Same class_exists guard so a
         // stale composer classmap can't crash boot.
         if (class_exists(AttendanceController::class)) {
-            Route::group(['prefix' => 'attendance', 'as' => 'attendance.'], function () {
+            Route::group(['prefix' => 'attendance', 'as' => 'attendance.', 'middleware' => ['module:hrm_attendance']], function () {
                 Route::get('/',                 [AttendanceController::class, 'index'])->name('index');
                 Route::get('employee/{id}',     [AttendanceController::class, 'employee'])->whereNumber('id')->name('employee');
                 Route::post('clock-in',         [AttendanceController::class, 'clockIn'])->name('clock-in');
@@ -167,7 +167,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // HRM Phase 3 — Payroll prep view (read-only computation).
         if (class_exists(PayrollController::class)) {
-            Route::group(['prefix' => 'payroll', 'as' => 'payroll.'], function () {
+            Route::group(['prefix' => 'payroll', 'as' => 'payroll.', 'middleware' => ['module:hrm_payroll']], function () {
                 Route::get('/',              [PayrollController::class, 'index'])->name('index');
                 Route::get('employee/{id}',  [PayrollController::class, 'employee'])->whereNumber('id')->name('employee');
             });
@@ -177,7 +177,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         // for now; later we can add a scheduled-job pull from the
         // device's network share.
         if (class_exists(BiometricImportController::class)) {
-            Route::group(['prefix' => 'biometric', 'as' => 'biometric.'], function () {
+            Route::group(['prefix' => 'biometric', 'as' => 'biometric.', 'middleware' => ['module:hrm_payroll']], function () {
                 Route::get('/',        [BiometricImportController::class, 'index'])->name('index');
                 Route::post('import',  [BiometricImportController::class, 'import'])->name('import');
                 Route::get('sample',   [BiometricImportController::class, 'sample'])->name('sample');
@@ -186,7 +186,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // HRM Phase 4.2 — Salary advances / loans.
         if (class_exists(SalaryAdvanceController::class)) {
-            Route::group(['prefix' => 'salary-advances', 'as' => 'salary-advances.'], function () {
+            Route::group(['prefix' => 'salary-advances', 'as' => 'salary-advances.', 'middleware' => ['module:hrm_payroll']], function () {
                 Route::get('/',                 [SalaryAdvanceController::class, 'index'])->name('index');
                 Route::post('/',                [SalaryAdvanceController::class, 'store'])->name('store');
                 Route::post('{id}/cancel',      [SalaryAdvanceController::class, 'cancel'])->whereNumber('id')->name('cancel');
@@ -196,7 +196,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // HRM Phase 4.3 — Payroll Runs.
         if (class_exists(PayrollRunController::class)) {
-            Route::group(['prefix' => 'payroll-runs', 'as' => 'payroll-runs.'], function () {
+            Route::group(['prefix' => 'payroll-runs', 'as' => 'payroll-runs.', 'middleware' => ['module:hrm_payroll']], function () {
                 Route::get('/',                       [PayrollRunController::class, 'index'])->name('index');
                 Route::post('/',                      [PayrollRunController::class, 'store'])->name('store');
                 Route::get('{id}',                    [PayrollRunController::class, 'show'])->whereNumber('id')->name('show');
@@ -212,7 +212,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // HRM Phase 5.2 — Leave management.
         if (class_exists(LeaveController::class)) {
-            Route::group(['prefix' => 'leaves', 'as' => 'leaves.'], function () {
+            Route::group(['prefix' => 'leaves', 'as' => 'leaves.', 'middleware' => ['module:hrm_attendance']], function () {
                 Route::get('/',                [LeaveController::class, 'index'])->name('index');
                 Route::post('/',               [LeaveController::class, 'store'])->name('store');
                 Route::post('{id}/approve',    [LeaveController::class, 'approve'])->whereNumber('id')->name('approve');
@@ -223,7 +223,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // HRM Phase 6.1 — Departments + Designations master data.
         if (class_exists(DepartmentController::class)) {
-            Route::group(['prefix' => 'departments', 'as' => 'departments.'], function () {
+            Route::group(['prefix' => 'departments', 'as' => 'departments.', 'middleware' => ['module:hrm_settings']], function () {
                 Route::get('/',         [DepartmentController::class, 'index'])->name('index');
                 Route::post('/',        [DepartmentController::class, 'store'])->name('store');
                 Route::post('{id}',     [DepartmentController::class, 'update'])->whereNumber('id')->name('update');
@@ -231,7 +231,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             });
         }
         if (class_exists(DesignationController::class)) {
-            Route::group(['prefix' => 'designations', 'as' => 'designations.'], function () {
+            Route::group(['prefix' => 'designations', 'as' => 'designations.', 'middleware' => ['module:hrm_settings']], function () {
                 Route::get('/',         [DesignationController::class, 'index'])->name('index');
                 Route::post('/',        [DesignationController::class, 'store'])->name('store');
                 Route::post('{id}',     [DesignationController::class, 'update'])->whereNumber('id')->name('update');
@@ -241,7 +241,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // HRM Phase 6.7 — Salary components catalogue + distribution rules.
         if (class_exists(SalaryComponentController::class)) {
-            Route::group(['prefix' => 'salary-components', 'as' => 'salary-components.'], function () {
+            Route::group(['prefix' => 'salary-components', 'as' => 'salary-components.', 'middleware' => ['module:hrm_settings']], function () {
                 Route::get('/',          [SalaryComponentController::class, 'index'])->name('index');
                 Route::post('/',         [SalaryComponentController::class, 'store'])->name('store');
                 Route::post('bulk',      [SalaryComponentController::class, 'bulkUpdate'])->name('bulk-update');
@@ -251,7 +251,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // HRM Phase 6 — Tunable HR settings (Master Admin only at sidebar level).
         if (class_exists(HrmSettingController::class)) {
-            Route::group(['prefix' => 'hrm-settings', 'as' => 'hrm-settings.'], function () {
+            Route::group(['prefix' => 'hrm-settings', 'as' => 'hrm-settings.', 'middleware' => ['module:hrm_settings']], function () {
                 Route::get('/',         [HrmSettingController::class, 'index'])->name('index');
                 Route::post('/',        [HrmSettingController::class, 'update'])->name('update');
             });
@@ -259,12 +259,14 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // HRM Phase 6.2 — Org chart (read-only tree).
         if (class_exists(OrgChartController::class)) {
-            Route::get('org-chart', [OrgChartController::class, 'index'])->name('org-chart.index');
+            Route::get('org-chart', [OrgChartController::class, 'index'])
+                ->middleware('module:hrm_employees')
+                ->name('org-chart.index');
         }
 
         // Accounts Phase 8.1 — Cash accounts (wallets).
         if (class_exists(CashAccountController::class)) {
-            Route::group(['prefix' => 'cash-accounts', 'as' => 'cash-accounts.'], function () {
+            Route::group(['prefix' => 'cash-accounts', 'as' => 'cash-accounts.', 'middleware' => ['module:accounts_daily_ops']], function () {
                 Route::get('/',                  [CashAccountController::class, 'index'])->name('index');
                 Route::post('/',                 [CashAccountController::class, 'store'])->name('store');
                 Route::post('{id}',              [CashAccountController::class, 'update'])->whereNumber('id')->name('update');
@@ -275,7 +277,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // Accounts Phase 8.2 — Manual transaction entry.
         if (class_exists(AccountTransactionController::class)) {
-            Route::group(['prefix' => 'account-transactions', 'as' => 'account-transactions.'], function () {
+            Route::group(['prefix' => 'account-transactions', 'as' => 'account-transactions.', 'middleware' => ['module:accounts_daily_ops']], function () {
                 Route::get('/',          [AccountTransactionController::class, 'index'])->name('index');
                 Route::get('create',     [AccountTransactionController::class, 'create'])->name('create');
                 Route::post('/',         [AccountTransactionController::class, 'store'])->name('store');
@@ -286,12 +288,14 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
 
         // Accounts Phase 8.3 — Daily fund report.
         if (class_exists(DailyFundReportController::class)) {
-            Route::get('daily-fund', [DailyFundReportController::class, 'index'])->name('daily-fund.index');
+            Route::get('daily-fund', [DailyFundReportController::class, 'index'])
+                ->middleware('module:accounts_daily_ops')
+                ->name('daily-fund.index');
         }
 
         // Accounts Phase 8.6 — Suppliers + expense categories + bills.
         if (class_exists(SupplierController::class)) {
-            Route::group(['prefix' => 'suppliers', 'as' => 'suppliers.'], function () {
+            Route::group(['prefix' => 'suppliers', 'as' => 'suppliers.', 'middleware' => ['module:accounts_bills']], function () {
                 Route::get('/',         [SupplierController::class, 'index'])->name('index');
                 Route::post('/',        [SupplierController::class, 'store'])->name('store');
                 Route::post('{id}',     [SupplierController::class, 'update'])->whereNumber('id')->name('update');
@@ -299,7 +303,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             });
         }
         if (class_exists(ExpenseCategoryController::class)) {
-            Route::group(['prefix' => 'expense-categories', 'as' => 'expense-categories.'], function () {
+            Route::group(['prefix' => 'expense-categories', 'as' => 'expense-categories.', 'middleware' => ['module:accounts_bills']], function () {
                 Route::get('/',         [ExpenseCategoryController::class, 'index'])->name('index');
                 Route::post('/',        [ExpenseCategoryController::class, 'store'])->name('store');
                 Route::post('{id}',     [ExpenseCategoryController::class, 'update'])->whereNumber('id')->name('update');
@@ -307,7 +311,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             });
         }
         if (class_exists(ExpenseController::class)) {
-            Route::group(['prefix' => 'expenses', 'as' => 'expenses.'], function () {
+            Route::group(['prefix' => 'expenses', 'as' => 'expenses.', 'middleware' => ['module:accounts_bills']], function () {
                 Route::get('/',                  [ExpenseController::class, 'index'])->name('index');
                 Route::get('create',             [ExpenseController::class, 'create'])->name('create');
                 Route::post('/',                 [ExpenseController::class, 'store'])->name('store');
@@ -323,7 +327,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
         Route::get('order-statistics', [DashboardController::class, 'orderStatistics'])->name('order-statistics');
         Route::get('earning-statistics', [DashboardController::class, 'earningStatistics'])->name('earning-statistics');
 
-        Route::group(['prefix' => 'custom-role', 'as' => 'custom-role.', 'middleware' => ['module:user_management']], function () {
+        Route::group(['prefix' => 'custom-role', 'as' => 'custom-role.', 'middleware' => ['module:hrm_settings']], function () {
             Route::get('create', [CustomRoleController::class, 'create'])->name('create');
             Route::post('create',  [CustomRoleController::class, 'store'])->name('store');
             Route::get('update/{id}',  [CustomRoleController::class, 'edit'])->name('update');
@@ -333,7 +337,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('change-status/{id}',  [CustomRoleController::class, 'changeStatus'])->name('change-status');
         });
 
-        Route::group(['prefix' => 'employee', 'as' => 'employee.', 'middleware' => ['module:user_management']], function () {
+        Route::group(['prefix' => 'employee', 'as' => 'employee.', 'middleware' => ['module:hrm_employees']], function () {
             Route::get('add-new', [EmployeeController::class, 'index'])->name('add-new');
             Route::post('add-new', [EmployeeController::class, 'store']);
             Route::get('list', [EmployeeController::class, 'list'])->name('list');
