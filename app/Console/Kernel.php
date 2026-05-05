@@ -24,7 +24,19 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // My Lahab — fire scheduled-task reminders (5 min before each
+        // checklist item's scheduled_time). Cheap query each minute.
+        $schedule->command('checklist:send-reminders')
+            ->everyMinute()
+            ->withoutOverlapping(2)
+            ->onOneServer();
+
+        // My Lahab — purge checklist proof photos older than 24 h to
+        // keep server storage in budget.
+        $schedule->command('checklist:purge-photos')
+            ->hourly()
+            ->withoutOverlapping(10)
+            ->onOneServer();
     }
 
     /**

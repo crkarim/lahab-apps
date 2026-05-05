@@ -5,7 +5,15 @@ use App\Http\Controllers\Api\V1\Auth\CustomerAuthController;
 use App\Http\Controllers\Api\V1\Auth\DeliveryManLoginController;
 use App\Http\Controllers\Api\V1\Auth\KitchenLoginController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
+use App\Http\Controllers\Api\V1\Auth\StaffAuthController;
 use App\Http\Controllers\Api\V1\Auth\WaiterAuthController;
+use App\Http\Controllers\Api\V1\Staff\StaffAttendanceController;
+use App\Http\Controllers\Api\V1\Staff\StaffAttendanceHistoryController;
+use App\Http\Controllers\Api\V1\Staff\StaffChecklistController;
+use App\Http\Controllers\Api\V1\Staff\StaffDashboardController;
+use App\Http\Controllers\Api\V1\Staff\StaffLeaveController;
+use App\Http\Controllers\Api\V1\Staff\StaffNoticeController;
+use App\Http\Controllers\Api\V1\Staff\StaffPayslipController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterActiveOrdersController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterCashAccountController;
 use App\Http\Controllers\Api\V1\Waiter\WaiterConfigController;
@@ -126,6 +134,52 @@ Route::group(['namespace' => 'Api\V1', 'middleware' => 'localization'], function
             // can drop / pop the escalation modal accordingly.
             Route::post('order/{id}/print-success', [WaiterOrderController::class, 'reportPrintSuccess'])->whereNumber('id');
             Route::post('order/{id}/print-failure', [WaiterOrderController::class, 'reportPrintFailure'])->whereNumber('id');
+        });
+    });
+
+    // My Lahab staff app — phone+PIN auth against admins.app_pin_hash with
+    // an opt-in (admins.app_login_enabled) gate. Token-protected
+    // endpoints under /api/v1/staff/* via the staff_api Passport guard.
+    Route::group(['prefix' => 'staff'], function () {
+        Route::group(['prefix' => 'auth'], function () {
+            Route::post('login',             [StaffAuthController::class, 'login']);
+            Route::post('logout',            [StaffAuthController::class, 'logout'])->middleware('auth:staff_api');
+            Route::get('me',                 [StaffAuthController::class, 'me'])->middleware('auth:staff_api');
+            Route::post('update-fcm-token',  [StaffAuthController::class, 'updateFcmToken'])->middleware('auth:staff_api');
+        });
+
+        Route::group(['middleware' => 'auth:staff_api'], function () {
+            Route::get('attendance/today',     [StaffAttendanceController::class, 'today']);
+            Route::post('attendance/clock-in', [StaffAttendanceController::class, 'clockIn']);
+            Route::post('attendance/clock-out',[StaffAttendanceController::class, 'clockOut']);
+
+            Route::get('notices',              [StaffNoticeController::class, 'index']);
+            Route::post('notices/{id}/read',   [StaffNoticeController::class, 'markRead'])->whereNumber('id');
+
+            // Phase 2 — leave + history + salary statement.
+            Route::get('attendance/history',   [StaffAttendanceHistoryController::class, 'index']);
+
+            Route::get('leave-types',          [StaffLeaveController::class, 'leaveTypes']);
+            Route::get('leaves',               [StaffLeaveController::class, 'index']);
+            Route::post('leaves',              [StaffLeaveController::class, 'store']);
+            Route::post('leaves/{id}/cancel',  [StaffLeaveController::class, 'cancel'])->whereNumber('id');
+
+            Route::get('payslips',             [StaffPayslipController::class, 'index']);
+            Route::get('payslips/{id}',        [StaffPayslipController::class, 'show'])->whereNumber('id');
+
+            // Phase 4 — management dashboard. Per-user permission gate
+            // is enforced inside the controller (checks the staff's
+            // module_access for `management_dashboard`); the /me payload
+            // tells the Flutter app whether to render the tab at all.
+            Route::get('dashboard/today',      [StaffDashboardController::class, 'today']);
+
+            // Phase 3 — open/close checklists.
+            Route::get('checklists/today',                          [StaffChecklistController::class, 'today']);
+            Route::post('checklists/{template_id}/start',           [StaffChecklistController::class, 'start'])->whereNumber('template_id');
+            Route::post('checklists/runs/{run_id}/items/{item_id}/toggle',
+                                                                    [StaffChecklistController::class, 'toggleItem'])->whereNumber('run_id')->whereNumber('item_id');
+            Route::post('checklists/runs/{run_id}/complete',        [StaffChecklistController::class, 'complete'])->whereNumber('run_id');
+            Route::get('checklists/runs',                           [StaffChecklistController::class, 'recentRuns']);
         });
     });
 

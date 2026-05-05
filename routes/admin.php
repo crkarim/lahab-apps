@@ -21,6 +21,8 @@ use App\Http\Controllers\Admin\DeliveryManController;
 use App\Http\Controllers\Admin\EmailTemplateController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\KitchenController;
+use App\Http\Controllers\Admin\ChecklistAdminController;
+use App\Http\Controllers\Admin\StaffNoticeAdminController;
 use App\Http\Controllers\Admin\LanguageController;
 use App\Http\Controllers\Admin\LocationSettingsController;
 use App\Http\Controllers\Admin\LoyaltyPointController;
@@ -346,12 +348,39 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('status/{id}/{status}', [EmployeeController::class, 'status'])->name('status');
             Route::delete('delete', [EmployeeController::class, 'delete'])->name('delete');
             Route::get('excel-export', [EmployeeController::class, 'exportExcel'])->name('excel-export');
+            // My Lahab staff app — set/reset PIN. Separate route so it
+            // can never piggy-back on a half-filled main update form.
+            Route::post('set-app-pin/{id}', [EmployeeController::class, 'setAppPin'])->whereNumber('id')->name('set-app-pin');
             // HRM Phase 5.1 — per-employee weekly work schedule.
             if (class_exists(WorkScheduleController::class)) {
                 Route::get('schedule/{id}',                [WorkScheduleController::class, 'edit'])->whereNumber('id')->name('schedule');
                 Route::post('schedule/{id}',               [WorkScheduleController::class, 'update'])->whereNumber('id');
                 Route::post('schedule/{id}/apply-default', [WorkScheduleController::class, 'applyDefault'])->whereNumber('id')->name('schedule.apply-default');
             }
+        });
+
+        // My Lahab — staff-facing notice board CRUD. Module-gated.
+        Route::group(['prefix' => 'staff-notice', 'as' => 'staff-notice.', 'middleware' => ['module:staff_notices']], function () {
+            Route::get('list',           [StaffNoticeAdminController::class, 'index'])->name('list');
+            Route::get('add-new',        [StaffNoticeAdminController::class, 'create'])->name('add-new');
+            Route::post('add-new',       [StaffNoticeAdminController::class, 'store']);
+            Route::get('edit/{id}',      [StaffNoticeAdminController::class, 'edit'])->whereNumber('id')->name('edit');
+            Route::post('update/{id}',   [StaffNoticeAdminController::class, 'update'])->whereNumber('id')->name('update');
+            Route::delete('delete/{id}', [StaffNoticeAdminController::class, 'destroy'])->whereNumber('id')->name('destroy');
+        });
+
+        // My Lahab — open/close checklist templates + audit. Module-gated.
+        Route::group(['prefix' => 'checklist', 'as' => 'checklist.', 'middleware' => ['module:checklists']], function () {
+            Route::get('list',                  [ChecklistAdminController::class, 'index'])->name('list');
+            Route::get('add-new',               [ChecklistAdminController::class, 'create'])->name('add-new');
+            Route::post('add-new',              [ChecklistAdminController::class, 'store']);
+            Route::get('edit/{id}',             [ChecklistAdminController::class, 'edit'])->whereNumber('id')->name('edit');
+            Route::post('update/{id}',          [ChecklistAdminController::class, 'update'])->whereNumber('id')->name('update');
+            Route::delete('delete/{id}',        [ChecklistAdminController::class, 'destroy'])->whereNumber('id')->name('destroy');
+            Route::post('{id}/items',           [ChecklistAdminController::class, 'addItem'])->whereNumber('id')->name('add-item');
+            Route::delete('{id}/items/{itemId}',[ChecklistAdminController::class, 'removeItem'])->whereNumber('id')->whereNumber('itemId')->name('remove-item');
+            Route::get('runs',                  [ChecklistAdminController::class, 'runs'])->name('runs');
+            Route::get('runs/{id}',             [ChecklistAdminController::class, 'runDetail'])->whereNumber('id')->name('runs.show');
         });
 
         Route::group(['prefix' => 'pos', 'as' => 'pos.', 'middleware' => ['module:pos_management']], function () {
@@ -426,6 +455,11 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::delete('delete/{id}', [BranchController::class, 'delete'])->name('delete');
             Route::get('status/{id}/{status}', [BranchController::class, 'status'])->name('status');
             Route::get('list', [BranchController::class, 'list'])->name('list');
+            // My Lahab attendance QR — image render + token rotation.
+            Route::get('attendance-qr/{id}',          [BranchController::class, 'attendanceQrImage'])->whereNumber('id')->name('attendance-qr-image');
+            Route::post('attendance-qr/{id}/rotate', [BranchController::class, 'regenerateAttendanceQr'])->whereNumber('id')->name('attendance-qr-rotate');
+            // One-stop printable list of every branch's attendance QR poster.
+            Route::get('attendance-qr-posters',       [BranchController::class, 'attendanceQrPosters'])->name('attendance-qr-posters');
         });
 
         Route::group(['prefix' => 'addon', 'as' => 'addon.', 'middleware' => ['module:product_management']], function () {

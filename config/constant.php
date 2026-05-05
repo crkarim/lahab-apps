@@ -48,6 +48,13 @@ defined('MANAGEMENT_SECTION') || define('MANAGEMENT_SECTION', [
     'accounts_daily_ops' => 'accounts_daily_ops',
     // Bills: suppliers, expense bills, expense categories.
     'accounts_bills' => 'accounts_bills',
+    // My Lahab — staff-facing notice board (publishes to the Flutter app).
+    'staff_notices' => 'staff_notices',
+    // My Lahab — management dashboard (sales / cash / expenses / top items)
+    // surfaced inside the staff app for directors + branch managers.
+    'management_dashboard' => 'management_dashboard',
+    // My Lahab — open/close checklists (template management + audit).
+    'checklists' => 'checklists',
 ]);
 
 defined('CACHE_BUSINESS_SETTINGS_TABLE') || define('CACHE_BUSINESS_SETTINGS_TABLE', 'cache_business_settings_table');

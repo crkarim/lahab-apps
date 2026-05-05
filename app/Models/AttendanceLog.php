@@ -27,6 +27,9 @@ class AttendanceLog extends Model
         'shift_id',
         'method',
         'notes',
+        'selfie_path',
+        'clock_in_lat', 'clock_in_lng',
+        'clock_out_lat', 'clock_out_lng',
     ];
 
     protected $casts = [

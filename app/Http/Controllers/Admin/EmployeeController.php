@@ -397,6 +397,10 @@ class EmployeeController extends Controller
             'bank_routing_number'     => $request->payment_method === 'bank' ? $request->bank_routing_number : null,
             'mobile_provider'         => $request->payment_method === 'mobile' ? $request->mobile_provider : null,
             'mobile_wallet_number'    => $request->payment_method === 'mobile' ? $request->mobile_wallet_number : null,
+            // My Lahab staff app — opt-in toggle. PIN itself is set via the
+            // dedicated setAppPin endpoint so we never accept a PIN in this
+            // bulk update form (which would risk unintentional PIN wipes).
+            'app_login_enabled'       => $request->boolean('app_login_enabled'),
         ]);
 
         // Refresh salary line items + sync the legacy rollup columns.
@@ -404,6 +408,35 @@ class EmployeeController extends Controller
         $this->syncLegacySalaryColumns((int) $id);
 
         Toastr::success(translate('Employee updated successfully!'));
+        return back();
+    }
+
+    /**
+     * Set or reset the My Lahab staff app PIN for an employee. Manager
+     * picks the PIN inline (4-6 digits) and tells the staff in person.
+     * Lives outside the main update() so a half-filled employee form
+     * can never accidentally wipe a working PIN.
+     */
+    public function setAppPin(Request $request, $id): RedirectResponse
+    {
+        $request->validate([
+            'app_pin' => 'required|digits_between:4,6',
+        ]);
+
+        $admin = $this->admin->find($id);
+        if (! $admin) {
+            Toastr::warning(translate('Employee not found.'));
+            return back();
+        }
+        if ((int) $admin->admin_role_id === 1) {
+            Toastr::warning(translate('Cannot set staff app PIN for Master Admin.'));
+            return back();
+        }
+
+        $admin->app_pin_hash = bcrypt($request->input('app_pin'));
+        $admin->save();
+
+        Toastr::success(translate('Staff app PIN updated. Tell the employee their new PIN.'));
         return back();
     }
 

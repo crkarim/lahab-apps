@@ -453,9 +453,69 @@
                     </div>
                 </div>
 
+                {{-- My Lahab staff app access. The toggle is part of the
+                     main form (saves on Update). The PIN itself uses a
+                     separate inline form below — keeps a half-filled
+                     employee form from accidentally wiping a working PIN. --}}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h4 class="mb-0">{{ translate('My Lahab — staff app access') }}</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="app_login_enabled" name="app_login_enabled" value="1" {{ old('app_login_enabled', $employee->app_login_enabled) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="app_login_enabled">
+                                        {{ translate('Allow this employee to log in to the My Lahab app') }}
+                                    </label>
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    {{ translate('When off, the employee cannot log in to the staff app even if they have a PIN.') }}
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <div>
+                                    <strong>{{ translate('PIN status') }}:</strong>
+                                    @if(!empty($employee->app_pin_hash))
+                                        <span class="badge bg-success">{{ translate('Set') }}</span>
+                                    @else
+                                        <span class="badge bg-secondary">{{ translate('Not set') }}</span>
+                                    @endif
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    {{ translate('Use the form below to set or reset the 4-6 digit PIN. The PIN is hashed; tell the employee in person.') }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="d-flex justify-content-end gap-3">
                     <button type="reset" class="btn btn-secondary" tabindex="10">{{translate('reset')}}</button>
                     <button type="submit" class="btn btn-primary" tabindex="11">{{translate('Update')}}</button>
+                </div>
+            </form>
+
+            {{-- PIN reset is a separate POST so a half-filled main form
+                 can never wipe a known-good PIN. --}}
+            <form action="{{ route('admin.employee.set-app-pin', [$employee['id']]) }}" method="post" class="card mt-3">
+                @csrf
+                <div class="card-header">
+                    <h5 class="mb-0">{{ translate('Set or reset the staff app PIN') }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">{{ translate('New PIN (4-6 digits)') }}</label>
+                            <input type="text" name="app_pin" class="form-control" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" autocomplete="off" required>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="tio-key-outlined"></i> {{ translate('Save PIN') }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>

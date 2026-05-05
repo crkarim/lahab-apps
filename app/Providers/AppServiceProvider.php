@@ -63,6 +63,26 @@ class AppServiceProvider extends ServiceProvider
         }catch(\Exception $exception){}
 
         Paginator::useBootstrap();
+
+        // Laravel 12 doesn't auto-load routes/console.php on apps that
+        // don't call ->withRouting(commands: ...) in bootstrap/app.php.
+        // This codebase uses its own RouteServiceProvider so we register
+        // schedule entries here directly.
+        $this->app->booted(function () {
+            $schedule = $this->app->make(\Illuminate\Console\Scheduling\Schedule::class);
+
+            // My Lahab — every minute, fire 5-min-before reminder pushes.
+            $schedule->command('checklist:send-reminders')
+                ->everyMinute()
+                ->withoutOverlapping(2)
+                ->onOneServer();
+
+            // My Lahab — purge proof photos older than 24 h hourly.
+            $schedule->command('checklist:purge-photos')
+                ->hourly()
+                ->withoutOverlapping(10)
+                ->onOneServer();
+        });
     }
 
 

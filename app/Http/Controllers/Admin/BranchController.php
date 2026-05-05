@@ -133,6 +133,10 @@ class BranchController extends Controller
             'name.required' => translate('Name is required!'),
         ]);
 
+        $request->validate([
+            'attendance_geo_radius_m' => 'nullable|integer|min:25|max:5000',
+        ]);
+
         $branch = $this->branch->find($id);
         $branch->name = $request->name;
         $branch->email = $request->email;
@@ -147,10 +151,64 @@ class BranchController extends Controller
         }
         $branch->phone = $request->phone ?? '';
         $branch->preparation_time = $request->preparation_time;
+        // My Lahab — geofence radius for attendance clock-in. Only update
+        // if explicitly provided so a half-filled form doesn't reset it.
+        if ($request->filled('attendance_geo_radius_m')) {
+            $branch->attendance_geo_radius_m = (int) $request->attendance_geo_radius_m;
+        }
         $branch->save();
 
         Toastr::success(translate('Branch updated successfully!'));
         return back();
+    }
+
+    /**
+     * My Lahab — rotate the attendance QR token for a branch. Used when
+     * the printed QR is suspected leaked. Forces all printed posters to
+     * be reprinted, which is intentional.
+     */
+    public function regenerateAttendanceQr($id): RedirectResponse
+    {
+        $branch = $this->branch->find($id);
+        if (! $branch) {
+            Toastr::warning(translate('Branch not found.'));
+            return back();
+        }
+        $branch->attendance_qr_token = 'lahab-att-' . \Illuminate\Support\Str::random(40);
+        $branch->save();
+        Toastr::success(translate('Attendance QR regenerated. Reprint the poster at this branch.'));
+        return back();
+    }
+
+    /**
+     * My Lahab — listing of every branch's attendance QR, intended as
+     * a one-stop "print all the posters" page so managers don't have to
+     * dig into each branch's edit form to find the QR.
+     */
+    public function attendanceQrPosters(): Renderable
+    {
+        $branches = $this->branch->orderBy('name')->get();
+        return view('admin-views.branch.attendance-qr-posters', compact('branches'));
+    }
+
+    /**
+     * My Lahab — render the branch's attendance QR as an SVG. SVG (not
+     * PNG) because the docker image doesn't ship with the imagick PHP
+     * extension that simple-qrcode's PNG backend needs. SVG is rendered
+     * natively by every browser and prints crisp at any size.
+     */
+    public function attendanceQrImage($id)
+    {
+        $branch = $this->branch->find($id);
+        if (! $branch || ! $branch->attendance_qr_token) {
+            abort(404);
+        }
+        $svg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
+            ->size(400)
+            ->margin(2)
+            ->generate($branch->attendance_qr_token);
+
+        return response($svg, 200, ['Content-Type' => 'image/svg+xml']);
     }
 
     /**

@@ -34,5 +34,29 @@ services:
       db:
         condition: service_healthy
 
+  # Sidecar that runs `php artisan schedule:work`, which itself fires
+  # `schedule:run` every minute. This is what drives the My Lahab
+  # checklist reminder pushes + the 24h photo purge. Sharing the same
+  # source volume so it always picks up code changes without rebuild.
+  scheduler:
+    build: .
+    container_name: lahab_admin_scheduler
+    command: php artisan schedule:work
+    volumes:
+      - ./:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: delivery_app_db
+      DB_USERNAME: root
+      DB_PASSWORD: ""
+      APP_URL: http://localhost:8000
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   lahab_admin_db:

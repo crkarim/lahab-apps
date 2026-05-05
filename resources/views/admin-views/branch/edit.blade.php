@@ -313,11 +313,63 @@
                             </div>
                         </div>
                     @endif
+                    {{-- My Lahab — staff-app attendance config. Geofence
+                         radius is part of the main form (saves on submit).
+                         The QR poster + token rotation are below outside
+                         this form so a half-filled branch update can't
+                         accidentally rotate the QR. --}}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h4 class="mb-0">{{ translate('My Lahab — staff attendance') }}</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="input-label">{{ translate('Geofence radius (metres)') }}</label>
+                                    <input type="number" name="attendance_geo_radius_m" class="form-control" min="25" max="5000"
+                                           value="{{ old('attendance_geo_radius_m', $branch->attendance_geo_radius_m ?? 150) }}">
+                                    <small class="text-muted">
+                                        {{ translate('Staff must be within this distance of the branch GPS coords to clock in. Skipped silently if branch has no coords saved.') }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="d-flex justify-content-end gap-3 mt-4">
                         <button type="reset" class="btn btn-secondary" tabindex="13">{{translate('reset')}}</button>
                         <button type="submit" class="btn btn-primary" tabindex="14">{{translate('submit')}}</button>
                     </div>
                 </form>
+
+                {{-- QR poster + rotation. Outside the main form so a
+                     half-filled branch update can't rotate the QR. --}}
+                <div class="card mt-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">{{ translate('Attendance QR poster') }}</h4>
+                        <form action="{{ route('admin.branch.attendance-qr-rotate', [$branch->id]) }}" method="post"
+                              onsubmit="return confirm('Regenerating will invalidate every printed QR poster for this branch. Continue?');" class="m-0">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-warning">
+                                <i class="tio-refresh"></i> {{ translate('Regenerate token') }}
+                            </button>
+                        </form>
+                    </div>
+                    <div class="card-body text-center">
+                        @if(!empty($branch->attendance_qr_token))
+                            <img src="{{ route('admin.branch.attendance-qr-image', [$branch->id]) }}"
+                                 alt="Attendance QR" style="max-width:300px;width:100%;height:auto;">
+                            <p class="mt-2 mb-1 text-muted">
+                                {{ translate('Print this QR and laminate it at the staff time-clock spot. Each branch must have its own poster.') }}
+                            </p>
+                            <p class="mb-0"><small class="text-muted">{{ translate('Token preview') }}: <code>{{ substr($branch->attendance_qr_token, 0, 18) }}…</code></small></p>
+                        @else
+                            <p class="text-muted mb-0">
+                                {{ translate('No QR token yet. Click Regenerate to create one.') }}
+                            </p>
+                        @endif
+                    </div>
+                </div>
             </div>
 
         </div>

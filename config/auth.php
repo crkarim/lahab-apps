@@ -74,6 +74,15 @@ return [
             'driver' => 'passport',
             'provider' => 'admins',
         ],
+
+        // My Lahab staff-app guard. Same Admin provider as waiter_api;
+        // the separate guard exists so we can attach staff-app-specific
+        // middleware (e.g. enforce admins.app_login_enabled = true) and
+        // revoke staff tokens independently of waiter tokens.
+        'staff_api' => [
+            'driver' => 'passport',
+            'provider' => 'admins',
+        ],
     ],
 
     /*

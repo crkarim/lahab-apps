@@ -309,17 +309,19 @@
                             $hrmEmployees  = Helpers::module_permission_check(MANAGEMENT_SECTION['hrm_employees']);
                             $hrmPayroll    = Helpers::module_permission_check(MANAGEMENT_SECTION['hrm_payroll']);
                             $hrmSettings   = Helpers::module_permission_check(MANAGEMENT_SECTION['hrm_settings']);
-                            $hrmAny        = $hrmAttendance || $hrmEmployees || $hrmPayroll || $hrmSettings;
+                            $staffNotices  = Helpers::module_permission_check(MANAGEMENT_SECTION['staff_notices']);
+                            $checklists    = Helpers::module_permission_check(MANAGEMENT_SECTION['checklists']);
+                            $hrmAny        = $hrmAttendance || $hrmEmployees || $hrmPayroll || $hrmSettings || $staffNotices || $checklists;
                         @endphp
                         @if($hrmAny)
                         <li class="navbar-vertical-aside-has-menu
-                            {{ Request::is('admin/attendance*') || Request::is('admin/shifts*') || Request::is('admin/payroll*') || Request::is('admin/payroll-runs*') || Request::is('admin/biometric*') || Request::is('admin/salary-advances*') || Request::is('admin/salary-components*') || Request::is('admin/leaves*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/org-chart*') || Request::is('admin/hrm-settings*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') ? 'active' : '' }}">
+                            {{ Request::is('admin/attendance*') || Request::is('admin/shifts*') || Request::is('admin/payroll*') || Request::is('admin/payroll-runs*') || Request::is('admin/biometric*') || Request::is('admin/salary-advances*') || Request::is('admin/salary-components*') || Request::is('admin/leaves*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/org-chart*') || Request::is('admin/hrm-settings*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') || Request::is('admin/staff-notice*') || Request::is('admin/checklist*') ? 'active' : '' }}">
                             <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('HRM') }}">
                                 <i class="tio-briefcase-outlined nav-icon"></i>
                                 <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('HRM') }}</span>
                             </a>
                             <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                style="display: {{ Request::is('admin/attendance*') || Request::is('admin/shifts*') || Request::is('admin/payroll*') || Request::is('admin/payroll-runs*') || Request::is('admin/biometric*') || Request::is('admin/salary-advances*') || Request::is('admin/salary-components*') || Request::is('admin/leaves*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/org-chart*') || Request::is('admin/hrm-settings*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') ? 'block' : 'none' }};">
+                                style="display: {{ Request::is('admin/attendance*') || Request::is('admin/shifts*') || Request::is('admin/payroll*') || Request::is('admin/payroll-runs*') || Request::is('admin/biometric*') || Request::is('admin/salary-advances*') || Request::is('admin/salary-components*') || Request::is('admin/leaves*') || Request::is('admin/departments*') || Request::is('admin/designations*') || Request::is('admin/org-chart*') || Request::is('admin/hrm-settings*') || Request::is('admin/employee*') || Request::is('admin/custom-role*') || Request::is('admin/kitchen*') || Request::is('admin/staff-notice*') || Request::is('admin/checklist*') ? 'block' : 'none' }};">
 
                                 {{-- Attendance ledger — open to all admins so staff can self-clock. --}}
                                 @if(Route::has('admin.attendance.index') && $hrmAttendance)
@@ -517,6 +519,27 @@
                                         </a>
                                     </li>
                                 @endif
+
+                                {{-- My Lahab — staff notice board (publishes
+                                     to the Flutter app + FCM push). --}}
+                                @if(Route::has('admin.staff-notice.list') && $staffNotices)
+                                    <li class="nav-item {{ Request::is('admin/staff-notice*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.staff-notice.list') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('Staff Notices') }}</span>
+                                        </a>
+                                    </li>
+                                @endif
+
+                                {{-- My Lahab — daily work assignments (open/close/daily). --}}
+                                @if(Route::has('admin.checklist.list') && $checklists)
+                                    <li class="nav-item {{ Request::is('admin/checklist*') ? 'active' : '' }}">
+                                        <a class="nav-link" href="{{ route('admin.checklist.list') }}">
+                                            <span class="tio-circle nav-indicator-icon"></span>
+                                            <span class="text-truncate">{{ translate('Work Assignments') }}</span>
+                                        </a>
+                                    </li>
+                                @endif
                             </ul>
                         </li>
                         @endif
@@ -681,15 +704,20 @@
                         {{-- Settings — everything rare goes here --}}
                         @if(auth('admin')->user()?->admin_role_id == 1)
                             <li class="navbar-vertical-aside-has-menu
-                                {{ Request::is('admin/business-settings*') || Request::is('admin/branch*') || Request::is('admin/ai-settings*') || Request::is('admin/system-addon*') || Request::is('admin/table/promotion*') ? 'active' : '' }}">
+                                {{ Request::is('admin/business-settings*') || Request::is('admin/branch*') || Request::is('admin/ai-settings*') || Request::is('admin/system-addon*') || Request::is('admin/table/promotion*') || Request::is('admin/branch/attendance-qr-posters*') ? 'active' : '' }}">
                                 <a class="js-navbar-vertical-aside-menu-link nav-link nav-link-toggle" href="javascript:" title="{{ translate('Settings') }}">
                                     <i class="tio-settings nav-icon"></i>
                                     <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('Settings') }}</span>
                                 </a>
                                 <ul class="js-navbar-vertical-aside-submenu nav nav-sub"
-                                    style="display: {{ Request::is('admin/business-settings*') || Request::is('admin/branch*') || Request::is('admin/ai-settings*') || Request::is('admin/system-addon*') ? 'block' : 'none' }};">
+                                    style="display: {{ Request::is('admin/business-settings*') || Request::is('admin/branch*') || Request::is('admin/ai-settings*') || Request::is('admin/system-addon*') || Request::is('admin/branch/attendance-qr-posters*') ? 'block' : 'none' }};">
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.restaurant.restaurant-setup') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Business Setup') }}</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.branch.list') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Branches') }}</span></a></li>
+                                    {{-- Branch attendance QR posters live next to the
+                                         branch list because they're a per-branch artifact. --}}
+                                    @if(Route::has('admin.branch.attendance-qr-posters'))
+                                        <li class="nav-item {{ Request::is('admin/branch/attendance-qr-posters*') ? 'active' : '' }}"><a class="nav-link" href="{{ route('admin.branch.attendance-qr-posters') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Attendance QR Posters') }}</span></a></li>
+                                    @endif
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.email-setup', ['user']) }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Email Templates') }}</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.page-setup.about-us') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Pages & Policies') }}</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('admin.business-settings.web-app.third-party.social-media') }}"><span class="tio-circle nav-indicator-icon"></span><span>{{ translate('Social Media') }}</span></a></li>
